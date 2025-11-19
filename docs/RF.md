@@ -1,33 +1,35 @@
 # Study Flow — Requisitos Funcionais (RF)
 
-> **PAP — Curso Profissional de Informática de Gestão**  
-> **Áreas:** Programação · Gestão · Base de Dados  
-> **Ano letivo:** 2025/2026  
-> **Versão:** 1.0  
-> **Elaborado por:** [Nome do Grupo]  
-> **Professor Orientador:** Nuno Miguel Almeida Castro
-
-# Estrutura Centranda no Utilizador
+> Estrutura centrada no utilizador e nos principais intervenientes do ecossistema escolar.
 
 ## Índice
 
-1. Aluno — Estudo Individual
-2. Aluno — Áreas de Estudo e IA Privada
-3. Aluno — Estudo em Grupo e Salas Partilhadas
-4. Professor — Turmas, Disciplinas e IA Docente
-5. Professor — Projetos, Testes e Curadoria
-6. Sistema — Ingestão de Materiais e Base de Conhecimento
-7. Sistema — IA (Assistentes, Guardrails, Perfis)
-8. Comunidade — Grupos, Salas e Co-Estudo
-9. Pesquisa e Navegação
-10. Privacidade e RGPD
-11. Administração e Operação
-12. Integrações
-13. Critérios de Aceitação (Agrupados por Funcionalidade)
+1. [Aluno — Estudo Individual](#1-aluno-estudo-individual)
+2. [Aluno — Áreas de Estudo e IA Privada](#2-aluno-áreas-de-estudo-e-ia-privada)
+3. [Aluno — Estudo em Grupo e Salas Partilhadas](#3-aluno-estudo-em-grupo-e-salas-partilhadas)
+4. [Professor — Turmas, Disciplinas e IA Docente](#4-professor-turmas-disciplinas-e-ia-docente)
+5. [Professor — Projetos, Testes e Curadoria](#5-professor-projetos-testes-e-curadoria)
+6. [Sistema — Ingestão de Materiais e Base de Conhecimento](#6-sistema-ingestão-de-materiais-e-base-de-conhecimento)
+7. [Sistema — IA (Assistentes, Guardrails, Perfis)](#7-sistema-ia-assistentes-guardrails-perfis)
+8. [Comunidade — Grupos, Salas e Co-Estudo](#8-comunidade-grupos-salas-e-co-estudo)
+9. [Pesquisa e Navegação](#9-pesquisa-e-navegação)
+10. [Notificações e Acompanhamento](#10-notificações-e-acompanhamento)
+11. [Privacidade e RGPD](#11-privacidade-e-rgpd)
+12. [Administração e Operação](#12-administração-e-operação)
+13. [Integrações](#13-integrações)
+14. [Critérios de Aceitação](#critérios-de-aceitação-agrupados-por-funcionalidade)
+15. [Sugestão de MVP organizado por fases e RF](#sugestão-de-mvp-organizado-por-fases-e-rf)
+16. [Créditos do projeto](#créditos-do-projeto)
+17. [Licença](#licença)
+18. [Changelog](#changelog)
+
+-   [Voltar ao início](../README.md)
 
 ---
 
-## 1. Aluno — Estudo Individual
+## Requisitos Funcionais
+
+### 1. Aluno — Estudo Individual
 
 | Código | Requisito                                         | Atores | Prioridade | Dependências |
 | ------ | ------------------------------------------------- | ------ | ---------- | ------------ |
@@ -40,7 +42,7 @@
 
 ---
 
-## 2. Aluno — Áreas de Estudo e IA Privada
+### 2. Aluno — Áreas de Estudo e IA Privada
 
 | Código | Requisito                                                     | Atores         | Prioridade | Dependências |
 | ------ | ------------------------------------------------------------- | -------------- | ---------- | ------------ |
@@ -54,7 +56,7 @@
 
 ---
 
-## 3. Aluno — Estudo em Grupo e Salas Partilhadas
+### 3. Aluno — Estudo em Grupo e Salas Partilhadas
 
 | Código | Requisito                                                           | Atores  | Prioridade | Dependências |
 | ------ | ------------------------------------------------------------------- | ------- | ---------- | ------------ |
@@ -66,7 +68,7 @@
 
 ---
 
-## 4. Professor — Turmas, Disciplinas e IA Docente
+### 4. Professor — Turmas, Disciplinas e IA Docente
 
 | Código | Requisito                                                 | Atores    | Prioridade | Dependências |
 | ------ | --------------------------------------------------------- | --------- | ---------- | ------------ |
@@ -80,7 +82,7 @@
 
 ---
 
-## 5. Professor — Projetos, Testes e Curadoria
+### 5. Professor — Projetos, Testes e Curadoria
 
 | Código | Requisito                                                      | Atores    | Prioridade | Dep. |
 | ------ | -------------------------------------------------------------- | --------- | ---------- | ---- |
@@ -92,7 +94,7 @@
 
 ---
 
-## 6. Sistema — Ingestão de Materiais e Base de Conhecimento
+### 6. Sistema — Ingestão de Materiais e Base de Conhecimento
 
 | Código | Requisito                                               | Atores  | Prioridade | Dependências |
 | ------ | ------------------------------------------------------- | ------- | ---------- | ------------ |
@@ -103,7 +105,7 @@
 
 ---
 
-## 7. Sistema — IA (Assistentes, Guardrails, Perfis)
+### 7. Sistema — IA (Assistentes, Guardrails, Perfis)
 
 | Código | Requisito                                                            | Atores  | Prioridade | Dep. |
 | ------ | -------------------------------------------------------------------- | ------- | ---------- | ---- |
@@ -116,7 +118,7 @@
 
 ---
 
-## 8. Comunidade — Grupos, Salas e Co-Estudo
+### 8. Comunidade — Grupos, Salas e Co-Estudo
 
 | Código | Requisito                           | Atores           | Prioridade | Dep. |
 | ------ | ----------------------------------- | ---------------- | ---------- | ---- |
@@ -127,7 +129,7 @@
 
 ---
 
-## 9. Pesquisa e Navegação
+### 9. Pesquisa e Navegação
 
 | Código | Requisito                                        | Atores | Prioridade | Dep. |
 | ------ | ------------------------------------------------ | ------ | ---------- | ---- |
@@ -136,69 +138,100 @@
 
 ---
 
-## 10. Privacidade e RGPD
+### 10. Notificações e Acompanhamento
+
+| Código | Requisito                                                                  | Atores    | Prioridade | Dep. |
+| ------ | -------------------------------------------------------------------------- | --------- | ---------- | ---- |
+| RF47   | Configurar preferências de notificações (email, push, app) por contexto.   | Todos     | Should     | RF02 |
+| RF48   | Alertar alunos sobre rotinas, objetivos e sessões de estudo agendadas.     | Sistema   | Should     | RF05 |
+| RF49   | Notificar grupos/turmas sobre novos materiais, feedback e tarefas.         | Sistema   | Should     | RF24 |
+| RF50   | Professores definem alertas de acompanhamento (ex.: aluno inativo X dias). | Professor | Should     | RF35 |
+| RF51   | Administradores configuram canais e quotas máximas de notificações.        | Admin     | Should     | RF50 |
+
+---
+
+### 11. Privacidade e RGPD
 
 | Código | Requisito                         | Atores | Prioridade | Dep. |
 | ------ | --------------------------------- | ------ | ---------- | ---- |
-| RF47   | Exportar dados pessoais.          | Todos  | Must       | —    |
-| RF48   | Eliminar conta e dados.           | Todos  | Must       | —    |
-| RF49   | Gestão de consentimentos para IA. | Todos  | Must       | —    |
+| RF52   | Exportar dados pessoais.          | Todos  | Must       | —    |
+| RF53   | Eliminar conta e dados.           | Todos  | Must       | —    |
+| RF54   | Gestão de consentimentos para IA. | Todos  | Must       | —    |
 
 ---
 
-## 11. Administração e Operação
+### 12. Administração e Operação
 
-| Código | Requisito                                   | Atores | Prioridade | Dep  |
-| ------ | ------------------------------------------- | ------ | ---------- | ---- |
-| RF50   | Gestão de utilizadores e papéis.            | Admin  | Must       | RF04 |
-| RF51   | Auditoria completa (materiais, IA, papéis). | Admin  | Must       | RF50 |
-| RF52   | Configurar modelos de IA e limites.         | Admin  | Could      | RF35 |
-
----
-
-## 12. Integrações
-
-| Código | Requisito                                | Atores           | Prioridade |
-| ------ | ---------------------------------------- | ---------------- | ---------- |
-| RF53   | Integração com calendários (ICS/Google). | Aluno, Professor | Could      |
-| RF54   | Integração com Drives (Google/OneDrive). | Professor        | Could      |
-| RF55   | Single Sign-On escolar (OAuth/SAML).     | Todos            | Could      |
+| Código | Requisito                                                             | Atores | Prioridade | Dep  |
+| ------ | --------------------------------------------------------------------- | ------ | ---------- | ---- |
+| RF55   | Gestão de utilizadores e papéis.                                      | Admin  | Must       | RF04 |
+| RF56   | Auditoria completa (materiais, IA, papéis).                           | Admin  | Must       | RF55 |
+| RF57   | Configurar modelos de IA e limites de uso.                            | Admin  | Should     | RF35 |
+| RF58   | Definir **quotas de IA** por aluno/turma/grupo e monitorizar consumo. | Admin  | Should     | RF57 |
+| RF59   | Painel de observabilidade (logs, métricas, alertas).                  | Admin  | Should     | RF55 |
 
 ---
 
-# 13. Critérios de Aceitação (Agrupados por Funcionalidade)
+### 13. Integrações
 
-## A) Resumos com IA (RF16, RF18, RF19, RF38)
+| Código | Requisito                                                              | Atores           | Prioridade |
+| ------ | ---------------------------------------------------------------------- | ---------------- | ---------- |
+| RF60   | Integração com calendários (ICS/Google).                               | Aluno, Professor | Should     |
+| RF61   | Integração com Drives (Google/OneDrive) para co-edição com permissões. | Professor, Aluno | Should     |
+| RF62   | Single Sign-On escolar (OAuth/SAML).                                   | Todos            | Should     |
+
+---
+
+## Critérios de Aceitação (Agrupados por Funcionalidade)
+
+### A) Resumos com IA (RF16, RF18, RF19, RF38)
 
 -   Resumo deve indicar página/secção de origem.
 -   Não pode incluir conteúdo não existente nos ficheiros fornecidos.
 -   Quando a voz do professor está ativa, o resumo deve refletir o tom docente.
 
-## B) Quizzes e Testes (RF20–RF24, RF28)
+### B) Quizzes e Testes (RF20–RF24, RF28)
 
 -   Perguntas MCQ devem ter 1 resposta correta e 3 distratores.
 -   Explicações precisam de referência ao material.
 -   O sistema guarda desempenho por tópico e disciplina.
 
-## C) Estudo em Grupo e Salas (RF14–RF18, RF41–RF44)
+### C) Estudo em Grupo e Salas (RF14–RF18, RF41–RF44)
 
 -   Apenas membros podem ver materiais da sala.
 -   IA da sala deve respeitar guardrails de grupo.
 -   Sessões coletivas devem mostrar ranking local.
 
-## D) Projetos e Acompanhamento (RF26–RF27)
+### D) Projetos e Acompanhamento (RF26–RF27)
 
 -   IA deve dividir projetos em passos sequenciais.
 -   Professores podem validar entregas e verificar evolução.
 
-## E) Turmas e Disciplinas (RF19–RF25)
+### E) Turmas e Disciplinas (RF19–RF25)
 
 -   Apenas alunos inscritos têm acesso ao conteúdo oficial.
 -   A IA docente usa exclusivamente materiais aprovados.
 
-## F) Materiais e Indexação (RF09–RF12, RF31–RF34)
+### F) Materiais e Indexação (RF09–RF12, RF31–RF34)
 
 -   Sistemas devem extrair texto, estrutura e tópicos do documento.
 -   Versionamento deve permitir reversão.
 
+## Sugestão de MVP organizado por fases e RF
+
+-   **Fase 1 — Estudo Individual:** RF01–RF13, focando áreas privadas, ingestão de materiais e assistente IA pessoal.
+-   **Fase 2 — Professores e Turmas:** RF14–RF39, adicionando gestão docente, projetos/testes e painéis de progresso.
+-   **Fase 3 — Comunidade e Notificações:** RF40–RF51, cobrindo grupos, salas colaborativas e alertas inteligentes.
+-   **Fase 4 — Operação e Integrações:** RF52–RF62, com privacidade, administração avançada, quotas de IA e integrações externas.
+
 ---
+
+## Licença
+
+Projeto académico destinado exclusivamente a fins educativos.
+
+---
+
+## Changelog
+
+-   **2024-04-27** — Reorganização do RF.md para o formato padrão com secções de MVP, créditos, licença e changelog.

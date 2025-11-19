@@ -1,23 +1,20 @@
 # Study Flow — Requisitos Não Funcionais (RNF)
 
-> **PAP — Curso Profissional de Informática de Gestão**  
-> **Áreas:** Programação · Gestão · Base de Dados  
-> **Ano letivo:** 2025/2026  
-> **Versão:** 1.0  
-> **Elaborado por:** [Nome do Grupo]  
-> **Professor Orientador:** Nuno Miguel Almeida Castro
-
 ## Índice
 
-1. Usabilidade e Acessibilidade
-2. Performance e Escalabilidade
-3. Segurança e Proteção de Dados
-4. Fiabilidade, Backups e Continuidade
-5. Manutenção, Organização e Qualidade
-6. IA — Ética, Controlo e Explicabilidade
-7. Compatibilidade, Integração e Formatos
-8. Localização e Preferências
-9. Stack Tecnológica Recomendada
+1. [Usabilidade e Acessibilidade](#1-usabilidade-e-acessibilidade)
+2. [Performance e Escalabilidade](#2-performance-e-escalabilidade)
+3. [Segurança e Proteção de Dados](#3-segurança-e-proteção-de-dados)
+4. [Fiabilidade, Backups e Continuidade](#4-fiabilidade-backups-e-continuidade)
+5. [Manutenção, Organização e Qualidade](#5-manutenção-organização-e-qualidade)
+6. [IA — Ética, Controlo e Explicabilidade](#6-ia-ética-controlo-e-explicabilidade)
+7. [Compatibilidade, Integração e Formatos](#7-compatibilidade-integração-e-formatos)
+8. [Localização e Preferências](#8-localização-e-preferências)
+9. [Stack Tecnológica Recomendada](#9-stack-tecnológica-recomendada)
+10. [Licença](#licença)
+11. [Changelog](#changelog)
+
+-   [Voltar ao início](../README.md)
 
 ---
 
@@ -149,10 +146,14 @@
 -   Serviço interno de personalização
 -   Indexação via Python/Node
 
-### DevOps
+---
 
-> DevOps é o conjunto de práticas que combina desenvolvimento de software (Dev) e operações de TI (Ops). O objetivo é encurtar o ciclo de vida do desenvolvimento de sistemas, proporcionando entrega contínua com alta qualidade de software.
+## Licença
 
--   Railway / Render / Fly.io
--   GitHub Actions
--   Monitorização & backups automáticos
+Projeto académico orientado a fins educativos.
+
+---
+
+## Changelog
+
+-   **2024-06-15** — Versão inicial dos Requisitos Não Funcionais (RNF) e Stack Tecnológica Recomendada.
