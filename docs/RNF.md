@@ -1,4 +1,4 @@
-# Study Flow — Requisitos Não Funcionais (RNF)
+# Study Flow - Requisitos Não Funcionais (RNF)
 
 ## Índice
 
@@ -7,7 +7,7 @@
 3. [Segurança e Proteção de Dados](#3-segurança-e-proteção-de-dados)
 4. [Fiabilidade, Backups e Continuidade](#4-fiabilidade-backups-e-continuidade)
 5. [Manutenção, Organização e Qualidade](#5-manutenção-organização-e-qualidade)
-6. [IA — Ética, Controlo e Explicabilidade](#6-ia-ética-controlo-e-explicabilidade)
+6. [IA - Ética, Controlo e Explicabilidade](#6-ia-ética-controlo-e-explicabilidade)
 7. [Compatibilidade, Integração e Formatos](#7-compatibilidade-integração-e-formatos)
 8. [Localização e Preferências](#8-localização-e-preferências)
 9. [Stack Tecnológica Recomendada](#9-stack-tecnológica-recomendada)
@@ -83,7 +83,7 @@
 
 ---
 
-## 6. IA — Ética, Controlo e Explicabilidade
+## 6. IA - Ética, Controlo e Explicabilidade
 
 | Código | Requisito                                               | Tipo            | Prioridade |
 | ------ | ------------------------------------------------------- | --------------- | ---------- |
@@ -156,4 +156,4 @@ Projeto académico orientado a fins educativos.
 
 ## Changelog
 
--   **2024-06-15** — Versão inicial dos Requisitos Não Funcionais (RNF) e Stack Tecnológica Recomendada.
+-   **2024-06-15** - Versão inicial dos Requisitos Não Funcionais (RNF) e Stack Tecnológica Recomendada.

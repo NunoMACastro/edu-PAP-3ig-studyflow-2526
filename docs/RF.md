@@ -1,17 +1,17 @@
-# Study Flow — Requisitos Funcionais (RF)
+# Study Flow - Requisitos Funcionais (RF)
 
 > Estrutura centrada no utilizador e nos principais intervenientes do ecossistema escolar.
 
 ## Índice
 
-1. [Aluno — Estudo Individual](#1-aluno-estudo-individual)
-2. [Aluno — Áreas de Estudo e IA Privada](#2-aluno-áreas-de-estudo-e-ia-privada)
-3. [Aluno — Estudo em Grupo e Salas Partilhadas](#3-aluno-estudo-em-grupo-e-salas-partilhadas)
-4. [Professor — Turmas, Disciplinas e IA Docente](#4-professor-turmas-disciplinas-e-ia-docente)
-5. [Professor — Projetos, Testes e Curadoria](#5-professor-projetos-testes-e-curadoria)
-6. [Sistema — Ingestão de Materiais e Base de Conhecimento](#6-sistema-ingestão-de-materiais-e-base-de-conhecimento)
-7. [Sistema — IA (Assistentes, Guardrails, Perfis)](#7-sistema-ia-assistentes-guardrails-perfis)
-8. [Comunidade — Grupos, Salas e Co-Estudo](#8-comunidade-grupos-salas-e-co-estudo)
+1. [Aluno - Estudo Individual](#1-aluno-estudo-individual)
+2. [Aluno - Áreas de Estudo e IA Privada](#2-aluno-áreas-de-estudo-e-ia-privada)
+3. [Aluno - Estudo em Grupo e Salas Partilhadas](#3-aluno-estudo-em-grupo-e-salas-partilhadas)
+4. [Professor - Turmas, Disciplinas e IA Docente](#4-professor-turmas-disciplinas-e-ia-docente)
+5. [Professor - Projetos, Testes e Curadoria](#5-professor-projetos-testes-e-curadoria)
+6. [Sistema - Ingestão de Materiais e Base de Conhecimento](#6-sistema-ingestão-de-materiais-e-base-de-conhecimento)
+7. [Sistema - IA (Assistentes, Guardrails, Perfis)](#7-sistema-ia-assistentes-guardrails-perfis)
+8. [Comunidade - Grupos, Salas e Co-Estudo](#8-comunidade-grupos-salas-e-co-estudo)
 9. [Pesquisa e Navegação](#9-pesquisa-e-navegação)
 10. [Notificações e Acompanhamento](#10-notificações-e-acompanhamento)
 11. [Privacidade e RGPD](#11-privacidade-e-rgpd)
@@ -29,12 +29,12 @@
 
 ## Requisitos Funcionais
 
-### 1. Aluno — Estudo Individual
+### 1. Aluno - Estudo Individual
 
 | Código | Requisito                                         | Atores | Prioridade | Dependências |
 | ------ | ------------------------------------------------- | ------ | ---------- | ------------ |
-| RF01   | Registo do aluno (email/password ou SSO escolar). | Aluno  | Must       | —            |
-| RF02   | Login seguro com cookies HttpOnly.                | Aluno  | Must       | —            |
+| RF01   | Registo do aluno (email/password ou SSO escolar). | Aluno  | Must       | -            |
+| RF02   | Login seguro com cookies HttpOnly.                | Aluno  | Must       | -            |
 | RF03   | Perfil editável (nome, ano, curso, turma).        | Aluno  | Should     | RF02         |
 | RF04   | O aluno pode estudar sem turma.                   | Aluno  | Must       | RF03         |
 | RF05   | O aluno pode criar rotinas e objetivos de estudo. | Aluno  | Should     | RF03         |
@@ -42,7 +42,7 @@
 
 ---
 
-### 2. Aluno — Áreas de Estudo e IA Privada
+### 2. Aluno - Áreas de Estudo e IA Privada
 
 | Código | Requisito                                                     | Atores         | Prioridade | Dependências |
 | ------ | ------------------------------------------------------------- | -------------- | ---------- | ------------ |
@@ -56,7 +56,7 @@
 
 ---
 
-### 3. Aluno — Estudo em Grupo e Salas Partilhadas
+### 3. Aluno - Estudo em Grupo e Salas Partilhadas
 
 | Código | Requisito                                                           | Atores  | Prioridade | Dependências |
 | ------ | ------------------------------------------------------------------- | ------- | ---------- | ------------ |
@@ -68,11 +68,11 @@
 
 ---
 
-### 4. Professor — Turmas, Disciplinas e IA Docente
+### 4. Professor - Turmas, Disciplinas e IA Docente
 
 | Código | Requisito                                                 | Atores    | Prioridade | Dependências |
 | ------ | --------------------------------------------------------- | --------- | ---------- | ------------ |
-| RF19   | Criar turmas.                                             | Professor | Must       | —            |
+| RF19   | Criar turmas.                                             | Professor | Must       | -            |
 | RF20   | Criar disciplinas e associá-las às turmas.                | Professor | Must       | RF19         |
 | RF21   | Submeter materiais da disciplina (versão oficial).        | Professor | Must       | RF20         |
 | RF22   | Configurar “voz da IA” docente.                           | Professor | Should     | RF21         |
@@ -82,7 +82,7 @@
 
 ---
 
-### 5. Professor — Projetos, Testes e Curadoria
+### 5. Professor - Projetos, Testes e Curadoria
 
 | Código | Requisito                                                      | Atores    | Prioridade | Dep. |
 | ------ | -------------------------------------------------------------- | --------- | ---------- | ---- |
@@ -94,7 +94,7 @@
 
 ---
 
-### 6. Sistema — Ingestão de Materiais e Base de Conhecimento
+### 6. Sistema - Ingestão de Materiais e Base de Conhecimento
 
 | Código | Requisito                                               | Atores  | Prioridade | Dependências |
 | ------ | ------------------------------------------------------- | ------- | ---------- | ------------ |
@@ -105,7 +105,7 @@
 
 ---
 
-### 7. Sistema — IA (Assistentes, Guardrails, Perfis)
+### 7. Sistema - IA (Assistentes, Guardrails, Perfis)
 
 | Código | Requisito                                                            | Atores  | Prioridade | Dep. |
 | ------ | -------------------------------------------------------------------- | ------- | ---------- | ---- |
@@ -118,7 +118,7 @@
 
 ---
 
-### 8. Comunidade — Grupos, Salas e Co-Estudo
+### 8. Comunidade - Grupos, Salas e Co-Estudo
 
 | Código | Requisito                           | Atores           | Prioridade | Dep. |
 | ------ | ----------------------------------- | ---------------- | ---------- | ---- |
@@ -154,9 +154,9 @@
 
 | Código | Requisito                         | Atores | Prioridade | Dep. |
 | ------ | --------------------------------- | ------ | ---------- | ---- |
-| RF52   | Exportar dados pessoais.          | Todos  | Must       | —    |
-| RF53   | Eliminar conta e dados.           | Todos  | Must       | —    |
-| RF54   | Gestão de consentimentos para IA. | Todos  | Must       | —    |
+| RF52   | Exportar dados pessoais.          | Todos  | Must       | -    |
+| RF53   | Eliminar conta e dados.           | Todos  | Must       | -    |
+| RF54   | Gestão de consentimentos para IA. | Todos  | Must       | -    |
 
 ---
 
@@ -219,10 +219,10 @@
 
 ## Sugestão de MVP organizado por fases e RF
 
--   **Fase 1 — Estudo Individual:** RF01–RF13, focando áreas privadas, ingestão de materiais e assistente IA pessoal.
--   **Fase 2 — Professores e Turmas:** RF14–RF39, adicionando gestão docente, projetos/testes e painéis de progresso.
--   **Fase 3 — Comunidade e Notificações:** RF40–RF51, cobrindo grupos, salas colaborativas e alertas inteligentes.
--   **Fase 4 — Operação e Integrações:** RF52–RF62, com privacidade, administração avançada, quotas de IA e integrações externas.
+-   **Fase 1 - Estudo Individual:** RF01–RF13, focando áreas privadas, ingestão de materiais e assistente IA pessoal.
+-   **Fase 2 - Professores e Turmas:** RF14–RF39, adicionando gestão docente, projetos/testes e painéis de progresso.
+-   **Fase 3 - Comunidade e Notificações:** RF40–RF51, cobrindo grupos, salas colaborativas e alertas inteligentes.
+-   **Fase 4 - Operação e Integrações:** RF52–RF62, com privacidade, administração avançada, quotas de IA e integrações externas.
 
 ---
 
@@ -234,4 +234,4 @@ Projeto académico destinado exclusivamente a fins educativos.
 
 ## Changelog
 
--   **2024-04-27** — Reorganização do RF.md para o formato padrão com secções de MVP, créditos, licença e changelog.
+-   **2024-04-27** - Reorganização do RF.md para o formato padrão com secções de MVP, créditos, licença e changelog.
