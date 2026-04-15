@@ -1,40 +1,53 @@
-# Planificação PAP - Study Flow
+# PLANIFICACAO-STUDYFLOW
 
 ## Header
-- `doc_id`: `PLANIFICACAO-README`
+- `doc_id`: `PLANIFICACAO-STUDYFLOW`
 - `path`: `docs/planificacao/README.md`
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-12`
+- `last_updated`: `2026-04-14`
 
 ## Objetivo
-Centralizar a planificação executável, auditável e coerente da PAP em PT-PT, com rastreabilidade 1:1 entre BK e guia pedagógico.
+Normalizar a planificacao da StudyFlow ao padrao OPSA/FaithFlix com governanca completa, cobertura rastreavel e foco pedagogico para 12o ano.
 
-## Estrutura
-- `PLANO-IMPLEMENTACAO-TOTAL.md`
-- `DISTRIBUICAO-RESPONSABILIDADES.md`
-- `backlogs/MATRIZ-CANONICA-BK.md`
-- `backlogs/BACKLOG-MVP.md`
-- `backlogs/MF-VIEWS.md`
-- `sprints/PLANO-SPRINTS.md`
-- `guias-bk/README.md`
-- `guias-bk/_TEMPLATE-BK.md`
-- `guias-bk/ROADMAP-BKS-RESTANTES.md`
-- `guias-bk/MF0..MF8/*.md`
-
-## Resumo de cobertura
-- Total BK: **106**
-- Total guias BK: **106**
-- Cobertura BK↔guia: **100% (1:1)**
-
-## Ordem de leitura recomendada
+## Hierarquia canónica (ordem oficial)
 1. `PLANO-IMPLEMENTACAO-TOTAL.md`
 2. `DISTRIBUICAO-RESPONSABILIDADES.md`
-3. `backlogs/BACKLOG-MVP.md`
-4. `backlogs/MF-VIEWS.md`
-5. `sprints/PLANO-SPRINTS.md`
-6. `guias-bk/README.md`
+3. `sprints/PLANO-SPRINTS.md`
+4. `sprints/SCORECARD-SPRINTS.md`
+5. `sprints/GUIAO-DOCENTE-SEMANAL.md`
+6. `backlogs/MATRIZ-CANONICA-BK.md`
+7. `backlogs/BACKLOG-MVP.md`
+8. `backlogs/MF-VIEWS.md`
+9. `backlogs/CONTRATO-CAMPOS-BK.md`
+10. `backlogs/ANEXO-RF-PARA-BKS.md`
+11. `backlogs/ANEXO-RNF-PARA-BKS.md`
+12. `backlogs/ANEXO-BK-SPRINT-OWNER.md`
+13. `guias-bk/README.md`
+
+## Regra de precedencia
+- Em conflito de dados operacionais, prevalece a ordem da hierarquia canónica.
+- `MATRIZ-CANONICA-BK.md` e a fonte de referencia para ownership/prioridade/dependencias/rf_rnf.
+- `BACKLOG-MVP.md` e `guias-bk` herdam os metadados da matriz sem excecoes.
+
+## Regra de atualizacao em cadeia
+1. Atualizar matriz.
+2. Regenerar backlog e MF views.
+3. Regenerar guias BK e anexos de rastreabilidade.
+4. Atualizar sprints e scorecard.
+5. Executar `scripts/validate-planificacao.sh`.
+
+## Contrato de scorecard (pesos oficiais)
+- Cobertura/rastreabilidade: `25`
+- Coerencia documental: `20`
+- Pedagogia/guidance/step-by-step: `25`
+- Adequacao ao 12o: `20`
+- Governanca/avaliacao: `10`
+
+## Meta documental oficial
+- Meta: `>=93/100`
+- Estado alvo apos normalizacao: `PASS` em auditoria automatica.
 
 ## Changelog
-- **2026-04-12** - Estrutura completa de planificação criada de raiz com 106 BK e 106 guias.
+- `2026-04-14`: estrutura/layout normalizados para alinhamento total com baseline OPSA+FaithFlix.

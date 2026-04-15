@@ -1,0 +1,45 @@
+{
+  "counts": {
+    "rf_docs": 62,
+    "rnf_docs": 44,
+    "matriz_bk": 106,
+    "backlog_bk": 106,
+    "guide_bk": 106
+  },
+  "coverage": {
+    "rf_contract_issues": [],
+    "rnf_contract_issues": [],
+    "missing_rf_matrix": [],
+    "missing_rnf_matrix": [],
+    "missing_rf_backlog": [],
+    "missing_rnf_backlog": [],
+    "invalid_refs": []
+  },
+  "consistency": {
+    "matriz_backlog_mismatches": [],
+    "broken_guia_links": [],
+    "invalid_dependencies": [],
+    "cycles": [],
+    "outdated_docs": [],
+    "scorecard_contract_issues": [],
+    "sprint_contract_issues": [],
+    "gate_issues": []
+  },
+  "guides_quality": {
+    "guide_header_issues": [],
+    "guide_content_issues": [],
+    "naming_issues": [],
+    "missing_guides": []
+  },
+  "governance": {
+    "missing_artifacts": []
+  },
+  "status": {
+    "coverage_pass": true,
+    "consistency_pass": true,
+    "guides_pass": true,
+    "naming_pass": true,
+    "governance_pass": true,
+    "overall_pass": true
+  }
+}

@@ -1,40 +1,42 @@
-# BK-XXXX - Título do BK
+# BK-MF*-** - Titulo do BK
 
 ## Header
-- `doc_id`: `GUIA-BK-XXXX`
-- `path`: `docs/planificacao/guias-bk/_TEMPLATE-BK.md`
-- `area`: `project`
-- `owner`: `Nuno`
-- `status`: `ativo`
-- `last_updated`: `2026-04-12`
-
-## Header
-- `doc_id`: `GUIA-BK-XXXX`
-- `bk_id`: `BK-XXXX`
-- `macro`: `MFX`
+- `doc_id`: `GUIA-BK-MF*-**`
+- `bk_id`: `BK-MF*-**`
+- `macro`: `MF*`
 - `owner`: `...`
 - `apoio`: `...`
 - `prioridade`: `P0|P1|P2`
 - `estado`: `TODO|IN_PROGRESS|DONE|BLOCKED`
-- `esforço`: `S|M|L`
-- `dependências`: `BK-...`
-- `rf_rnf`: `RFxx/RNFxx/transversal`
-- `last_updated`: `2026-04-12`
+- `esforco`: `S|M|L`
+- `dependencias`: `BK-...|-`
+- `rf_rnf`: `RFxx|RNFxx`
+- `fase_documental`: `Fase 1|Fase 2|Fase 3`
+- `sprint`: `Sxx-Syy`
+- `core_or_reforco`: `Core|Reforco`
+- `proximo_bk`: `BK-...|-`
+- `guia_path`: `docs/planificacao/guias-bk/MF*/BK-MF*-**-slug-semantico.md`
+- `last_updated`: `2026-04-14`
 
-## O que vamos fazer neste BK
-## Porque isto é importante
-## O que entra (scope)
-## O que não entra (scope-out)
-## Como saber que isto ficou bem
-## Pre-leitura mínima (10-15 min)
-## Glossário rápido
-## Guia de execução (passo-a-passo)
-## Snippets de código (evolução)
-Neste momento este BK ainda não tem snippet consolidado; os snippets serão adicionados aqui com a evolução do projeto.
-## Checklist de validação
-## Critérios de aceite
+## Contexto do BK
+## Bloco pedagogico
+### Objetivo
+### Pre-requisitos
+### Erros comuns
+### Check de compreensao
+### Tempo estimado
+
+## Bloco operacional
+### Entrada
+### Passos
+### Validacao
+### Handoff
+
+## Snippet tecnico aplicavel
+```ts
+// Snippet real e aplicavel ao BK
+```
+
+## Criterios de aceite
 ## Evidence para PR/defesa
-## Próximo BK recomendado
-
 ## Changelog
-- **2026-04-12** - Template canónico único para todos os guias BK.

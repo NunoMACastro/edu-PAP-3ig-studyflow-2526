@@ -6,57 +6,38 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-12`
+- `last_updated`: `2026-04-14`
 
-## Capacidade por aluno
-| Aluno | Horas/semana | Perfil |
-| --- | --- | --- |
-| Natália | 16h | BK críticos (P0/L) e arquitetura |
-| Guilherme | 14h | Núcleo funcional, integração e P0/P1 |
-| Kaua | 10h | Implementação P1/P2 e suporte |
-| Daniel | 8h | Gestão, QA, documentação e apoio técnico |
+## Conversao S/M/L
+- `S`: 1 unidade
+- `M`: 2 unidades
+- `L`: 3 unidades
 
-## Conversão S/M/L
-- `S` = 4h (entrega localizada).
-- `M` = 8h (1-2 dependências ou integração moderada).
-- `L` = 14h (impacto transversal, segurança/IA/arquitetura ou 3+ dependências).
+## Linha temporal oficial (12 sprints)
+| sprint | periodo | foco_macro | objetivo_operacional | gate |
+| --- | --- | --- | --- | --- |
+| S01 | 2026-04-13 a 2026-04-19 | MF0 | Kickoff, setup tecnico e BK P0 iniciais | NAO |
+| S02 | 2026-04-20 a 2026-04-26 | MF0 | Fecho fundacoes e validacao de base | NAO |
+| S03 | 2026-04-27 a 2026-05-03 | MF1 | Nucleo funcional aluno/turma | NAO |
+| S04 | 2026-05-04 a 2026-05-10 | MF1 | Consolidacao MF1 + Gate S4 | SIM |
+| S05 | 2026-05-11 a 2026-05-17 | MF2 | Conteudos oficiais e indexacao | NAO |
+| S06 | 2026-05-18 a 2026-05-24 | MF2 | IA academica e metricas de turma | NAO |
+| S07 | 2026-05-25 a 2026-05-31 | MF3 | Guardrails, pesquisa e colaboracao | NAO |
+| S08 | 2026-06-01 a 2026-06-07 | MF3/MF4 | Fecho MF3 + transicao MF4 + Gate S8 | SIM |
+| S09 | 2026-06-08 a 2026-06-14 | MF4/MF5 | Governanca, privacidade e UX | NAO |
+| S10 | 2026-06-15 a 2026-06-21 | MF5/MF6 | Performance, acessibilidade e seguranca | NAO |
+| S11 | 2026-06-22 a 2026-06-28 | MF6/MF7 | Robustez tecnica e operacao | NAO |
+| S12 | 2026-06-29 a 2026-07-05 | MF7/MF8 | Fecho documental e Gate S12 | SIM |
 
-## Calendário de sprints (semanal)
-| Sprint | Período | Foco macro | KPI alvo |
-| --- | --- | --- | --- |
-| S01 | 13/04/2026 - 19/04/2026 | MF0 | >=85% BK planeados com checklist completo |
-| S02 | 20/04/2026 - 26/04/2026 | MF0 | >=85% BK planeados com checklist completo |
-| S03 | 27/04/2026 - 03/05/2026 | MF1 | >=85% BK planeados com checklist completo |
-| S04 | 04/05/2026 - 10/05/2026 | MF1 | >=85% BK planeados com checklist completo |
-| S05 | 11/05/2026 - 17/05/2026 | MF2 | >=85% BK planeados com checklist completo |
-| S06 | 18/05/2026 - 24/05/2026 | MF2 | >=85% BK planeados com checklist completo |
-| S07 | 25/05/2026 - 31/05/2026 | MF3 | >=85% BK planeados com checklist completo |
-| S08 | 01/06/2026 - 07/06/2026 | MF4 | >=85% BK planeados com checklist completo |
-| S09 | 08/06/2026 - 14/06/2026 | MF5 | >=85% BK planeados com checklist completo |
-| S10 | 15/06/2026 - 21/06/2026 | MF5 | >=85% BK planeados com checklist completo |
-| S11 | 22/06/2026 - 28/06/2026 | MF6 | >=85% BK planeados com checklist completo |
-| S12 | 29/06/2026 - 05/07/2026 | MF7 | >=85% BK planeados com checklist completo |
-| S13 | 06/07/2026 - 12/07/2026 | MF7 | >=85% BK planeados com checklist completo |
-| S14 | 13/07/2026 - 19/07/2026 | MF8 | >=85% BK planeados com checklist completo |
-| S15 | 20/07/2026 - 26/07/2026 | MF8 | >=85% BK planeados com checklist completo |
-| S16 | 27/07/2026 - 02/08/2026 | Estabilização | >=85% BK planeados com checklist completo |
+## Regra de replaneamento
+1. Replaneamento apenas no fecho da sprint, exceto bloqueio critico.
+2. Prioridade de execucao: `P0 > P1 > P2`.
+3. Qualquer desvio exige sincronizacao de `MATRIZ-CANONICA-BK`, `BACKLOG-MVP`, `MF-VIEWS` e `guias-bk`.
 
-## Regras de replaneamento
-1. Replaneamento apenas no fecho de sprint, salvo bloqueio crítico.
-2. Priorizar desbloqueio de dependências antes de iniciar novos BK.
-3. Preservar prioridade P0>P1>P2 e evitar fragmentação de BK L.
-4. Qualquer desvio deve refletir-se em BACKLOG-MVP, MF-VIEWS e guias BK na mesma semana.
-
-## Gate para dependências cruzadas MF2↔MF3
-- Antes de fechar qualquer sprint com `BK-MF2-01`, validar desbloqueio de `BK-MF3-03`.
-- Antes de fechar qualquer sprint com `BK-MF2-06`, validar desbloqueio de `BK-MF3-04`.
-- Se o gate falhar, o BK mantém estado `TODO` e reentra no planeamento da semana seguinte.
-
-## KPI por sprint
-- % BK planeados concluídos no sprint.
-- % checklists smoke/negativos/técnico completos.
-- Nº de bloqueios abertos >48h.
-- % BK com evidence completa (pr/proof/neg).
+## KPI minimos por sprint
+- Cobertura de BK planeados concluida >= 85%.
+- Checklists smoke/negativos/tecnico completos por BK >= 90%.
+- Bloqueios >48h com escalacao no scorecard.
 
 ## Changelog
-- **2026-04-12** - Plano semanal de sprints criado com arranque em 13/04/2026.
+- `2026-04-14`: plano de sprints reduzido e sincronizado para horizonte canónico `S01..S12`.

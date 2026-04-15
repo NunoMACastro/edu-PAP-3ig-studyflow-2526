@@ -6,101 +6,37 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-12`
+- `last_updated`: `2026-04-14`
 
 ## Objetivo
-Definir o plano macro executável MF0..MF8 com governance, streams de ownership e gates de saída auditáveis.
+Definir a linha temporal canónica de 12 sprints para executar os BK da StudyFlow com rastreabilidade RF/RNF, coerencia documental e preparacao para defesa PAP.
 
-## Assunções
-- Fonte de verdade funcional: `docs/RF.md`.
-- Fonte de verdade não funcional: `docs/RNF.md`.
-- Política de estados BK: não alterar estado operacional sem pedido explícito.
-- Em falta de detalhe técnico: **a definir no BK dependente**.
-- Dependências cruzadas entre macros (MF2 a depender de MF3) são resolvidas por gate de desbloqueio, sem alterar a ordem macro definida MF0..MF8.
+## Contrato canónico
+- Pesos oficiais: `25/20/25/20/10`.
+- Politica Core/Reforco: `P0 => Reforco`, `P1/P2 => Core`.
+- Gates obrigatorios de revisao: `S4`, `S8`, `S12`.
+- Invariantes: IDs BK preservados e cobertura `RF/RNF/BK` sem orfaos.
 
-## Precedência documental
-1. RF/RNF
-2. PLANO-IMPLEMENTACAO-TOTAL
-3. BACKLOG-MVP
-4. MF-VIEWS
-5. PLANO-SPRINTS
+## Calendario macro
+- `MF0` (Fundacoes de plataforma): janela `S01-S02` com `12` BK.
+- `MF1` (Nucleo funcional I): janela `S03-S04` com `12` BK.
+- `MF2` (Nucleo funcional II): janela `S05-S06` com `12` BK.
+- `MF3` (Capacidades de produto I): janela `S07-S08` com `12` BK.
+- `MF4` (Capacidades de produto II): janela `S08-S09` com `12` BK.
+- `MF5` (Operacao e UX transversal): janela `S09-S10` com `12` BK.
+- `MF6` (Qualidade, seguranca e performance): janela `S10-S11` com `12` BK.
+- `MF7` (Operacao, modularidade e compliance): janela `S11-S12` com `11` BK.
+- `MF8` (Compatibilidade e fecho PAP): janela `S12` com `11` BK.
 
-## Tabela MF0..MF8
-| Macro | Objetivo macro | Cobertura | Owner stream P0 | Apoio principal | Gate de saída |
-| --- | --- | --- | --- | --- | --- |
-| MF0 | Fundamentos e governance | RF01..RNF44 | Guilherme | Natália | Todos os BK MF0 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
-| MF1 | Estudo individual e IA privada | RF07..RNF36 | Guilherme | Natália | Todos os BK MF1 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
-| MF2 | Conhecimento + IA core | RF31..RNF37 | Natália | Guilherme | Todos os BK MF2 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
-| MF3 | Professor/turmas | RF19..RNF33 | Guilherme | Natália | Todos os BK MF3 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
-| MF4 | Projetos/testes/curadoria | RF26..RNF12 | Guilherme | Natália | Todos os BK MF4 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
-| MF5 | Colaboração e co-estudo | RF14..RF44 | Natália | Guilherme | Todos os BK MF5 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
-| MF6 | Pesquisa e notificações | RF45..RF51 | Guilherme | Natália | Todos os BK MF6 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
-| MF7 | Privacidade/admin/operação | RF52..RNF30 | Natália | Guilherme | Todos os BK MF7 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
-| MF8 | Integrações/compatibilidade/escala | RF60..RNF41 | Guilherme | Natália | Todos os BK MF8 em TODO planeado, dependências válidas, guias ligados em MF-VIEWS. |
+## Fases
+1. Fase 1 (S01-S06): fundacoes + nucleo funcional aluno/professor.
+2. Fase 2 (S07-S10): capacidades de produto, governanca e UX.
+3. Fase 3 (S10-S12): qualidade, seguranca, compliance e fecho documental.
 
-## Execução por macro (step-by-step)
-### MF0 - Fundamentos e governance
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
-
-### MF1 - Estudo individual e IA privada
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
-
-### MF2 - Conhecimento + IA core
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
-
-### MF3 - Professor/turmas
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
-
-### MF4 - Projetos/testes/curadoria
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
-
-### MF5 - Colaboração e co-estudo
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
-
-### MF6 - Pesquisa e notificações
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
-
-### MF7 - Privacidade/admin/operação
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
-
-### MF8 - Integrações/compatibilidade/escala
-1. Validar baseline de dependências e risco do macro.
-2. Confirmar distribuição owner/apoio por prioridade (P0/P1/P2).
-3. Sequenciar BK por desbloqueio técnico e risco de integração.
-4. Executar handoff entre BK com evidence mínima (pr/proof/neg).
-5. Rever critérios de saída do macro e atualizar rastreabilidade documental.
+## Entregaveis obrigatorios por gate
+- Gate S4: backlog/matriz/guias sincronizados para MF0-MF1.
+- Gate S8: rastreabilidade completa MF0-MF4 com evidencias de validacao.
+- Gate S12: pacote final de defesa com auditoria automatica em PASS.
 
 ## Changelog
-- **2026-04-12** - Plano macro MF0..MF8 criado com gates e governance.
+- `2026-04-14`: plano reescrito para horizonte canónico de 12 sprints com gates S4/S8/S12.
