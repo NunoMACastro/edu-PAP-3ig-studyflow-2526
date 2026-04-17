@@ -16,16 +16,16 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF7-09`
 - `guia_path`: `docs/planificacao/guias-bk/MF7/BK-MF7-08-endpoint-de-health-check.md`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Contexto do BK
 - Entrega alvo: `Endpoint de health-check.` com rastreabilidade direta para `RNF30`.
 - Foco da macro `MF7`: Operacao, modularidade e compliance.
-- Regra de governanca: manter IDs e contratos canónicos (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
+- Dominio semântico aplicado: `reliability_ops`.
 
 ## Bloco pedagogico
 ### Objetivo
-Explicar e executar este BK com autonomia, incluindo caminho principal, validacao negativa e evidencia para defesa.
+Garantir continuidade operacional (logs, backups, recovery, deploy seguro).
 
 ### Pre-requisitos
 - Ler o requisito de origem em `docs/RF.md` ou `docs/RNF.md`.
@@ -33,14 +33,14 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 - Confirmar dependencias: `-`.
 
 ### Erros comuns
-- Fechar BK sem validar negativos obrigatorios.
-- Alterar metadados no guia sem sincronizar backlog/matriz.
-- Submeter evidence sem prova verificavel (log/output/screenshot/teste).
+- Sem plano de recuperação após falha.
+- Deploy sem rollback testado.
+- Fechar BK sem validar negativos obrigatórios.
 
 ### Check de compreensao
-- [ ] Sei justificar porque este BK existe no fluxo da macro.
-- [ ] Sei apontar o requisito `RNF30` e demostrar cobertura objetiva.
-- [ ] Sei executar pelo menos um cenario negativo relevante.
+- [ ] Sei explicar como `RNF30` se traduz em comportamento implementável.
+- [ ] Sei indicar o principal risco técnico deste BK e como o mitigar.
+- [ ] Sei demonstrar evidência objetiva de sucesso e falha controlada.
 
 ### Tempo estimado
 - `Core`: `45-75 min`
@@ -55,51 +55,52 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 
 ### Passos
 1. Confirmar no backlog e na matriz o escopo de `BK-MF7-08` e do requisito `RNF30`.
-2. Validar pre-condicoes tecnicas e dependencias declaradas: `-`.
-3. Definir contrato de entrada/saida do fluxo principal antes de escrever codigo.
-4. Implementar caminho principal com logs suficientes para evidencia tecnica.
-5. Executar smoke test do fluxo principal e registar resultado observavel.
-6. Executar pelo menos `2` cenarios negativos e validar respostas controladas.
+2. Validar pre-condicoes técnicas e dependencias declaradas: `-`.
+3. Modelar contratos de dados e estados para `health, backup/recovery e operação segura`.
+4. Implementar o caminho principal de `health, backup/recovery e operação segura`.
+5. Aplicar controlos para `circuit-breaker/retry/rollback`.
+6. Preparar evidencia operacional: `runbook de falha + recuperação`.
+7. Executar smoke test completo do fluxo principal e registar o resultado.
+8. Executar negativos obrigatórios (`2`) e validar erro controlado.
+
+### Cenarios negativos recomendados
+- entrada obrigatória em falta
+- estado inválido de negócio
 
 ### Validacao
-- Smoke: minimo `1` execucao completa do fluxo principal.
-- Negativos: minimo `2` cenarios com erro controlado.
+- Smoke: mínimo `1` execução completa do fluxo principal.
+- Negativos: mínimo `2` cenários com erro controlado.
+- Fluxo do requisito cumpre contrato de entrada/saída.
+- Persistência e leitura dos dados mantêm consistência.
 - Tecnico: metadados alinhados entre matriz/backlog/guia.
-- Evidence: `pr`, `proof`, `neg` preenchidos com dados reais.
 
 ### Handoff
 - Proximo BK: `BK-MF7-09`
-- Registar: estado de dependencias, risco aberto e decisao tomada.
+- Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
-**Consulta agregada para metrica de turma**
+**Health-check e retry controlado**
 
-```sql
--- BK: BK-MF7-08
-SELECT
-  DATE_TRUNC('day', created_at) AS dia,
-  COUNT(*) AS eventos,
-  AVG(latencia_ms) AS latencia_media
-FROM observabilidade_eventos
-WHERE contexto = :contexto
-GROUP BY 1
-ORDER BY 1 DESC
-LIMIT 14;
+```ts
+export function healthCheck(dbOk: boolean, filaOk: boolean) {
+  const status = dbOk && filaOk ? 'UP' : 'DEGRADED';
+  return { bkId: 'BK-MF7-08', req: 'RNF30', status };
+}
 ```
 
-Base para validar KPI de latencia e volume de eventos antes do gate da sprint.
+Suporta operação e diagnóstico rápido em incidente.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
 - Validacao smoke e negativos concluida sem falha bloqueante.
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
-- Evidence pronta para revisao tecnica e defesa PAP.
+- Evidence pronta para revisão técnica e defesa PAP.
 
 ## Evidence para PR/defesa
-- `pr`: link de PR/commit com resumo do que mudou.
-- `proof`: output/screenshot/log/teste que comprova comportamento esperado.
-- `neg`: evidencia dos cenarios negativos executados.
+- `pr`: link de PR/commit com resumo funcional do BK.
+- `proof`: output/screenshot/log/teste que comprova o caminho principal.
+- `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
 ## Changelog
-- `2026-04-14`: guia normalizado para contrato canónico com bloco pedagogico e operacional completos.
+- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

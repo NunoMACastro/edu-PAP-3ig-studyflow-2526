@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Legenda
 - Prioridade: `P0` (Must), `P1` (Should), `P2` (Could).
@@ -18,11 +18,11 @@
 | Macro | Total BK | P0 | P1 | P2 |
 | --- | --- | --- | --- | --- |
 | MF0 | 12 | 8 | 4 | 0 |
-| MF1 | 12 | 4 | 5 | 3 |
+| MF1 | 10 | 4 | 5 | 1 |
 | MF2 | 12 | 6 | 5 | 1 |
 | MF3 | 12 | 3 | 7 | 2 |
-| MF4 | 12 | 5 | 7 | 0 |
-| MF5 | 12 | 5 | 7 | 0 |
+| MF4 | 10 | 5 | 5 | 0 |
+| MF5 | 11 | 5 | 6 | 0 |
 | MF6 | 12 | 8 | 3 | 1 |
 | MF7 | 11 | 6 | 4 | 1 |
 | MF8 | 11 | 7 | 2 | 2 |
@@ -45,9 +45,7 @@
 | BK-MF1-01 | MF1 | A IA deve adaptar explicações ao ritmo/dificuldades do aluno. | Natalia | Guilherme | P1 | TODO | S | BK-MF0-11 | RF13 | Fase 1 | S03-S04 | Core | BK-MF1-02 | [guia](../guias-bk/MF1/BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md) |
 | BK-MF1-02 | MF1 | Criar salas de estudo com outros alunos (livres ou por disciplina). | Kaua | Guilherme | P1 | TODO | S | BK-MF0-03 | RF14 | Fase 1 | S03-S04 | Core | BK-MF1-03 | [guia](../guias-bk/MF1/BK-MF1-02-criar-salas-de-estudo-com-outros-alunos-livres-ou-por-disciplina.md) |
 | BK-MF1-03 | MF1 | Partilhar materiais e apontamentos na sala. | Guilherme | Natalia | P1 | TODO | S | BK-MF1-02 | RF15 | Fase 1 | S03-S04 | Core | BK-MF1-04 | [guia](../guias-bk/MF1/BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md) |
-| BK-MF1-04 | MF1 | IA partilhada da sala (mistura das áreas dos membros). | Daniel | Kaua | P2 | TODO | S | BK-MF1-02 | RF16 | Fase 1 | S03-S04 | Core | BK-MF1-05 | [guia](../guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md) |
-| BK-MF1-05 | MF1 | Mini-testes em grupo com ranking local. | Kaua | Guilherme | P2 | TODO | S | BK-MF1-02 | RF17 | Fase 1 | S03-S04 | Core | BK-MF1-06 | [guia](../guias-bk/MF1/BK-MF1-05-mini-testes-em-grupo-com-ranking-local.md) |
-| BK-MF1-06 | MF1 | Co-edição de apontamentos com histórico. | Daniel | Kaua | P2 | TODO | S | BK-MF1-02 | RF18 | Fase 1 | S03-S04 | Core | BK-MF1-07 | [guia](../guias-bk/MF1/BK-MF1-06-co-edicao-de-apontamentos-com-historico.md) |
+| BK-MF1-04 | MF1 | IA partilhada da sala (mistura das áreas dos membros). | Daniel | Kaua | P2 | TODO | S | BK-MF1-02 | RF16 | Fase 1 | S03-S04 | Core | BK-MF1-07 | [guia](../guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md) |
 | BK-MF1-07 | MF1 | Criar turmas. | Guilherme | Natalia | P0 | TODO | M | - | RF19 | Fase 1 | S03-S04 | Reforco | BK-MF1-08 | [guia](../guias-bk/MF1/BK-MF1-07-criar-turmas.md) |
 | BK-MF1-08 | MF1 | Criar disciplinas e associá-las às turmas. | Natalia | Guilherme | P0 | TODO | M | BK-MF1-07 | RF20 | Fase 1 | S03-S04 | Reforco | BK-MF1-09 | [guia](../guias-bk/MF1/BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md) |
 | BK-MF1-09 | MF1 | Submeter materiais da disciplina (versão oficial). | Guilherme | Natalia | P0 | TODO | M | BK-MF1-08 | RF21 | Fase 1 | S03-S04 | Reforco | BK-MF1-10 | [guia](../guias-bk/MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md) |
@@ -87,11 +85,8 @@
 | BK-MF4-07 | MF4 | Gestão de utilizadores e papéis. | Kaua | Guilherme | P0 | TODO | M | BK-MF0-04 | RF55 | Fase 2 | S08-S09 | Reforco | BK-MF4-08 | [guia](../guias-bk/MF4/BK-MF4-07-gestao-de-utilizadores-e-papeis.md) |
 | BK-MF4-08 | MF4 | Auditoria completa (materiais, IA, papéis). | Natalia | Guilherme | P0 | TODO | M | BK-MF4-07 | RF56 | Fase 2 | S08-S09 | Reforco | BK-MF4-09 | [guia](../guias-bk/MF4/BK-MF4-08-auditoria-completa-materiais-ia-papeis.md) |
 | BK-MF4-09 | MF4 | Configurar modelos de IA e limites de uso. | Daniel | Kaua | P1 | TODO | S | BK-MF2-11 | RF57 | Fase 2 | S08-S09 | Core | BK-MF4-10 | [guia](../guias-bk/MF4/BK-MF4-09-configurar-modelos-de-ia-e-limites-de-uso.md) |
-| BK-MF4-10 | MF4 | Definir quotas de IA por aluno/turma/grupo e monitorizar consumo. | Kaua | Guilherme | P1 | TODO | S | BK-MF4-09 | RF58 | Fase 2 | S08-S09 | Core | BK-MF4-11 | [guia](../guias-bk/MF4/BK-MF4-10-definir-quotas-de-ia-por-aluno-turma-grupo-e-monitorizar-consumo.md) |
-| BK-MF4-11 | MF4 | Painel de observabilidade (logs, métricas, alertas). | Guilherme | Natalia | P1 | TODO | S | BK-MF4-07 | RF59 | Fase 2 | S08-S09 | Core | BK-MF4-12 | [guia](../guias-bk/MF4/BK-MF4-11-painel-de-observabilidade-logs-metricas-alertas.md) |
-| BK-MF4-12 | MF4 | Integração com calendários (ICS/Google). | Natalia | Guilherme | P1 | TODO | S | - | RF60 | Fase 2 | S08-S09 | Core | BK-MF5-01 | [guia](../guias-bk/MF4/BK-MF4-12-integracao-com-calendarios-ics-google.md) |
-| BK-MF5-01 | MF5 | Integração com Drives (Google/OneDrive) para co-edição com permissões. | Daniel | Kaua | P1 | TODO | S | - | RF61 | Fase 2 | S09-S10 | Core | BK-MF5-02 | [guia](../guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-co-edicao-com-permissoes.md) |
-| BK-MF5-02 | MF5 | Single Sign-On escolar (OAuth/SAML). | Kaua | Guilherme | P1 | TODO | S | - | RF62 | Fase 2 | S09-S10 | Core | BK-MF5-03 | [guia](../guias-bk/MF5/BK-MF5-02-single-sign-on-escolar-oauth-saml.md) |
+| BK-MF4-10 | MF4 | Definir quotas de IA por aluno/turma/grupo e monitorizar consumo. | Kaua | Guilherme | P1 | TODO | S | BK-MF4-09 | RF58 | Fase 2 | S08-S09 | Core | BK-MF5-01 | [guia](../guias-bk/MF4/BK-MF4-10-definir-quotas-de-ia-por-aluno-turma-grupo-e-monitorizar-consumo.md) |
+| BK-MF5-01 | MF5 | Integração com Drives (Google/OneDrive) para importação unidirecional de materiais de estudo. | Daniel | Kaua | P1 | TODO | S | - | RF61 | Fase 2 | S09-S10 | Core | BK-MF5-03 | [guia](../guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-importacao-unidirecional-de-materiais-de-estudo.md) |
 | BK-MF5-03 | MF5 | Interface intuitiva e clara para alunos e professores. | Guilherme | Natalia | P0 | TODO | M | - | RNF01 | Fase 2 | S09-S10 | Reforco | BK-MF5-04 | [guia](../guias-bk/MF5/BK-MF5-03-interface-intuitiva-e-clara-para-alunos-e-professores.md) |
 | BK-MF5-04 | MF5 | Layout responsivo para desktop/tablet/mobile. | Kaua | Guilherme | P0 | TODO | M | - | RNF02 | Fase 2 | S09-S10 | Reforco | BK-MF5-05 | [guia](../guias-bk/MF5/BK-MF5-04-layout-responsivo-para-desktop-tablet-mobile.md) |
 | BK-MF5-05 | MF5 | Feedback imediato em ações (guardar, IA, uploads). | Natalia | Guilherme | P0 | TODO | M | - | RNF03 | Fase 2 | S09-S10 | Reforco | BK-MF5-06 | [guia](../guias-bk/MF5/BK-MF5-05-feedback-imediato-em-acoes-guardar-ia-uploads.md) |
@@ -159,9 +154,7 @@
 | BK-MF1-01 | A IA deve adaptar explicações ao ritmo/dificuldades do aluno. | Natalia | Guilherme | P1 | TODO | S | BK-MF0-11 | RF13 | S03-S04 | Core | BK-MF1-02 |
 | BK-MF1-02 | Criar salas de estudo com outros alunos (livres ou por disciplina). | Kaua | Guilherme | P1 | TODO | S | BK-MF0-03 | RF14 | S03-S04 | Core | BK-MF1-03 |
 | BK-MF1-03 | Partilhar materiais e apontamentos na sala. | Guilherme | Natalia | P1 | TODO | S | BK-MF1-02 | RF15 | S03-S04 | Core | BK-MF1-04 |
-| BK-MF1-04 | IA partilhada da sala (mistura das áreas dos membros). | Daniel | Kaua | P2 | TODO | S | BK-MF1-02 | RF16 | S03-S04 | Core | BK-MF1-05 |
-| BK-MF1-05 | Mini-testes em grupo com ranking local. | Kaua | Guilherme | P2 | TODO | S | BK-MF1-02 | RF17 | S03-S04 | Core | BK-MF1-06 |
-| BK-MF1-06 | Co-edição de apontamentos com histórico. | Daniel | Kaua | P2 | TODO | S | BK-MF1-02 | RF18 | S03-S04 | Core | BK-MF1-07 |
+| BK-MF1-04 | IA partilhada da sala (mistura das áreas dos membros). | Daniel | Kaua | P2 | TODO | S | BK-MF1-02 | RF16 | S03-S04 | Core | BK-MF1-07 |
 | BK-MF1-07 | Criar turmas. | Guilherme | Natalia | P0 | TODO | M | - | RF19 | S03-S04 | Reforco | BK-MF1-08 |
 | BK-MF1-08 | Criar disciplinas e associá-las às turmas. | Natalia | Guilherme | P0 | TODO | M | BK-MF1-07 | RF20 | S03-S04 | Reforco | BK-MF1-09 |
 | BK-MF1-09 | Submeter materiais da disciplina (versão oficial). | Guilherme | Natalia | P0 | TODO | M | BK-MF1-08 | RF21 | S03-S04 | Reforco | BK-MF1-10 |
@@ -213,15 +206,12 @@
 | BK-MF4-07 | Gestão de utilizadores e papéis. | Kaua | Guilherme | P0 | TODO | M | BK-MF0-04 | RF55 | S08-S09 | Reforco | BK-MF4-08 |
 | BK-MF4-08 | Auditoria completa (materiais, IA, papéis). | Natalia | Guilherme | P0 | TODO | M | BK-MF4-07 | RF56 | S08-S09 | Reforco | BK-MF4-09 |
 | BK-MF4-09 | Configurar modelos de IA e limites de uso. | Daniel | Kaua | P1 | TODO | S | BK-MF2-11 | RF57 | S08-S09 | Core | BK-MF4-10 |
-| BK-MF4-10 | Definir quotas de IA por aluno/turma/grupo e monitorizar consumo. | Kaua | Guilherme | P1 | TODO | S | BK-MF4-09 | RF58 | S08-S09 | Core | BK-MF4-11 |
-| BK-MF4-11 | Painel de observabilidade (logs, métricas, alertas). | Guilherme | Natalia | P1 | TODO | S | BK-MF4-07 | RF59 | S08-S09 | Core | BK-MF4-12 |
-| BK-MF4-12 | Integração com calendários (ICS/Google). | Natalia | Guilherme | P1 | TODO | S | - | RF60 | S08-S09 | Core | BK-MF5-01 |
+| BK-MF4-10 | Definir quotas de IA por aluno/turma/grupo e monitorizar consumo. | Kaua | Guilherme | P1 | TODO | S | BK-MF4-09 | RF58 | S08-S09 | Core | BK-MF5-01 |
 
 ## MF5 - Operacao e UX transversal
 | bk_id | titulo | owner | apoio | prioridade | estado | esforco | dependencias | rf_rnf | sprint | core_or_reforco | proximo_bk |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BK-MF5-01 | Integração com Drives (Google/OneDrive) para co-edição com permissões. | Daniel | Kaua | P1 | TODO | S | - | RF61 | S09-S10 | Core | BK-MF5-02 |
-| BK-MF5-02 | Single Sign-On escolar (OAuth/SAML). | Kaua | Guilherme | P1 | TODO | S | - | RF62 | S09-S10 | Core | BK-MF5-03 |
+| BK-MF5-01 | Integração com Drives (Google/OneDrive) para importação unidirecional de materiais de estudo. | Daniel | Kaua | P1 | TODO | S | - | RF61 | S09-S10 | Core | BK-MF5-03 |
 | BK-MF5-03 | Interface intuitiva e clara para alunos e professores. | Guilherme | Natalia | P0 | TODO | M | - | RNF01 | S09-S10 | Reforco | BK-MF5-04 |
 | BK-MF5-04 | Layout responsivo para desktop/tablet/mobile. | Kaua | Guilherme | P0 | TODO | M | - | RNF02 | S09-S10 | Reforco | BK-MF5-05 |
 | BK-MF5-05 | Feedback imediato em ações (guardar, IA, uploads). | Natalia | Guilherme | P0 | TODO | M | - | RNF03 | S09-S10 | Reforco | BK-MF5-06 |
@@ -280,4 +270,4 @@
 | BK-MF8-11 | Preparado para futura tradução i18n. | Daniel | Kaua | P2 | TODO | S | - | RNF44 | S12 | Core | - |
 
 ## Changelog
-- `2026-04-14`: backlog global normalizado com campos `sprint` e `core_or_reforco` alinhados ao contrato canónico.
+- `2026-04-17`: backlog global normalizado com campos `sprint` e `core_or_reforco` alinhados ao contrato canónico.

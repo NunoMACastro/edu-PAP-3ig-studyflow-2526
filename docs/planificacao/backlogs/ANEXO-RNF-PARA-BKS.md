@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Objetivo
 Rastreabilidade bidirecional `RNF -> BK` gerada automaticamente.
@@ -60,4 +60,4 @@ Rastreabilidade bidirecional `RNF -> BK` gerada automaticamente.
 | RNF44 | 1 | BK-MF8-11 |
 
 ## Changelog
-- `2026-04-14`: anexo RNF gerado automaticamente.
+- `2026-04-17`: anexo RNF gerado automaticamente.

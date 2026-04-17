@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Criterio de pronto pedagogico por macro
 - 100% BK com guia canónico completo e snippet tecnico aplicavel.
@@ -47,15 +47,13 @@ BK-MF0-01, BK-MF0-02, BK-MF0-03, BK-MF0-04, BK-MF0-05, BK-MF0-06, BK-MF0-07, BK-
 
 ## MF1 - Nucleo funcional I
 ### Sequencia por macro
-BK-MF1-01, BK-MF1-02, BK-MF1-03, BK-MF1-04, BK-MF1-05, BK-MF1-06, BK-MF1-07, BK-MF1-08, BK-MF1-09, BK-MF1-10, BK-MF1-11, BK-MF1-12
+BK-MF1-01, BK-MF1-02, BK-MF1-03, BK-MF1-04, BK-MF1-07, BK-MF1-08, BK-MF1-09, BK-MF1-10, BK-MF1-11, BK-MF1-12
 
 ### Guias disponiveis
 - [BK-MF1-01 - A IA deve adaptar explicações ao ritmo/dificuldades do aluno.](../guias-bk/MF1/BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md)
 - [BK-MF1-02 - Criar salas de estudo com outros alunos (livres ou por disciplina).](../guias-bk/MF1/BK-MF1-02-criar-salas-de-estudo-com-outros-alunos-livres-ou-por-disciplina.md)
 - [BK-MF1-03 - Partilhar materiais e apontamentos na sala.](../guias-bk/MF1/BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md)
 - [BK-MF1-04 - IA partilhada da sala (mistura das áreas dos membros).](../guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md)
-- [BK-MF1-05 - Mini-testes em grupo com ranking local.](../guias-bk/MF1/BK-MF1-05-mini-testes-em-grupo-com-ranking-local.md)
-- [BK-MF1-06 - Co-edição de apontamentos com histórico.](../guias-bk/MF1/BK-MF1-06-co-edicao-de-apontamentos-com-historico.md)
 - [BK-MF1-07 - Criar turmas.](../guias-bk/MF1/BK-MF1-07-criar-turmas.md)
 - [BK-MF1-08 - Criar disciplinas e associá-las às turmas.](../guias-bk/MF1/BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md)
 - [BK-MF1-09 - Submeter materiais da disciplina (versão oficial).](../guias-bk/MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md)
@@ -134,7 +132,7 @@ BK-MF3-01, BK-MF3-02, BK-MF3-03, BK-MF3-04, BK-MF3-05, BK-MF3-06, BK-MF3-07, BK-
 
 ## MF4 - Capacidades de produto II
 ### Sequencia por macro
-BK-MF4-01, BK-MF4-02, BK-MF4-03, BK-MF4-04, BK-MF4-05, BK-MF4-06, BK-MF4-07, BK-MF4-08, BK-MF4-09, BK-MF4-10, BK-MF4-11, BK-MF4-12
+BK-MF4-01, BK-MF4-02, BK-MF4-03, BK-MF4-04, BK-MF4-05, BK-MF4-06, BK-MF4-07, BK-MF4-08, BK-MF4-09, BK-MF4-10
 
 ### Guias disponiveis
 - [BK-MF4-01 - Notificar grupos/turmas sobre novos materiais, feedback e tarefas.](../guias-bk/MF4/BK-MF4-01-notificar-grupos-turmas-sobre-novos-materiais-feedback-e-tarefas.md)
@@ -147,8 +145,6 @@ BK-MF4-01, BK-MF4-02, BK-MF4-03, BK-MF4-04, BK-MF4-05, BK-MF4-06, BK-MF4-07, BK-
 - [BK-MF4-08 - Auditoria completa (materiais, IA, papéis).](../guias-bk/MF4/BK-MF4-08-auditoria-completa-materiais-ia-papeis.md)
 - [BK-MF4-09 - Configurar modelos de IA e limites de uso.](../guias-bk/MF4/BK-MF4-09-configurar-modelos-de-ia-e-limites-de-uso.md)
 - [BK-MF4-10 - Definir quotas de IA por aluno/turma/grupo e monitorizar consumo.](../guias-bk/MF4/BK-MF4-10-definir-quotas-de-ia-por-aluno-turma-grupo-e-monitorizar-consumo.md)
-- [BK-MF4-11 - Painel de observabilidade (logs, métricas, alertas).](../guias-bk/MF4/BK-MF4-11-painel-de-observabilidade-logs-metricas-alertas.md)
-- [BK-MF4-12 - Integração com calendários (ICS/Google).](../guias-bk/MF4/BK-MF4-12-integracao-com-calendarios-ics-google.md)
 
 ### Step-by-step macro
 1. Confirmar dependencias desbloqueadas antes de iniciar BK.
@@ -163,11 +159,10 @@ BK-MF4-01, BK-MF4-02, BK-MF4-03, BK-MF4-04, BK-MF4-05, BK-MF4-06, BK-MF4-07, BK-
 
 ## MF5 - Operacao e UX transversal
 ### Sequencia por macro
-BK-MF5-01, BK-MF5-02, BK-MF5-03, BK-MF5-04, BK-MF5-05, BK-MF5-06, BK-MF5-07, BK-MF5-08, BK-MF5-09, BK-MF5-10, BK-MF5-11, BK-MF5-12
+BK-MF5-01, BK-MF5-03, BK-MF5-04, BK-MF5-05, BK-MF5-06, BK-MF5-07, BK-MF5-08, BK-MF5-09, BK-MF5-10, BK-MF5-11, BK-MF5-12
 
 ### Guias disponiveis
-- [BK-MF5-01 - Integração com Drives (Google/OneDrive) para co-edição com permissões.](../guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-co-edicao-com-permissoes.md)
-- [BK-MF5-02 - Single Sign-On escolar (OAuth/SAML).](../guias-bk/MF5/BK-MF5-02-single-sign-on-escolar-oauth-saml.md)
+- [BK-MF5-01 - Integração com Drives (Google/OneDrive) para importação unidirecional de materiais de estudo.](../guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-importacao-unidirecional-de-materiais-de-estudo.md)
 - [BK-MF5-03 - Interface intuitiva e clara para alunos e professores.](../guias-bk/MF5/BK-MF5-03-interface-intuitiva-e-clara-para-alunos-e-professores.md)
 - [BK-MF5-04 - Layout responsivo para desktop/tablet/mobile.](../guias-bk/MF5/BK-MF5-04-layout-responsivo-para-desktop-tablet-mobile.md)
 - [BK-MF5-05 - Feedback imediato em ações (guardar, IA, uploads).](../guias-bk/MF5/BK-MF5-05-feedback-imediato-em-acoes-guardar-ia-uploads.md)
@@ -276,4 +271,4 @@ BK-MF8-01, BK-MF8-02, BK-MF8-03, BK-MF8-04, BK-MF8-05, BK-MF8-06, BK-MF8-07, BK-
 - Sem dependencias invalidas para a macro seguinte.
 
 ## Changelog
-- `2026-04-14`: MF views sincronizadas com naming slug e contrato canónico de pronto pedagogico.
+- `2026-04-17`: MF views sincronizadas com naming slug e contrato canónico de pronto pedagogico.

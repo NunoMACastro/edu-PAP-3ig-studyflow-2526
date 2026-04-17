@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 import sys
 
-TODAY = "2026-04-14"
+TODAY = "2026-04-17"
 
 
 def score_dim(pass_flag: bool, full: int, partial: int) -> int:
@@ -42,6 +42,8 @@ def main() -> None:
     missing_rf = len(data.get("coverage", {}).get("missing_rf_matrix", [])) + len(data.get("coverage", {}).get("missing_rf_backlog", []))
     missing_rnf = len(data.get("coverage", {}).get("missing_rnf_matrix", [])) + len(data.get("coverage", {}).get("missing_rnf_backlog", []))
     guide_issues = len(data.get("guides_quality", {}).get("guide_header_issues", [])) + len(data.get("guides_quality", {}).get("guide_content_issues", []))
+    semantic_guide_issues = len(data.get("guides_quality", {}).get("guide_semantic_issues", []))
+    rf_internal_issues = len(data.get("consistency", {}).get("rf_internal_issues", []))
 
     plan_root = Path(__file__).resolve().parents[1]
     out_path = plan_root / "CONFORMIDADE-PLANIFICACAO.md"
@@ -79,6 +81,8 @@ def main() -> None:
 - Guias BK: `{counts.get('guide_bk', 0)}`
 - Orfaos RF/RNF: `{missing_rf + missing_rnf}`
 - Issues de guias: `{guide_issues}`
+- Issues semanticas de guias: `{semantic_guide_issues}`
+- Issues internas RF (indice/criterios): `{rf_internal_issues}`
 - Artefactos de governanca em falta: `{len(missing_artifacts)}`
 
 ## Evidencia tecnica

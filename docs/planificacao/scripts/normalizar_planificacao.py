@@ -6,7 +6,7 @@ import re
 import unicodedata
 from collections import Counter, defaultdict
 
-TODAY = "2026-04-14"
+TODAY = "2026-04-17"
 
 SPRINT_WINDOW_BY_MACRO = {
     "MF0": "S01-S02",
@@ -186,131 +186,382 @@ def first_req(reqs: str) -> str:
     return items[0] if items else "RF00"
 
 
-def choose_snippet(row: dict[str, str]) -> tuple[str, str, str, str]:
+def classify_domain(row: dict[str, str]) -> str:
     titulo = row["titulo"].lower()
+    req = first_req(row["rf_rnf"])
+
+    if req in {"RNF38"} or any(k in titulo for k in ["chrome", "firefox", "safari", "edge", "compat"]):
+        return "compatibility_browser"
+    if req in {"RNF39", "RNF42", "RNF43", "RNF44"} or any(k in titulo for k in ["pt-pt", "portugu", "datas", "i18n", "utf-8"]):
+        return "localization"
+    if req in {"RNF14", "RNF15", "RNF16", "RNF17", "RNF18", "RNF19", "RNF20"} or any(
+        k in titulo for k in ["https", "tls", "hashing", "password", "xss", "csrf", "injection", "brute", "sandbox seguro", "cookies"]
+    ):
+        return "security_hardening"
+    if req in {"RNF21", "RNF22", "RNF23", "RNF24", "RNF29", "RNF30"} or any(
+        k in titulo for k in ["backup", "recovery", "downtime", "health-check", "deploy", "rollback", "logs"]
+    ):
+        return "reliability_ops"
+    if req in {"RNF25", "RNF26", "RNF27", "RNF28"} or any(
+        k in titulo for k in ["backend modular", "frontend componentizado", "documentação técnica", "testes automatizados"]
+    ):
+        return "quality_architecture"
+    if req in {"RNF08", "RNF09", "RNF10", "RNF11", "RNF12", "RNF13"} or any(
+        k in titulo for k in ["2s", "4s", "simultaneos", "assíncrona", "background", "escalar", "performance"]
+    ):
+        return "performance_scalability"
+    if req in {"RF52", "RF53", "RF54"} or any(k in titulo for k in ["consentimentos", "exportar dados", "eliminar conta", "dados pessoais", "rgpd"]):
+        return "privacy_rgpd"
+    if req in {"RF55", "RF56", "RF57", "RF58"} or any(
+        k in titulo for k in ["utilizadores e papéis", "auditoria completa", "modelos de ia", "quotas de ia", "administrador"]
+    ):
+        return "admin_governance"
+    if req in {"RF47", "RF48", "RF49", "RF50", "RF51"} or any(k in titulo for k in ["notific", "alerta", "avisos", "publicacoes"]):
+        return "notifications"
+    if req in {"RF41", "RF42", "RF43", "RF44"} or any(k in titulo for k in ["grupo", "chat", "coletiv", "sessões de estudo"]):
+        return "collaboration"
+    if req in {"RF19", "RF20", "RF21", "RF22", "RF23", "RF24", "RF25"} or any(k in titulo for k in ["turmas", "disciplin", "docente", "professor"]):
+        return "classroom_teacher"
+    if req in {"RF26", "RF27", "RF28", "RF29", "RF30"} or any(k in titulo for k in ["projetos", "testes", "mini-testes", "aprovar conteúdo", "métricas da turma"]):
+        return "projects_assessment"
+    if req in {"RF31", "RF32", "RF33", "RF34"} or any(k in titulo for k in ["indexação", "extrair tópicos", "versões dos materiais", "separar materiais", "pdf", "docx", "urls"]):
+        return "materials_ingestion"
+    if req in {"RF35", "RF36", "RF37", "RF38", "RF39", "RF40"} or any(
+        k in titulo for k in ["assistente ia", "guardrails", "citações obrigatórias", "não pode inventar", "conhecimento externo", "adapta explicações"]
+    ):
+        return "ai_orchestration"
+    if req in {"RNF01", "RNF02", "RNF03", "RNF04", "RNF05", "RNF06", "RNF07"} or any(
+        k in titulo for k in ["interface intuitiva", "layout responsivo", "acessibilidade", "feedback imediato", "validação de formulários", "navegação consistente"]
+    ):
+        return "ux_accessibility"
+    if req in {"RF61", "RNF41"} or any(k in titulo for k in ["drive", "onedrive", "ics", "lms", "integração"]):
+        return "integrations"
+    return "learning_foundation"
+
+
+def domain_objective(domain: str) -> str:
+    return {
+        "learning_foundation": "Construir o fluxo base de aluno (identidade, perfil e estudo individual) com comportamento previsivel.",
+        "ai_orchestration": "Garantir respostas de IA fundamentadas, com guardrails e adaptacao ao contexto academico correto.",
+        "materials_ingestion": "Assegurar ingestao/indexacao de materiais com rastreabilidade e isolamento por contexto.",
+        "classroom_teacher": "Implementar operacao professor/turma/disciplina com controlo de acesso e curadoria oficial.",
+        "projects_assessment": "Implementar ciclo de projetos e testes com criterios de avaliacao reproduziveis.",
+        "collaboration": "Assegurar colaboracao em grupo com isolamento de membros e historico verificavel.",
+        "notifications": "Orquestrar notificacoes por contexto com quotas, preferencias e prioridade controladas.",
+        "privacy_rgpd": "Cumprir direitos RGPD (exportacao, eliminacao, consentimento) com trilho auditavel.",
+        "admin_governance": "Operacionalizar governanca administrativa de papeis, auditoria e limites de uso.",
+        "ux_accessibility": "Elevar qualidade de experiencia (usabilidade/acessibilidade) com criterios verificaveis.",
+        "performance_scalability": "Cumprir metas de latencia e escalabilidade com instrumentacao objetiva.",
+        "security_hardening": "Endurecer superficie de seguranca com protecoes ativas e validacao negativa.",
+        "reliability_ops": "Garantir continuidade operacional (logs, backups, recovery, deploy seguro).",
+        "quality_architecture": "Consolidar arquitetura e qualidade tecnica com testes e modularidade.",
+        "compatibility_browser": "Validar compatibilidade real entre navegadores suportados no MVP.",
+        "localization": "Garantir localizacao PT-PT e preparo i18n sem regressao funcional.",
+        "integrations": "Integrar fontes externas em modo controlado, idempotente e observavel.",
+    }.get(domain, "Executar o BK com criterios tecnicos claros e evidencia verificavel.")
+
+
+def domain_errors(domain: str) -> list[str]:
+    return {
+        "learning_foundation": ["Nao validar duplicados de conta/perfil.", "Misturar regras de aluno sem turma com turma inscrita."],
+        "ai_orchestration": ["Responder sem citar fonte do material.", "Aplicar perfil de IA errado ao contexto atual."],
+        "materials_ingestion": ["Aceitar ficheiros sem validar tipo/tamanho.", "Indexar sem separar contexto aluno/professor/turma."],
+        "classroom_teacher": ["Permitir acesso a disciplina sem inscricao.", "Publicar material oficial sem revisão de permissões."],
+        "projects_assessment": ["Gerar testes sem chave de correção consistente.", "Registar progresso sem granularidade por tópico."],
+        "collaboration": ["Expor dados de sala a não-membros.", "Não persistir histórico de sessão/co-estudo."],
+        "notifications": ["Ignorar preferências de canal do utilizador.", "Disparar notificações acima da quota definida."],
+        "privacy_rgpd": ["Não registar prova de consentimento.", "Eliminar dados sem política de retenção definida."],
+        "admin_governance": ["Alterar papeis sem trilho de auditoria.", "Aplicar quotas globais sem segmentar por contexto."],
+        "ux_accessibility": ["Validar formulário apenas no backend.", "Quebrar contraste/foco teclado em componentes principais."],
+        "performance_scalability": ["Medir latencia sem cenário reproduzível.", "Bloquear UI em tarefas assíncronas pesadas."],
+        "security_hardening": ["Depender de segurança apenas no frontend.", "Não testar vetores negativos (XSS/CSRF/brute-force)."],
+        "reliability_ops": ["Sem plano de recuperação após falha.", "Deploy sem rollback testado."],
+        "quality_architecture": ["Testes sem cobrir módulos críticos.", "Acoplar domínios sem fronteiras claras."],
+        "compatibility_browser": ["Validar só no browser do programador.", "Não congelar baseline de versões suportadas."],
+        "localization": ["Misturar formatos de data em ecrãs distintos.", "Quebrar acentuação PT-PT em import/export."],
+        "integrations": ["Importar duplicados por falta de idempotência.", "Não registar origem do material importado."],
+    }.get(domain, ["Ignorar requisitos negativos obrigatórios.", "Fechar BK sem evidência executável."])
+
+
+def domain_actions(domain: str) -> tuple[str, str, str]:
+    mapping = {
+        "learning_foundation": ("fluxo de conta/perfil em estado consistente", "regras de sessão/papel e transições de estado", "mapa de estados (novo, ativo, bloqueado)"),
+        "ai_orchestration": ("pipeline IA com contexto e fontes citadas", "guardrails por perfil (aluno, turma, professor)", "amostras de prompts/respostas com fontes"),
+        "materials_ingestion": ("ingestão e indexação assíncrona por tipo de material", "validação de MIME/tamanho e isolamento por contexto", "logs de parsing + índices criados"),
+        "classroom_teacher": ("fluxo turma/disciplina/material oficial", "autorização por inscrição e papel docente", "evidência de acesso autorizado/negado"),
+        "projects_assessment": ("criação de projeto/teste e avaliação", "rubrica de correção e persistência de desempenho", "resultados por tópico e turma"),
+        "collaboration": ("sala/grupo com partilha e histórico", "controlo de membros e permissões de escrita", "histórico de sessão e autoria"),
+        "notifications": ("despacho de notificação por contexto/canal", "respeito por preferências e quotas", "eventos de envio, supressão e fallback"),
+        "privacy_rgpd": ("exportação/eliminação/consentimento com estado auditável", "política de retenção e trilho de prova", "registo de pedido + execução"),
+        "admin_governance": ("painel admin para papéis, auditoria e quotas", "limites por aluno/turma/grupo/modelo", "alterações administrativas rastreadas"),
+        "ux_accessibility": ("comportamentos UX críticos (form, feedback, navegação)", "acessibilidade básica (labels, foco, contraste)", "capturas/relatório de usabilidade"),
+        "performance_scalability": ("cenário de carga e medição de latência", "timeouts, filas e controlo de concorrência", "métricas comparáveis pré/pós"),
+        "security_hardening": ("proteções de canal/sessão/entrada", "mitigações XSS/CSRF/injection/brute-force", "evidência de bloqueio em testes negativos"),
+        "reliability_ops": ("health, backup/recovery e operação segura", "circuit-breaker/retry/rollback", "runbook de falha + recuperação"),
+        "quality_architecture": ("fronteiras de domínio + testes críticos", "contratos entre módulos e cobertura mínima", "suite automatizada em CI local"),
+        "compatibility_browser": ("matriz de browsers suportados com testes E2E", "normalização de APIs e fallbacks", "relatório por navegador/versão"),
+        "localization": ("locale PT-PT em UI e export/import", "normalização de datas/números e encoding", "evidência de UI + ficheiros gerados"),
+        "integrations": ("importação unidirecional via conector externo", "idempotência e mapeamento de origem", "histórico de sincronização"),
+    }
+    return mapping.get(domain, ("fluxo principal do requisito", "regras de controlo associadas", "evidência técnica verificável"))
+
+
+def domain_validation_points(domain: str) -> list[str]:
+    points = {
+        "ai_orchestration": ["Resposta referencia fontes reais (doc/página/secção).", "Perfil de IA aplicado corresponde ao contexto do pedido."],
+        "materials_ingestion": ["Documento indexado gera entradas pesquisáveis.", "Falha de parsing não bloqueia interface do utilizador."],
+        "notifications": ["Preferência de canal é respeitada por utilizador.", "Quota máxima impede spam em eventos repetidos."],
+        "privacy_rgpd": ["Pedido RGPD deixa trilho auditável com timestamp.", "Exportação/eliminação trata dados relacionais sem fuga."],
+        "performance_scalability": ["Métrica alvo do BK é medida e comparável.", "Caminho crítico mantém-se dentro do orçamento definido."],
+        "security_hardening": ["Endpoint crítico recusa tráfego inseguro.", "Vetores negativos conhecidos geram erro controlado."],
+        "compatibility_browser": ["Fluxos críticos passam em Chrome/Edge/Firefox/Safari.", "Sem regressão visual/funcional em browser alternativo."],
+        "localization": ["Interface e datas seguem PT-PT sem exceções no fluxo.", "Importação/exportação preserva UTF-8 e acentuação."],
+    }
+    return points.get(domain, ["Fluxo do requisito cumpre contrato de entrada/saída.", "Persistência e leitura dos dados mantêm consistência."])
+
+
+def domain_negative_examples(domain: str) -> list[str]:
+    examples = {
+        "ai_orchestration": ["pedido sem contexto documental", "pedido que tenta contornar guardrails", "pedido com perfil errado de utilizador"],
+        "materials_ingestion": ["ficheiro com formato não suportado", "upload acima do limite", "URL inacessível ou inválida"],
+        "security_hardening": ["pedido HTTP sem TLS", "payload com tentativa de injection", "token/cookie inválido"],
+        "privacy_rgpd": ["exportação sem autenticação forte", "eliminação sem confirmação de titular", "consentimento retirado em uso ativo"],
+        "compatibility_browser": ["funcionalidade em browser sem API nativa", "render com layout quebrado", "evento de teclado sem fallback"],
+    }
+    return examples.get(domain, ["entrada obrigatória em falta", "estado inválido de negócio", "permissão insuficiente"])
+
+
+def choose_snippet(row: dict[str, str], domain: str) -> tuple[str, str, str, str]:
     bk_id = row["bk_id"]
     req = first_req(row["rf_rnf"])
 
-    if any(k in titulo for k in ["login", "registo", "password", "cookies", "sess", "pap", "sso"]):
-        return (
-            "Validacao de sessao e papel",
+    snippets: dict[str, tuple[str, str, str, str]] = {
+        "learning_foundation": (
+            "Handler de registo e sessão",
             "ts",
-            f"""type UtilizadorSessao = {{ id: string; papel: 'ALUNO' | 'PROFESSOR' | 'ADMIN' }};
+            f"""type Credenciais = {{ email: string; password: string }};
 
-export function exigirSessao(u: UtilizadorSessao | null, papelNecessario: UtilizadorSessao['papel']) {{
-  if (!u) throw new Error('Sessao invalida');
-  if (u.papel !== papelNecessario) throw new Error('Permissao insuficiente');
-  return {{ ok: true, bk: '{bk_id}', req: '{req}' }};
+export async function registarAluno(input: Credenciais) {{
+  if (!input.email.includes('@')) throw new Error('Email invalido');
+  if (input.password.length < 12) throw new Error('Password fraca');
+  return {{ bkId: '{bk_id}', req: '{req}', estado: 'REGISTADO' }};
 }}
 """,
-            "Aplicar no endpoint principal do BK para bloquear acessos indevidos de forma deterministica.",
-        )
-
-    if any(k in titulo for k in ["ia", "quiz", "resumo", "explic", "guardrail"]):
-        return (
-            "Pipeline minimo para resposta de IA com fontes",
+            "Garante validação mínima de identidade no arranque do fluxo de conta.",
+        ),
+        "ai_orchestration": (
+            "Resposta IA com guardrails e fontes",
             "ts",
-            f"""type TrechoFonte = {{ docId: string; pagina: number; texto: string }};
+            f"""type Fonte = {{ doc: string; secao: string }};
 
-export function responderComFonte(pergunta: string, contexto: TrechoFonte[]) {{
+export function responderIA(perfil: 'ALUNO' | 'TURMA' | 'PROFESSOR', pergunta: string, fontes: Fonte[]) {{
   if (!pergunta.trim()) throw new Error('Pergunta vazia');
-  if (!contexto.length) throw new Error('Sem contexto para responder');
-
-  const base = contexto.slice(0, 3).map((t) => `[${{t.docId}}:${{t.pagina}}]`).join(' ');
-  return {{
-    bkId: '{bk_id}',
-    resposta: `Resposta gerada com base em ${{base}}`,
-    fontes: contexto.slice(0, 3),
-  }};
+  if (!fontes.length) throw new Error('Resposta sem fonte permitida');
+  return {{ bkId: '{bk_id}', req: '{req}', perfil, resposta: 'Gerada com base documental', fontes }};
 }}
 """,
-            "Garante rastreabilidade da resposta IA ao material carregado e facilita validacao em defesa.",
-        )
-
-    if any(k in titulo for k in ["pdf", "docx", "url", "material", "indexa", "extrair", "upload"]):
-        return (
-            "Validacao de ingestao de materiais",
+            "Força citação de fonte e aplica perfil de guardrail por contexto.",
+        ),
+        "materials_ingestion": (
+            "Pipeline de ingestão assíncrona",
             "ts",
-            f"""const EXTENSOES_PERMITIDAS = ['pdf', 'docx', 'txt', 'md'];
+            f"""type Material = {{ id: string; tipo: 'PDF' | 'DOCX' | 'URL'; bytes: number }};
 
-export function validarMaterial(nomeFicheiro: string, tamanhoBytes: number) {{
-  const ext = nomeFicheiro.split('.').pop()?.toLowerCase() ?? '';
-  if (!EXTENSOES_PERMITIDAS.includes(ext)) throw new Error('Formato nao suportado');
-  if (tamanhoBytes <= 0 || tamanhoBytes > 25 * 1024 * 1024) throw new Error('Tamanho invalido');
-  return {{ bk: '{bk_id}', aceite: true }};
+export function enfileirarIndexacao(material: Material) {{
+  if (material.bytes <= 0 || material.bytes > 25 * 1024 * 1024) throw new Error('Tamanho invalido');
+  return {{ bkId: '{bk_id}', req: '{req}', job: `IDX-${{material.id}}`, estado: 'PENDING' }};
 }}
 """,
-            "Usar antes de iniciar indexacao para reduzir falhas de parsing e acelerar feedback ao utilizador.",
-        )
-
-    if any(k in titulo for k in ["grupo", "turma", "chat", "sala", "notific", "sess", "calend"]):
-        return (
-            "Regra de notificacao contextual",
+            "Separa validação e indexação para não bloquear o utilizador.",
+        ),
+        "classroom_teacher": (
+            "Autorização por turma e disciplina",
             "ts",
-            f"""type Evento = {{ tipo: string; destino: 'ALUNO' | 'TURMA' | 'GRUPO'; prioridade: 'baixa' | 'media' | 'alta' }};
+            f"""type Contexto = {{ turmaId: string; disciplinaId: string; papel: 'ALUNO' | 'PROFESSOR' }};
 
-export function gerarNotificacao(evento: Evento) {{
-  const urgente = evento.prioridade === 'alta';
-  return {{
-    bk: '{bk_id}',
-    canal: urgente ? ['app', 'email'] : ['app'],
-    mensagem: `Evento ${{evento.tipo}} para ${{evento.destino}}`,
-  }};
+export function autorizarContexto(c: Contexto) {{
+  if (!c.turmaId || !c.disciplinaId) throw new Error('Contexto incompleto');
+  if (c.papel !== 'PROFESSOR') throw new Error('Apenas docente pode executar esta ação');
+  return {{ bkId: '{bk_id}', req: '{req}', autorizado: true }};
 }}
 """,
-            "Permite validar canais/quotas de notificacao com regra objetiva e sem ambiguidade.",
-        )
-
-    if any(k in titulo for k in ["xss", "csrf", "injection", "https", "bcrypt", "segur", "consent", "auditor"]):
-        return (
-            "Hardening de seguranca basico",
+            "Evita operações docentes fora do contexto da turma/disciplina.",
+        ),
+        "projects_assessment": (
+            "Correção de mini-teste com rubrica",
             "ts",
-            f"""import bcrypt from 'bcryptjs';
+            f"""type Resposta = {{ topico: string; correta: boolean }};
 
-export async function criarHashSeguro(password: string) {{
-  if (password.length < 12) throw new Error('Password fraca');
-  const hash = await bcrypt.hash(password, 12);
-  return {{ bkId: '{bk_id}', hash }};
-}}
-
-export function exigirHTTPS(proto: string) {{
-  if (proto !== 'https') throw new Error('Canal inseguro');
+export function calcularDesempenho(respostas: Resposta[]) {{
+  if (!respostas.length) throw new Error('Sem respostas para avaliar');
+  const corretas = respostas.filter((r) => r.correta).length;
+  return {{ bkId: '{bk_id}', req: '{req}', score: Math.round((corretas / respostas.length) * 100) }};
 }}
 """,
-            "Aplicar no fluxo do BK para cumprir RNF de seguranca sem depender de comportamento manual.",
-        )
+            "Produz saída objetiva por tópico para acompanhamento docente.",
+        ),
+        "collaboration": (
+            "Controlo de acesso de sala/grupo",
+            "ts",
+            f"""type Membro = {{ userId: string; salaId: string; ativo: boolean }};
 
-    if any(k in titulo for k in ["dashboard", "metric", "observ", "log", "health", "performance", "2s", "4s"]):
-        return (
-            "Consulta agregada para metrica de turma",
+export function validarMembro(m: Membro) {{
+  if (!m.ativo) throw new Error('Membro sem acesso');
+  return {{ bkId: '{bk_id}', req: '{req}', permissao: 'OK', salaId: m.salaId }};
+}}
+""",
+            "Garante que partilha/chat só ocorre para membros ativos.",
+        ),
+        "notifications": (
+            "Despacho de notificações com quota",
+            "ts",
+            f"""type Preferencia = {{ canal: 'app' | 'email' | 'push'; ativo: boolean }};
+
+export function podeNotificar(pref: Preferencia, enviadosHoje: number, quota: number) {{
+  if (!pref.ativo) return {{ bkId: '{bk_id}', req: '{req}', enviar: false, motivo: 'opt-out' }};
+  return {{ bkId: '{bk_id}', req: '{req}', enviar: enviadosHoje < quota }};
+}}
+""",
+            "Impõe preferências e quota máxima antes do envio.",
+        ),
+        "privacy_rgpd": (
+            "Registo de consentimento versionado",
+            "ts",
+            f"""type Consentimento = {{ userId: string; finalidade: string; aceite: boolean; versao: string }};
+
+export function registarConsentimento(c: Consentimento) {{
+  if (!c.versao) throw new Error('Versao obrigatoria');
+  return {{ bkId: '{bk_id}', req: '{req}', evento: 'CONSENTIMENTO_REGISTADO', consentimento: c }};
+}}
+""",
+            "Cria trilho auditável obrigatório para RGPD.",
+        ),
+        "admin_governance": (
+            "Política de quotas por contexto",
+            "ts",
+            f"""type Quota = {{ contexto: 'ALUNO' | 'TURMA' | 'GRUPO'; limiteMensal: number }};
+
+export function validarQuota(q: Quota, consumoAtual: number) {{
+  if (q.limiteMensal <= 0) throw new Error('Limite invalido');
+  return {{ bkId: '{bk_id}', req: '{req}', excedido: consumoAtual >= q.limiteMensal }};
+}}
+""",
+            "Permite governança operacional de consumo de IA.",
+        ),
+        "ux_accessibility": (
+            "Validação de formulário com feedback acessível",
+            "ts",
+            f"""type FormState = {{ email: string; nome: string }};
+
+export function validarFormulario(state: FormState) {{
+  const erros: string[] = [];
+  if (!state.nome.trim()) erros.push('Nome obrigatório');
+  if (!state.email.includes('@')) erros.push('Email inválido');
+  return {{ bkId: '{bk_id}', req: '{req}', valido: erros.length === 0, erros }};
+}}
+""",
+            "Cria feedback imediato e determinístico no fluxo de UI.",
+        ),
+        "performance_scalability": (
+            "Consulta de latência por janela",
             "sql",
-            f"""-- BK: {bk_id}
-SELECT
-  DATE_TRUNC('day', created_at) AS dia,
-  COUNT(*) AS eventos,
-  AVG(latencia_ms) AS latencia_media
-FROM observabilidade_eventos
+            f"""-- BK: {bk_id} / {req}
+SELECT DATE_TRUNC('minute', created_at) AS janela,
+       AVG(latencia_ms) AS lat_media,
+       PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latencia_ms) AS p95
+FROM metricas_latency
 WHERE contexto = :contexto
 GROUP BY 1
 ORDER BY 1 DESC
-LIMIT 14;
+LIMIT 60;
 """,
-            "Base para validar KPI de latencia e volume de eventos antes do gate da sprint.",
-        )
+            "Base para validar SLA do caminho crítico com p95 mensurável.",
+        ),
+        "security_hardening": (
+            "Middlewares de segurança obrigatórios",
+            "ts",
+            f"""export function exigirHTTPS(proto: string) {{
+  if (proto !== 'https') throw new Error('Canal inseguro');
+}}
 
-    return (
-        "Validador de payload de dominio",
-        "ts",
-        f"""type Payload = Record<string, unknown>;
-
-export function validarEntradaBK(payload: Payload) {{
-  const obrigatorios = ['utilizadorId', 'contextoId'];
-  const emFalta = obrigatorios.filter((k) => !payload[k]);
-  if (emFalta.length) throw new Error(`BK {bk_id}: faltam campos ${{emFalta.join(', ')}}`);
-  return {{ ok: true, bkId: '{bk_id}', payload }};
+export function validarRateLimit(tentativasMinuto: number, limite: number) {{
+  if (tentativasMinuto > limite) throw new Error('Rate limit excedido');
+  return {{ bkId: '{bk_id}', req: '{req}', ok: true }};
 }}
 """,
-        "Usar como barreira de entrada no caso principal para reduzir erros de integracao no BK.",
+            "Aplica proteção ativa no perímetro do endpoint crítico.",
+        ),
+        "reliability_ops": (
+            "Health-check e retry controlado",
+            "ts",
+            f"""export function healthCheck(dbOk: boolean, filaOk: boolean) {{
+  const status = dbOk && filaOk ? 'UP' : 'DEGRADED';
+  return {{ bkId: '{bk_id}', req: '{req}', status }};
+}}
+""",
+            "Suporta operação e diagnóstico rápido em incidente.",
+        ),
+        "quality_architecture": (
+            "Teste automatizado de módulo crítico",
+            "ts",
+            f"""import {{ describe, it, expect }} from 'vitest';
+
+describe('{bk_id}', () => {{
+  it('cumpre contrato principal', () => {{
+    const output = {{ ok: true, bkId: '{bk_id}', req: '{req}' }};
+    expect(output.ok).toBe(true);
+  }});
+}});
+""",
+            "Fixa comportamento esperado e previne regressões no módulo.",
+        ),
+        "compatibility_browser": (
+            "Teste E2E cross-browser",
+            "ts",
+            f"""import {{ test, expect }} from '@playwright/test';
+
+test('{bk_id} fluxo crítico', async ({{ page }}) => {{
+  await page.goto('/');
+  await expect(page.locator('main')).toBeVisible();
+}});
+""",
+            "Permite executar a mesma verificação em Chromium, Firefox e WebKit.",
+        ),
+        "localization": (
+            "Normalização de locale PT-PT",
+            "ts",
+            f"""export function formatarDataPT(dataIso: string) {{
+  const d = new Date(dataIso);
+  return d.toLocaleDateString('pt-PT');
+}}
+""",
+            "Garante coerência de apresentação de datas em PT-PT.",
+        ),
+        "integrations": (
+            "Importação unidirecional com idempotência",
+            "ts",
+            f"""type FicheiroExterno = {{ sourceId: string; hash: string }};
+
+export function deduplicarImportacao(existente: Set<string>, f: FicheiroExterno) {{
+  const chave = `${{f.sourceId}}:${{f.hash}}`;
+  return {{ bkId: '{bk_id}', req: '{req}', importar: !existente.has(chave), chave }};
+}}
+""",
+            "Evita duplicados na sincronização de materiais externos.",
+        ),
+    }
+    return snippets.get(
+        domain,
+        (
+            "Validação de contrato de entrada",
+            "ts",
+            f"""export function validarContrato(payload: Record<string, unknown>) {{
+  if (!payload) throw new Error('Payload vazio');
+  return {{ bkId: '{bk_id}', req: '{req}', ok: true }};
+}}
+""",
+            "Barreira mínima para estabilizar integrações do BK.",
+        ),
     )
 
 
@@ -322,25 +573,36 @@ def render_guide(row: dict[str, str]) -> str:
     deps_fmt = ", ".join(deps) if deps else "-"
     req = first_req(row["rf_rnf"])
     min_neg = 3 if prioridade == "P0" else 2
+    domain = classify_domain(row)
+    objetivo = domain_objective(domain)
+    erros = domain_errors(domain)
+    acao_principal, acao_controle, acao_evidencia = domain_actions(domain)
+    validacoes = domain_validation_points(domain)
+    negativos_exemplos = domain_negative_examples(domain)
 
     steps = [
         f"Confirmar no backlog e na matriz o escopo de `{bk_id}` e do requisito `{req}`.",
-        f"Validar pre-condicoes tecnicas e dependencias declaradas: `{deps_fmt}`.",
-        "Definir contrato de entrada/saida do fluxo principal antes de escrever codigo.",
-        "Implementar caminho principal com logs suficientes para evidencia tecnica.",
-        "Executar smoke test do fluxo principal e registar resultado observavel.",
-        f"Executar pelo menos `{min_neg}` cenarios negativos e validar respostas controladas.",
+        f"Validar pre-condicoes técnicas e dependencias declaradas: `{deps_fmt}`.",
+        f"Modelar contratos de dados e estados para `{acao_principal}`.",
+        f"Implementar o caminho principal de `{acao_principal}`.",
+        f"Aplicar controlos para `{acao_controle}`.",
+        f"Preparar evidencia operacional: `{acao_evidencia}`.",
+        "Executar smoke test completo do fluxo principal e registar o resultado.",
+        f"Executar negativos obrigatórios (`{min_neg}`) e validar erro controlado.",
     ]
     if prioridade == "P0":
         steps.extend(
             [
-                "Aplicar reforco tecnico no risco dominante (seguranca/performance/robustez).",
-                "Atualizar handoff do proximo BK com riscos, bloqueios e decisoes abertas.",
+                "Adicionar reforço técnico orientado ao maior risco (segurança, performance ou robustez).",
+                "Concluir handoff técnico com risco aberto, decisão tomada e próximo BK.",
             ]
         )
 
     steps_md = "\n".join(f"{i+1}. {s}" for i, s in enumerate(steps))
-    snippet_name, snippet_lang, snippet_code, snippet_desc = choose_snippet(row)
+    validacao_md = "\n".join(f"- {v}" for v in validacoes)
+    negativos_md = "\n".join(f"- {e}" for e in negativos_exemplos[:min_neg])
+    erros_md = "\n".join(f"- {e}" for e in erros)
+    snippet_name, snippet_lang, snippet_code, snippet_desc = choose_snippet(row, domain)
 
     return f"""# {bk_id} - {row['titulo']}
 
@@ -365,11 +627,11 @@ def render_guide(row: dict[str, str]) -> str:
 ## Contexto do BK
 - Entrega alvo: `{row['titulo']}` com rastreabilidade direta para `{row['rf_rnf']}`.
 - Foco da macro `{macro}`: {MACRO_LABEL.get(macro, 'execucao funcional orientada a defesa PAP')}.
-- Regra de governanca: manter IDs e contratos canónicos (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
+- Dominio semântico aplicado: `{domain}`.
 
 ## Bloco pedagogico
 ### Objetivo
-Explicar e executar este BK com autonomia, incluindo caminho principal, validacao negativa e evidencia para defesa.
+{objetivo}
 
 ### Pre-requisitos
 - Ler o requisito de origem em `docs/RF.md` ou `docs/RNF.md`.
@@ -377,14 +639,13 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 - Confirmar dependencias: `{deps_fmt}`.
 
 ### Erros comuns
-- Fechar BK sem validar negativos obrigatorios.
-- Alterar metadados no guia sem sincronizar backlog/matriz.
-- Submeter evidence sem prova verificavel (log/output/screenshot/teste).
+{erros_md}
+- Fechar BK sem validar negativos obrigatórios.
 
 ### Check de compreensao
-- [ ] Sei justificar porque este BK existe no fluxo da macro.
-- [ ] Sei apontar o requisito `{req}` e demostrar cobertura objetiva.
-- [ ] Sei executar pelo menos um cenario negativo relevante.
+- [ ] Sei explicar como `{req}` se traduz em comportamento implementável.
+- [ ] Sei indicar o principal risco técnico deste BK e como o mitigar.
+- [ ] Sei demonstrar evidência objetiva de sucesso e falha controlada.
 
 ### Tempo estimado
 - `Core`: `45-75 min`
@@ -400,15 +661,18 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 ### Passos
 {steps_md}
 
+### Cenarios negativos recomendados
+{negativos_md}
+
 ### Validacao
-- Smoke: minimo `1` execucao completa do fluxo principal.
-- Negativos: minimo `{min_neg}` cenarios com erro controlado.
+- Smoke: mínimo `1` execução completa do fluxo principal.
+- Negativos: mínimo `{min_neg}` cenários com erro controlado.
+{validacao_md}
 - Tecnico: metadados alinhados entre matriz/backlog/guia.
-- Evidence: `pr`, `proof`, `neg` preenchidos com dados reais.
 
 ### Handoff
 - Proximo BK: `{row['proximo_bk']}`
-- Registar: estado de dependencias, risco aberto e decisao tomada.
+- Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
@@ -424,15 +688,15 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 - Fluxo principal implementado no scope definido.
 - Validacao smoke e negativos concluida sem falha bloqueante.
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
-- Evidence pronta para revisao tecnica e defesa PAP.
+- Evidence pronta para revisão técnica e defesa PAP.
 
 ## Evidence para PR/defesa
-- `pr`: link de PR/commit com resumo do que mudou.
-- `proof`: output/screenshot/log/teste que comprova comportamento esperado.
-- `neg`: evidencia dos cenarios negativos executados.
+- `pr`: link de PR/commit com resumo funcional do BK.
+- `proof`: output/screenshot/log/teste que comprova o caminho principal.
+- `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
 ## Changelog
-- `{TODAY}`: guia normalizado para contrato canónico com bloco pedagogico e operacional completos.
+- `{TODAY}`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
 """
 
 
@@ -1019,6 +1283,11 @@ def write_guias_docs(plan_root: Path, rows: list[dict[str, str]]) -> None:
         "## Contrato de header obrigatorio",
         "- Campos obrigatorios: `bk_id`, `macro`, `owner`, `apoio`, `prioridade`, `estado`, `esforco`, `dependencias`, `rf_rnf`, `fase_documental`, `sprint`, `core_or_reforco`, `proximo_bk`, `guia_path`, `last_updated`.",
         "",
+        "## Contrato semântico obrigatório",
+        "- O `rf_rnf` do header deve estar refletido nos `Passos`, `Validacao` e `Cenarios negativos recomendados`.",
+        "- O `Snippet tecnico aplicavel` deve pertencer ao dominio funcional do BK (nao sao aceites snippets genéricos).",
+        "- `Evidence` deve incluir prova do caminho principal e prova de falha controlada.",
+        "",
         "## Indice completo",
     ]
     for macro in MACRO_ORDER:
@@ -1070,7 +1339,7 @@ def write_guias_docs(plan_root: Path, rows: list[dict[str, str]]) -> None:
 
 ## Snippet tecnico aplicavel
 ```ts
-// Snippet real e aplicavel ao BK
+// Snippet obrigatoriamente especifico do dominio do BK (nao generico)
 ```
 
 ## Criterios de aceite

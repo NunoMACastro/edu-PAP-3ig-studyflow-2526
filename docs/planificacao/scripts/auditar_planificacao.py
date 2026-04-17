@@ -4,11 +4,12 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import re
+import unicodedata
 from collections import defaultdict
 
-EXPECTED_RF = [f"RF{i:02d}" for i in range(1, 63)]
+EXPECTED_RF = [f"RF{i:02d}" for i in range(1, 17)] + [f"RF{i:02d}" for i in range(19, 59)] + ["RF61"]
 EXPECTED_RNF = [f"RNF{i:02d}" for i in range(1, 45)]
-VALID_LAST_UPDATED = {"2026-04-14"}
+VALID_LAST_UPDATED = {"2026-04-14", "2026-04-17"}
 GUIDE_FILENAME_RE = re.compile(r"^BK-MF[0-8]-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
 
 
@@ -120,7 +121,7 @@ def has_non_placeholder_snippet(text: str) -> bool:
 
 
 def extract_min_negativos(text: str) -> int:
-    m = re.search(r"Negativos: minimo `?(\d+)`?", text)
+    m = re.search(r"Negativos:\s*m[ií]nimo\s*`?(\d+)`?", text, flags=re.IGNORECASE)
     return int(m.group(1)) if m else 0
 
 
@@ -150,6 +151,131 @@ def sprints_issues(text: str) -> list[str]:
     return issues
 
 
+def slug_anchor(text: str) -> str:
+    s = text.strip().lower()
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^\w\s-]", "", s)
+    s = re.sub(r"\s+", "-", s)
+    s = re.sub(r"-{2,}", "-", s)
+    return s.strip("-")
+
+
+def parse_rf_range_refs(fragment: str) -> list[str]:
+    frag = fragment.replace("–", "-").replace("—", "-")
+    out: list[str] = []
+    for part in [x.strip() for x in frag.split(",") if x.strip()]:
+        m_full = re.fullmatch(r"RF(\d{2})-RF(\d{2})", part)
+        m_short = re.fullmatch(r"RF(\d{2})-(\d{2})", part)
+        if m_full or m_short:
+            a, b = (m_full or m_short).groups()
+            for n in range(int(a), int(b) + 1):
+                out.append(f"RF{n:02d}")
+        else:
+            out.extend(re.findall(r"\bRF\d{2}\b", part))
+    return sorted(set(out))
+
+
+def rf_internal_issues(rf_text: str, rf_expected: set[str]) -> list[str]:
+    issues: list[str] = []
+
+    headings = re.findall(r"^##+\s+(.+)$", rf_text, flags=re.MULTILINE)
+    heading_anchors = {slug_anchor(h) for h in headings}
+    link_targets = re.findall(r"\[[^\]]+\]\(#([^)]+)\)", rf_text)
+    for target in link_targets:
+        target_norm = slug_anchor(target)
+        if target_norm not in heading_anchors:
+            issues.append(f"missing_anchor_target:{target}")
+
+    criteria_heading = "## Critérios de Aceitação (Agrupados por Funcionalidade)"
+    idx = rf_text.find(criteria_heading)
+    if idx != -1:
+        block = rf_text[idx:]
+        for m in re.finditer(r"^###\s+([A-Z])\)\s+(.+?)\s+\(([^)]+)\)", block, flags=re.MULTILINE):
+            section_id = m.group(1)
+            title = m.group(2).strip()
+            refs = parse_rf_range_refs(m.group(3))
+            if not refs:
+                issues.append(f"criteria_without_rf_refs:{section_id}")
+                continue
+            invalid = sorted([r for r in refs if r not in rf_expected])
+            if invalid:
+                issues.append(f"criteria_invalid_rf_refs:{section_id}:{','.join(invalid)}")
+
+            expected_by_title = {
+                "Resumos com IA": {"RF11", "RF35", "RF36", "RF38", "RF40"},
+                "Quizzes e Testes": {"RF12", "RF28", "RF29"},
+                "Estudo em Grupo e Salas": {"RF14", "RF15", "RF16", "RF41", "RF42", "RF43", "RF44"},
+                "Projetos e Acompanhamento": {"RF26", "RF27"},
+                "Turmas e Disciplinas": {"RF19", "RF20", "RF21", "RF22", "RF23", "RF24", "RF25"},
+                "Materiais e Indexação": {"RF08", "RF21", "RF31", "RF32", "RF33", "RF34"},
+            }
+            for k, must_intersect in expected_by_title.items():
+                if k in title and not (set(refs) & must_intersect):
+                    issues.append(f"criteria_semantic_mismatch:{section_id}:{k}")
+    else:
+        issues.append("missing_criteria_section")
+
+    return issues
+
+
+def extract_domain_tag(text: str) -> str:
+    m = re.search(r"Dominio semântico aplicado:\s*`([^`]+)`", text)
+    return m.group(1).strip() if m else ""
+
+
+def extract_snippet_heading(text: str) -> str:
+    m = re.search(r"## Snippet tecnico aplicavel\s*\n\*\*(.+?)\*\*", text, flags=re.DOTALL)
+    return m.group(1).strip() if m else ""
+
+
+def extract_snippet_block(text: str) -> str:
+    m = re.search(r"## Snippet tecnico aplicavel\s*(.+?)(?:\n## |\Z)", text, flags=re.DOTALL)
+    return m.group(1) if m else ""
+
+
+def semantic_guide_issues(text: str) -> list[str]:
+    issues: list[str] = []
+    domain = extract_domain_tag(text)
+    snippet_heading = extract_snippet_heading(text).lower()
+    snippet_block = extract_snippet_block(text).lower()
+
+    if not domain:
+        issues.append("missing_semantic_domain_tag")
+        return issues
+
+    if "validador de payload de dominio" in snippet_heading:
+        issues.append("generic_snippet_heading_detected")
+
+    coherence_tokens = {
+        "ai_orchestration": ["ia", "fonte", "guardrail"],
+        "materials_ingestion": ["index", "material", "job", "ingest"],
+        "classroom_teacher": ["turma", "disciplina", "docente", "professor"],
+        "projects_assessment": ["teste", "score", "projeto", "avali"],
+        "collaboration": ["sala", "grupo", "membro", "chat"],
+        "notifications": ["notific", "quota", "canal", "enviar"],
+        "privacy_rgpd": ["consent", "dados", "rgpd", "elimina", "export"],
+        "admin_governance": ["quota", "limite", "papel", "admin", "auditoria"],
+        "ux_accessibility": ["form", "valida", "acess", "feedback"],
+        "performance_scalability": ["lat", "p95", "concor", "window", "metric"],
+        "security_hardening": ["https", "rate", "segur", "csrf", "xss"],
+        "reliability_ops": ["health", "retry", "backup", "recovery", "rollback"],
+        "quality_architecture": ["test", "module", "arquitet", "ci"],
+        "compatibility_browser": ["playwright", "browser", "chromium", "webkit", "firefox"],
+        "localization": ["pt-pt", "locale", "data", "utf", "i18n"],
+        "integrations": ["import", "source", "drive", "sync", "idempot"],
+        "learning_foundation": ["registo", "sess", "perfil", "aluno", "conta"],
+    }
+    tokens = coherence_tokens.get(domain, [])
+    target_text = f"{snippet_heading} {snippet_block}"
+    if tokens and not any(t in target_text for t in tokens):
+        issues.append(f"snippet_domain_incoherent:{domain}")
+
+    if "### Cenarios negativos recomendados" not in text:
+        issues.append("missing_negative_scenarios_section")
+
+    return issues
+
+
 # ----------------------------
 # main
 # ----------------------------
@@ -161,8 +287,12 @@ def main() -> None:
     backlogs = plan / "backlogs"
     guides_root = plan / "guias-bk"
 
-    rf_codes = extract_codes(repo / "docs" / "RF.md", "RF")
-    rnf_codes = extract_codes(repo / "docs" / "RNF.md", "RNF")
+    rf_path = repo / "docs" / "RF.md"
+    rnf_path = repo / "docs" / "RNF.md"
+    rf_text = read(rf_path)
+    rnf_text = read(rnf_path)
+    rf_codes = extract_codes(rf_path, "RF")
+    rnf_codes = extract_codes(rnf_path, "RNF")
 
     rf_expected = set(EXPECTED_RF)
     rnf_expected = set(EXPECTED_RNF)
@@ -265,6 +395,7 @@ def main() -> None:
 
     guide_header_issues = []
     guide_content_issues = []
+    guide_semantic_issues = []
     naming_issues = []
     missing_guides = []
 
@@ -319,6 +450,9 @@ def main() -> None:
             guide_content_issues.append({"bk_id": bk_id, "issue": f"P0_minimos(step={step_count},neg={min_negativos})"})
         if row["prioridade"] in {"P1", "P2"} and (step_count < 6 or min_negativos < 2):
             guide_content_issues.append({"bk_id": bk_id, "issue": f"P1P2_minimos(step={step_count},neg={min_negativos})"})
+
+        for s_issue in semantic_guide_issues(text):
+            guide_semantic_issues.append({"bk_id": bk_id, "issue": s_issue})
 
     for lf in legacy_files:
         naming_issues.append({"file": str(lf), "issue": "legacy_filename_without_slug"})
@@ -425,6 +559,8 @@ def main() -> None:
             }
         )
 
+    rf_semantic_issues = rf_internal_issues(rf_text, rf_expected)
+
     result = {
         "counts": {
             "rf_docs": len(set(rf_codes)),
@@ -451,10 +587,12 @@ def main() -> None:
             "scorecard_contract_issues": scorecard_contract_issues,
             "sprint_contract_issues": sprint_contract_issues,
             "gate_issues": gate_issues,
+            "rf_internal_issues": rf_semantic_issues,
         },
         "guides_quality": {
             "guide_header_issues": guide_header_issues,
             "guide_content_issues": guide_content_issues,
+            "guide_semantic_issues": guide_semantic_issues,
             "naming_issues": naming_issues,
             "missing_guides": missing_guides,
         },
@@ -481,8 +619,15 @@ def main() -> None:
         and not scorecard_contract_issues
         and not sprint_contract_issues
         and not gate_issues
+        and not rf_semantic_issues
     )
-    guides_pass = not guide_header_issues and not guide_content_issues and not naming_issues and not missing_guides
+    guides_pass = (
+        not guide_header_issues
+        and not guide_content_issues
+        and not guide_semantic_issues
+        and not naming_issues
+        and not missing_guides
+    )
     governance_pass = not missing_artifacts
 
     result["status"] = {

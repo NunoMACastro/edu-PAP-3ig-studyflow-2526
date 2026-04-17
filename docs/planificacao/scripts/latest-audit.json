@@ -1,10 +1,10 @@
 {
   "counts": {
-    "rf_docs": 62,
+    "rf_docs": 57,
     "rnf_docs": 44,
-    "matriz_bk": 106,
-    "backlog_bk": 106,
-    "guide_bk": 106
+    "matriz_bk": 101,
+    "backlog_bk": 101,
+    "guide_bk": 101
   },
   "coverage": {
     "rf_contract_issues": [],
@@ -23,11 +23,13 @@
     "outdated_docs": [],
     "scorecard_contract_issues": [],
     "sprint_contract_issues": [],
-    "gate_issues": []
+    "gate_issues": [],
+    "rf_internal_issues": []
   },
   "guides_quality": {
     "guide_header_issues": [],
     "guide_content_issues": [],
+    "guide_semantic_issues": [],
     "naming_issues": [],
     "missing_guides": []
   },

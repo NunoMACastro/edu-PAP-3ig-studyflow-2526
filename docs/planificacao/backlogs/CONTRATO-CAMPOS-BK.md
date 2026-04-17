@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Objetivo
 Formalizar o contrato de campos BK para eliminar drift entre matriz, backlog, guias e sprints.
@@ -47,9 +47,7 @@ Formalizar o contrato de campos BK para eliminar drift entre matriz, backlog, gu
 | BK-MF1-01 | MF1 | Natalia | P1 | BK-MF0-11 | RF13 | S03-S04 | Core | BK-MF1-02 | docs/planificacao/guias-bk/MF1/BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md |
 | BK-MF1-02 | MF1 | Kaua | P1 | BK-MF0-03 | RF14 | S03-S04 | Core | BK-MF1-03 | docs/planificacao/guias-bk/MF1/BK-MF1-02-criar-salas-de-estudo-com-outros-alunos-livres-ou-por-disciplina.md |
 | BK-MF1-03 | MF1 | Guilherme | P1 | BK-MF1-02 | RF15 | S03-S04 | Core | BK-MF1-04 | docs/planificacao/guias-bk/MF1/BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md |
-| BK-MF1-04 | MF1 | Daniel | P2 | BK-MF1-02 | RF16 | S03-S04 | Core | BK-MF1-05 | docs/planificacao/guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md |
-| BK-MF1-05 | MF1 | Kaua | P2 | BK-MF1-02 | RF17 | S03-S04 | Core | BK-MF1-06 | docs/planificacao/guias-bk/MF1/BK-MF1-05-mini-testes-em-grupo-com-ranking-local.md |
-| BK-MF1-06 | MF1 | Daniel | P2 | BK-MF1-02 | RF18 | S03-S04 | Core | BK-MF1-07 | docs/planificacao/guias-bk/MF1/BK-MF1-06-co-edicao-de-apontamentos-com-historico.md |
+| BK-MF1-04 | MF1 | Daniel | P2 | BK-MF1-02 | RF16 | S03-S04 | Core | BK-MF1-07 | docs/planificacao/guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md |
 | BK-MF1-07 | MF1 | Guilherme | P0 | - | RF19 | S03-S04 | Reforco | BK-MF1-08 | docs/planificacao/guias-bk/MF1/BK-MF1-07-criar-turmas.md |
 | BK-MF1-08 | MF1 | Natalia | P0 | BK-MF1-07 | RF20 | S03-S04 | Reforco | BK-MF1-09 | docs/planificacao/guias-bk/MF1/BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md |
 | BK-MF1-09 | MF1 | Guilherme | P0 | BK-MF1-08 | RF21 | S03-S04 | Reforco | BK-MF1-10 | docs/planificacao/guias-bk/MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md |
@@ -89,11 +87,8 @@ Formalizar o contrato de campos BK para eliminar drift entre matriz, backlog, gu
 | BK-MF4-07 | MF4 | Kaua | P0 | BK-MF0-04 | RF55 | S08-S09 | Reforco | BK-MF4-08 | docs/planificacao/guias-bk/MF4/BK-MF4-07-gestao-de-utilizadores-e-papeis.md |
 | BK-MF4-08 | MF4 | Natalia | P0 | BK-MF4-07 | RF56 | S08-S09 | Reforco | BK-MF4-09 | docs/planificacao/guias-bk/MF4/BK-MF4-08-auditoria-completa-materiais-ia-papeis.md |
 | BK-MF4-09 | MF4 | Daniel | P1 | BK-MF2-11 | RF57 | S08-S09 | Core | BK-MF4-10 | docs/planificacao/guias-bk/MF4/BK-MF4-09-configurar-modelos-de-ia-e-limites-de-uso.md |
-| BK-MF4-10 | MF4 | Kaua | P1 | BK-MF4-09 | RF58 | S08-S09 | Core | BK-MF4-11 | docs/planificacao/guias-bk/MF4/BK-MF4-10-definir-quotas-de-ia-por-aluno-turma-grupo-e-monitorizar-consumo.md |
-| BK-MF4-11 | MF4 | Guilherme | P1 | BK-MF4-07 | RF59 | S08-S09 | Core | BK-MF4-12 | docs/planificacao/guias-bk/MF4/BK-MF4-11-painel-de-observabilidade-logs-metricas-alertas.md |
-| BK-MF4-12 | MF4 | Natalia | P1 | - | RF60 | S08-S09 | Core | BK-MF5-01 | docs/planificacao/guias-bk/MF4/BK-MF4-12-integracao-com-calendarios-ics-google.md |
-| BK-MF5-01 | MF5 | Daniel | P1 | - | RF61 | S09-S10 | Core | BK-MF5-02 | docs/planificacao/guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-co-edicao-com-permissoes.md |
-| BK-MF5-02 | MF5 | Kaua | P1 | - | RF62 | S09-S10 | Core | BK-MF5-03 | docs/planificacao/guias-bk/MF5/BK-MF5-02-single-sign-on-escolar-oauth-saml.md |
+| BK-MF4-10 | MF4 | Kaua | P1 | BK-MF4-09 | RF58 | S08-S09 | Core | BK-MF5-01 | docs/planificacao/guias-bk/MF4/BK-MF4-10-definir-quotas-de-ia-por-aluno-turma-grupo-e-monitorizar-consumo.md |
+| BK-MF5-01 | MF5 | Daniel | P1 | - | RF61 | S09-S10 | Core | BK-MF5-03 | docs/planificacao/guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-importacao-unidirecional-de-materiais-de-estudo.md |
 | BK-MF5-03 | MF5 | Guilherme | P0 | - | RNF01 | S09-S10 | Reforco | BK-MF5-04 | docs/planificacao/guias-bk/MF5/BK-MF5-03-interface-intuitiva-e-clara-para-alunos-e-professores.md |
 | BK-MF5-04 | MF5 | Kaua | P0 | - | RNF02 | S09-S10 | Reforco | BK-MF5-05 | docs/planificacao/guias-bk/MF5/BK-MF5-04-layout-responsivo-para-desktop-tablet-mobile.md |
 | BK-MF5-05 | MF5 | Natalia | P0 | - | RNF03 | S09-S10 | Reforco | BK-MF5-06 | docs/planificacao/guias-bk/MF5/BK-MF5-05-feedback-imediato-em-acoes-guardar-ia-uploads.md |
@@ -140,4 +135,4 @@ Formalizar o contrato de campos BK para eliminar drift entre matriz, backlog, gu
 | BK-MF8-11 | MF8 | Daniel | P2 | - | RNF44 | S12 | Core | - | docs/planificacao/guias-bk/MF8/BK-MF8-11-preparado-para-futura-traducao-i18n.md |
 
 ## Changelog
-- `2026-04-14`: contrato de campos BK criado para governanca canónica StudyFlow.
+- `2026-04-17`: contrato de campos BK criado para governanca canónica StudyFlow.

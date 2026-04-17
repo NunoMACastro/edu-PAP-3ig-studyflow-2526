@@ -1,44 +1,44 @@
-# BK-MF1-01 - A IA deve adaptar explicações ao ritmo/dificuldades do aluno.
+# BK-MF5-01 - Integração com Drives (Google/OneDrive) para importação unidirecional de materiais de estudo.
 
 ## Header
-- `doc_id`: `GUIA-BK-MF1-01`
-- `bk_id`: `BK-MF1-01`
-- `macro`: `MF1`
-- `owner`: `Natalia`
-- `apoio`: `Guilherme`
+- `doc_id`: `GUIA-BK-MF5-01`
+- `bk_id`: `BK-MF5-01`
+- `macro`: `MF5`
+- `owner`: `Daniel`
+- `apoio`: `Kaua`
 - `prioridade`: `P1`
 - `estado`: `TODO`
 - `esforco`: `S`
-- `dependencias`: `BK-MF0-11`
-- `rf_rnf`: `RF13`
-- `fase_documental`: `Fase 1`
-- `sprint`: `S03-S04`
+- `dependencias`: `-`
+- `rf_rnf`: `RF61`
+- `fase_documental`: `Fase 2`
+- `sprint`: `S09-S10`
 - `core_or_reforco`: `Core`
-- `proximo_bk`: `BK-MF1-02`
-- `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md`
+- `proximo_bk`: `BK-MF5-03`
+- `guia_path`: `docs/planificacao/guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-importacao-unidirecional-de-materiais-de-estudo.md`
 - `last_updated`: `2026-04-17`
 
 ## Contexto do BK
-- Entrega alvo: `A IA deve adaptar explicações ao ritmo/dificuldades do aluno.` com rastreabilidade direta para `RF13`.
-- Foco da macro `MF1`: Nucleo funcional I.
-- Dominio semântico aplicado: `learning_foundation`.
+- Entrega alvo: `Integração com Drives (Google/OneDrive) para importação unidirecional de materiais de estudo.` com rastreabilidade direta para `RF61`.
+- Foco da macro `MF5`: Operacao e UX transversal.
+- Dominio semântico aplicado: `integrations`.
 
 ## Bloco pedagogico
 ### Objetivo
-Construir o fluxo base de aluno (identidade, perfil e estudo individual) com comportamento previsivel.
+Integrar fontes externas em modo controlado, idempotente e observavel.
 
 ### Pre-requisitos
 - Ler o requisito de origem em `docs/RF.md` ou `docs/RNF.md`.
 - Rever `MATRIZ-CANONICA-BK.md`, `BACKLOG-MVP.md` e `PLANO-SPRINTS.md`.
-- Confirmar dependencias: `BK-MF0-11`.
+- Confirmar dependencias: `-`.
 
 ### Erros comuns
-- Nao validar duplicados de conta/perfil.
-- Misturar regras de aluno sem turma com turma inscrita.
+- Importar duplicados por falta de idempotência.
+- Não registar origem do material importado.
 - Fechar BK sem validar negativos obrigatórios.
 
 ### Check de compreensao
-- [ ] Sei explicar como `RF13` se traduz em comportamento implementável.
+- [ ] Sei explicar como `RF61` se traduz em comportamento implementável.
 - [ ] Sei indicar o principal risco técnico deste BK e como o mitigar.
 - [ ] Sei demonstrar evidência objetiva de sucesso e falha controlada.
 
@@ -48,18 +48,18 @@ Construir o fluxo base de aluno (identidade, perfil e estudo individual) com com
 
 ## Bloco operacional
 ### Entrada
-- BK: `BK-MF1-01`
-- Requisito: `RF13`
-- Dependencias: `BK-MF0-11`
+- BK: `BK-MF5-01`
+- Requisito: `RF61`
+- Dependencias: `-`
 - Artefactos obrigatorios: `MATRIZ-CANONICA-BK.md`, `BACKLOG-MVP.md`, `MF-VIEWS.md`, `PLANO-SPRINTS.md`
 
 ### Passos
-1. Confirmar no backlog e na matriz o escopo de `BK-MF1-01` e do requisito `RF13`.
-2. Validar pre-condicoes técnicas e dependencias declaradas: `BK-MF0-11`.
-3. Modelar contratos de dados e estados para `fluxo de conta/perfil em estado consistente`.
-4. Implementar o caminho principal de `fluxo de conta/perfil em estado consistente`.
-5. Aplicar controlos para `regras de sessão/papel e transições de estado`.
-6. Preparar evidencia operacional: `mapa de estados (novo, ativo, bloqueado)`.
+1. Confirmar no backlog e na matriz o escopo de `BK-MF5-01` e do requisito `RF61`.
+2. Validar pre-condicoes técnicas e dependencias declaradas: `-`.
+3. Modelar contratos de dados e estados para `importação unidirecional via conector externo`.
+4. Implementar o caminho principal de `importação unidirecional via conector externo`.
+5. Aplicar controlos para `idempotência e mapeamento de origem`.
+6. Preparar evidencia operacional: `histórico de sincronização`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
 8. Executar negativos obrigatórios (`2`) e validar erro controlado.
 
@@ -75,24 +75,23 @@ Construir o fluxo base de aluno (identidade, perfil e estudo individual) com com
 - Tecnico: metadados alinhados entre matriz/backlog/guia.
 
 ### Handoff
-- Proximo BK: `BK-MF1-02`
+- Proximo BK: `BK-MF5-03`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
-**Handler de registo e sessão**
+**Importação unidirecional com idempotência**
 
 ```ts
-type Credenciais = { email: string; password: string };
+type FicheiroExterno = { sourceId: string; hash: string };
 
-export async function registarAluno(input: Credenciais) {
-  if (!input.email.includes('@')) throw new Error('Email invalido');
-  if (input.password.length < 12) throw new Error('Password fraca');
-  return { bkId: 'BK-MF1-01', req: 'RF13', estado: 'REGISTADO' };
+export function deduplicarImportacao(existente: Set<string>, f: FicheiroExterno) {
+  const chave = `${f.sourceId}:${f.hash}`;
+  return { bkId: 'BK-MF5-01', req: 'RF61', importar: !existente.has(chave), chave };
 }
 ```
 
-Garante validação mínima de identidade no arranque do fluxo de conta.
+Evita duplicados na sincronização de materiais externos.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.

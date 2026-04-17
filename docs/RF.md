@@ -19,7 +19,7 @@
 13. [Integrações](#13-integrações)
 14. [Critérios de Aceitação](#critérios-de-aceitação-agrupados-por-funcionalidade)
 15. [Sugestão de MVP organizado por fases e RF](#sugestão-de-mvp-organizado-por-fases-e-rf)
-16. [Créditos do projeto](#créditos-do-projeto)
+16. [Créditos](#créditos)
 17. [Licença](#licença)
 18. [Changelog](#changelog)
 
@@ -63,8 +63,6 @@
 | RF14   | Criar salas de estudo com outros alunos (livres ou por disciplina). | Aluno   | Should     | RF03         |
 | RF15   | Partilhar materiais e apontamentos na sala.                         | Aluno   | Should     | RF14         |
 | RF16   | IA partilhada da sala (mistura das áreas dos membros).              | Sistema | Could      | RF14         |
-| RF17   | Mini-testes em grupo com ranking local.                             | Aluno   | Could      | RF14         |
-| RF18   | Co-edição de apontamentos com histórico.                            | Aluno   | Could      | RF14         |
 
 ---
 
@@ -98,7 +96,7 @@
 
 | Código | Requisito                                               | Atores  | Prioridade | Dependências |
 | ------ | ------------------------------------------------------- | ------- | ---------- | ------------ |
-| RF31   | Indexação automática de PDFs, DOCX e URLs.              | Sistema | Must       | RF08/RF21    |
+| RF31   | Indexação automática de PDFs, DOCX e URLs.              | Sistema | Must       | RF08, RF21   |
 | RF32   | Extrair tópicos, secções, estrutura e referências.      | Sistema | Must       | RF31         |
 | RF33   | Manter versões dos materiais.                           | Sistema | Should     | RF31         |
 | RF34   | Separar materiais entre “aluno”, “professor” e “turma”. | Sistema | Must       | RF31         |
@@ -168,7 +166,6 @@
 | RF56   | Auditoria completa (materiais, IA, papéis).                           | Admin  | Must       | RF55 |
 | RF57   | Configurar modelos de IA e limites de uso.                            | Admin  | Should     | RF35 |
 | RF58   | Definir **quotas de IA** por aluno/turma/grupo e monitorizar consumo. | Admin  | Should     | RF57 |
-| RF59   | Painel de observabilidade (logs, métricas, alertas).                  | Admin  | Should     | RF55 |
 
 ---
 
@@ -176,31 +173,29 @@
 
 | Código | Requisito                                                              | Atores           | Prioridade |
 | ------ | ---------------------------------------------------------------------- | ---------------- | ---------- |
-| RF60   | Integração com calendários (ICS/Google).                               | Aluno, Professor | Should     |
-| RF61   | Integração com Drives (Google/OneDrive) para co-edição com permissões. | Professor, Aluno | Should     |
-| RF62   | Single Sign-On escolar (OAuth/SAML).                                   | Todos            | Should     |
+| RF61   | Integração com Drives (Google/OneDrive) para importação unidirecional de materiais de estudo. | Professor, Aluno | Should     |
 
 ---
 
 ## Critérios de Aceitação (Agrupados por Funcionalidade)
 
-### A) Resumos com IA (RF16, RF18, RF19, RF38)
+### A) Resumos com IA (RF11, RF35, RF36, RF38)
 
 -   Resumo deve indicar página/secção de origem.
 -   Não pode incluir conteúdo não existente nos ficheiros fornecidos.
 -   Quando a voz do professor está ativa, o resumo deve refletir o tom docente.
 
-### B) Quizzes e Testes (RF20–RF24, RF28)
+### B) Quizzes e Testes (RF12, RF28, RF29)
 
 -   Perguntas MCQ devem ter 1 resposta correta e 3 distratores.
 -   Explicações precisam de referência ao material.
 -   O sistema guarda desempenho por tópico e disciplina.
 
-### C) Estudo em Grupo e Salas (RF14–RF18, RF41–RF44)
+### C) Estudo em Grupo e Salas (RF14–RF16, RF41–RF44)
 
 -   Apenas membros podem ver materiais da sala.
 -   IA da sala deve respeitar guardrails de grupo.
--   Sessões coletivas devem mostrar ranking local.
+-   Sessões coletivas devem registar participação e histórico.
 
 ### D) Projetos e Acompanhamento (RF26–RF27)
 
@@ -212,7 +207,7 @@
 -   Apenas alunos inscritos têm acesso ao conteúdo oficial.
 -   A IA docente usa exclusivamente materiais aprovados.
 
-### F) Materiais e Indexação (RF09–RF12, RF31–RF34)
+### F) Materiais e Indexação (RF08, RF21, RF31–RF34)
 
 -   Sistemas devem extrair texto, estrutura e tópicos do documento.
 -   Versionamento deve permitir reversão.
@@ -220,9 +215,15 @@
 ## Sugestão de MVP organizado por fases e RF
 
 -   **Fase 1 - Estudo Individual:** RF01–RF13, focando áreas privadas, ingestão de materiais e assistente IA pessoal.
--   **Fase 2 - Professores e Turmas:** RF14–RF39, adicionando gestão docente, projetos/testes e painéis de progresso.
+-   **Fase 2 - Professores e Turmas:** RF14–RF16 e RF19–RF39, adicionando gestão docente, projetos/testes e painéis de progresso.
 -   **Fase 3 - Comunidade e Notificações:** RF40–RF51, cobrindo grupos, salas colaborativas e alertas inteligentes.
--   **Fase 4 - Operação e Integrações:** RF52–RF62, com privacidade, administração avançada, quotas de IA e integrações externas.
+-   **Fase 4 - Operação e Integrações:** RF52–RF58 e RF61, com privacidade, administração avançada, quotas de IA e integrações externas.
+
+## Créditos
+
+-   Projeto: StudyFlow
+-   Equipa: Natália, Daniel, Guilherme, Kaua
+-   Orientador: Nuno Castro e Cláudia Marques
 
 ---
 
@@ -235,3 +236,4 @@ Projeto académico destinado exclusivamente a fins educativos.
 ## Changelog
 
 -   **2024-04-27** - Reorganização do RF.md para o formato padrão com secções de MVP, créditos, licença e changelog.
+-   **2026-04-17** - Ajuste de escopo MVP StudyFlow com remoção de funcionalidades cortadas e simplificação da integração Drive.

@@ -16,16 +16,16 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF1-08`
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-07-criar-turmas.md`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Contexto do BK
 - Entrega alvo: `Criar turmas.` com rastreabilidade direta para `RF19`.
 - Foco da macro `MF1`: Nucleo funcional I.
-- Regra de governanca: manter IDs e contratos canónicos (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
+- Dominio semântico aplicado: `classroom_teacher`.
 
 ## Bloco pedagogico
 ### Objetivo
-Explicar e executar este BK com autonomia, incluindo caminho principal, validacao negativa e evidencia para defesa.
+Implementar operacao professor/turma/disciplina com controlo de acesso e curadoria oficial.
 
 ### Pre-requisitos
 - Ler o requisito de origem em `docs/RF.md` ou `docs/RNF.md`.
@@ -33,14 +33,14 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 - Confirmar dependencias: `-`.
 
 ### Erros comuns
-- Fechar BK sem validar negativos obrigatorios.
-- Alterar metadados no guia sem sincronizar backlog/matriz.
-- Submeter evidence sem prova verificavel (log/output/screenshot/teste).
+- Permitir acesso a disciplina sem inscricao.
+- Publicar material oficial sem revisão de permissões.
+- Fechar BK sem validar negativos obrigatórios.
 
 ### Check de compreensao
-- [ ] Sei justificar porque este BK existe no fluxo da macro.
-- [ ] Sei apontar o requisito `RF19` e demostrar cobertura objetiva.
-- [ ] Sei executar pelo menos um cenario negativo relevante.
+- [ ] Sei explicar como `RF19` se traduz em comportamento implementável.
+- [ ] Sei indicar o principal risco técnico deste BK e como o mitigar.
+- [ ] Sei demonstrar evidência objetiva de sucesso e falha controlada.
 
 ### Tempo estimado
 - `Core`: `45-75 min`
@@ -55,56 +55,58 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 
 ### Passos
 1. Confirmar no backlog e na matriz o escopo de `BK-MF1-07` e do requisito `RF19`.
-2. Validar pre-condicoes tecnicas e dependencias declaradas: `-`.
-3. Definir contrato de entrada/saida do fluxo principal antes de escrever codigo.
-4. Implementar caminho principal com logs suficientes para evidencia tecnica.
-5. Executar smoke test do fluxo principal e registar resultado observavel.
-6. Executar pelo menos `3` cenarios negativos e validar respostas controladas.
-7. Aplicar reforco tecnico no risco dominante (seguranca/performance/robustez).
-8. Atualizar handoff do proximo BK com riscos, bloqueios e decisoes abertas.
+2. Validar pre-condicoes técnicas e dependencias declaradas: `-`.
+3. Modelar contratos de dados e estados para `fluxo turma/disciplina/material oficial`.
+4. Implementar o caminho principal de `fluxo turma/disciplina/material oficial`.
+5. Aplicar controlos para `autorização por inscrição e papel docente`.
+6. Preparar evidencia operacional: `evidência de acesso autorizado/negado`.
+7. Executar smoke test completo do fluxo principal e registar o resultado.
+8. Executar negativos obrigatórios (`3`) e validar erro controlado.
+9. Adicionar reforço técnico orientado ao maior risco (segurança, performance ou robustez).
+10. Concluir handoff técnico com risco aberto, decisão tomada e próximo BK.
+
+### Cenarios negativos recomendados
+- entrada obrigatória em falta
+- estado inválido de negócio
+- permissão insuficiente
 
 ### Validacao
-- Smoke: minimo `1` execucao completa do fluxo principal.
-- Negativos: minimo `3` cenarios com erro controlado.
+- Smoke: mínimo `1` execução completa do fluxo principal.
+- Negativos: mínimo `3` cenários com erro controlado.
+- Fluxo do requisito cumpre contrato de entrada/saída.
+- Persistência e leitura dos dados mantêm consistência.
 - Tecnico: metadados alinhados entre matriz/backlog/guia.
-- Evidence: `pr`, `proof`, `neg` preenchidos com dados reais.
 
 ### Handoff
 - Proximo BK: `BK-MF1-08`
-- Registar: estado de dependencias, risco aberto e decisao tomada.
+- Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
-**Pipeline minimo para resposta de IA com fontes**
+**Autorização por turma e disciplina**
 
 ```ts
-type TrechoFonte = { docId: string; pagina: number; texto: string };
+type Contexto = { turmaId: string; disciplinaId: string; papel: 'ALUNO' | 'PROFESSOR' };
 
-export function responderComFonte(pergunta: string, contexto: TrechoFonte[]) {
-  if (!pergunta.trim()) throw new Error('Pergunta vazia');
-  if (!contexto.length) throw new Error('Sem contexto para responder');
-
-  const base = contexto.slice(0, 3).map((t) => `[${t.docId}:${t.pagina}]`).join(' ');
-  return {
-    bkId: 'BK-MF1-07',
-    resposta: `Resposta gerada com base em ${base}`,
-    fontes: contexto.slice(0, 3),
-  };
+export function autorizarContexto(c: Contexto) {
+  if (!c.turmaId || !c.disciplinaId) throw new Error('Contexto incompleto');
+  if (c.papel !== 'PROFESSOR') throw new Error('Apenas docente pode executar esta ação');
+  return { bkId: 'BK-MF1-07', req: 'RF19', autorizado: true };
 }
 ```
 
-Garante rastreabilidade da resposta IA ao material carregado e facilita validacao em defesa.
+Evita operações docentes fora do contexto da turma/disciplina.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
 - Validacao smoke e negativos concluida sem falha bloqueante.
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
-- Evidence pronta para revisao tecnica e defesa PAP.
+- Evidence pronta para revisão técnica e defesa PAP.
 
 ## Evidence para PR/defesa
-- `pr`: link de PR/commit com resumo do que mudou.
-- `proof`: output/screenshot/log/teste que comprova comportamento esperado.
-- `neg`: evidencia dos cenarios negativos executados.
+- `pr`: link de PR/commit com resumo funcional do BK.
+- `proof`: output/screenshot/log/teste que comprova o caminho principal.
+- `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
 ## Changelog
-- `2026-04-14`: guia normalizado para contrato canónico com bloco pedagogico e operacional completos.
+- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

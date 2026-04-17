@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Objetivo
 Fornecer guiao semanal para acompanhamento docente da execucao BK por alunos do 12o ano.
@@ -33,4 +33,4 @@ Fornecer guiao semanal para acompanhamento docente da execucao BK por alunos do 
 - Validar se handoff para proximo BK esta preenchido e sem ambiguidades.
 
 ## Changelog
-- `2026-04-14`: guiao docente semanal criado como artefacto oficial de governanca pedagogica.
+- `2026-04-17`: guiao docente semanal criado como artefacto oficial de governanca pedagogica.

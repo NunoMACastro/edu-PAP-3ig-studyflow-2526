@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Objetivo
 Rastreabilidade operacional `BK -> Sprint -> Owner` com contrato `Core/Reforco`.
@@ -30,8 +30,6 @@ Rastreabilidade operacional `BK -> Sprint -> Owner` com contrato `Core/Reforco`.
 | BK-MF1-02 | MF1 | S03-S04 | Kaua | Guilherme | P1 | Core | RF14 | BK-MF0-03 | docs/planificacao/guias-bk/MF1/BK-MF1-02-criar-salas-de-estudo-com-outros-alunos-livres-ou-por-disciplina.md |
 | BK-MF1-03 | MF1 | S03-S04 | Guilherme | Natalia | P1 | Core | RF15 | BK-MF1-02 | docs/planificacao/guias-bk/MF1/BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md |
 | BK-MF1-04 | MF1 | S03-S04 | Daniel | Kaua | P2 | Core | RF16 | BK-MF1-02 | docs/planificacao/guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md |
-| BK-MF1-05 | MF1 | S03-S04 | Kaua | Guilherme | P2 | Core | RF17 | BK-MF1-02 | docs/planificacao/guias-bk/MF1/BK-MF1-05-mini-testes-em-grupo-com-ranking-local.md |
-| BK-MF1-06 | MF1 | S03-S04 | Daniel | Kaua | P2 | Core | RF18 | BK-MF1-02 | docs/planificacao/guias-bk/MF1/BK-MF1-06-co-edicao-de-apontamentos-com-historico.md |
 | BK-MF1-07 | MF1 | S03-S04 | Guilherme | Natalia | P0 | Reforco | RF19 | - | docs/planificacao/guias-bk/MF1/BK-MF1-07-criar-turmas.md |
 | BK-MF1-08 | MF1 | S03-S04 | Natalia | Guilherme | P0 | Reforco | RF20 | BK-MF1-07 | docs/planificacao/guias-bk/MF1/BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md |
 | BK-MF1-09 | MF1 | S03-S04 | Guilherme | Natalia | P0 | Reforco | RF21 | BK-MF1-08 | docs/planificacao/guias-bk/MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md |
@@ -72,10 +70,7 @@ Rastreabilidade operacional `BK -> Sprint -> Owner` com contrato `Core/Reforco`.
 | BK-MF4-08 | MF4 | S08-S09 | Natalia | Guilherme | P0 | Reforco | RF56 | BK-MF4-07 | docs/planificacao/guias-bk/MF4/BK-MF4-08-auditoria-completa-materiais-ia-papeis.md |
 | BK-MF4-09 | MF4 | S08-S09 | Daniel | Kaua | P1 | Core | RF57 | BK-MF2-11 | docs/planificacao/guias-bk/MF4/BK-MF4-09-configurar-modelos-de-ia-e-limites-de-uso.md |
 | BK-MF4-10 | MF4 | S08-S09 | Kaua | Guilherme | P1 | Core | RF58 | BK-MF4-09 | docs/planificacao/guias-bk/MF4/BK-MF4-10-definir-quotas-de-ia-por-aluno-turma-grupo-e-monitorizar-consumo.md |
-| BK-MF4-11 | MF4 | S08-S09 | Guilherme | Natalia | P1 | Core | RF59 | BK-MF4-07 | docs/planificacao/guias-bk/MF4/BK-MF4-11-painel-de-observabilidade-logs-metricas-alertas.md |
-| BK-MF4-12 | MF4 | S08-S09 | Natalia | Guilherme | P1 | Core | RF60 | - | docs/planificacao/guias-bk/MF4/BK-MF4-12-integracao-com-calendarios-ics-google.md |
-| BK-MF5-01 | MF5 | S09-S10 | Daniel | Kaua | P1 | Core | RF61 | - | docs/planificacao/guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-co-edicao-com-permissoes.md |
-| BK-MF5-02 | MF5 | S09-S10 | Kaua | Guilherme | P1 | Core | RF62 | - | docs/planificacao/guias-bk/MF5/BK-MF5-02-single-sign-on-escolar-oauth-saml.md |
+| BK-MF5-01 | MF5 | S09-S10 | Daniel | Kaua | P1 | Core | RF61 | - | docs/planificacao/guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-importacao-unidirecional-de-materiais-de-estudo.md |
 | BK-MF5-03 | MF5 | S09-S10 | Guilherme | Natalia | P0 | Reforco | RNF01 | - | docs/planificacao/guias-bk/MF5/BK-MF5-03-interface-intuitiva-e-clara-para-alunos-e-professores.md |
 | BK-MF5-04 | MF5 | S09-S10 | Kaua | Guilherme | P0 | Reforco | RNF02 | - | docs/planificacao/guias-bk/MF5/BK-MF5-04-layout-responsivo-para-desktop-tablet-mobile.md |
 | BK-MF5-05 | MF5 | S09-S10 | Natalia | Guilherme | P0 | Reforco | RNF03 | - | docs/planificacao/guias-bk/MF5/BK-MF5-05-feedback-imediato-em-acoes-guardar-ia-uploads.md |
@@ -122,4 +117,4 @@ Rastreabilidade operacional `BK -> Sprint -> Owner` com contrato `Core/Reforco`.
 | BK-MF8-11 | MF8 | S12 | Daniel | Kaua | P2 | Core | RNF44 | - | docs/planificacao/guias-bk/MF8/BK-MF8-11-preparado-para-futura-traducao-i18n.md |
 
 ## Changelog
-- `2026-04-14`: anexo BK/Sprint/Owner gerado automaticamente.
+- `2026-04-17`: anexo BK/Sprint/Owner gerado automaticamente.

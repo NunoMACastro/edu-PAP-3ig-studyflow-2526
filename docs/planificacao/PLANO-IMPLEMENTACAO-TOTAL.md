@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Objetivo
 Definir a linha temporal canónica de 12 sprints para executar os BK da StudyFlow com rastreabilidade RF/RNF, coerencia documental e preparacao para defesa PAP.
@@ -19,11 +19,11 @@ Definir a linha temporal canónica de 12 sprints para executar os BK da StudyFlo
 
 ## Calendario macro
 - `MF0` (Fundacoes de plataforma): janela `S01-S02` com `12` BK.
-- `MF1` (Nucleo funcional I): janela `S03-S04` com `12` BK.
+- `MF1` (Nucleo funcional I): janela `S03-S04` com `10` BK.
 - `MF2` (Nucleo funcional II): janela `S05-S06` com `12` BK.
 - `MF3` (Capacidades de produto I): janela `S07-S08` com `12` BK.
-- `MF4` (Capacidades de produto II): janela `S08-S09` com `12` BK.
-- `MF5` (Operacao e UX transversal): janela `S09-S10` com `12` BK.
+- `MF4` (Capacidades de produto II): janela `S08-S09` com `10` BK.
+- `MF5` (Operacao e UX transversal): janela `S09-S10` com `11` BK.
 - `MF6` (Qualidade, seguranca e performance): janela `S10-S11` com `12` BK.
 - `MF7` (Operacao, modularidade e compliance): janela `S11-S12` com `11` BK.
 - `MF8` (Compatibilidade e fecho PAP): janela `S12` com `11` BK.
@@ -39,4 +39,4 @@ Definir a linha temporal canónica de 12 sprints para executar os BK da StudyFlo
 - Gate S12: pacote final de defesa com auditoria automatica em PASS.
 
 ## Changelog
-- `2026-04-14`: plano reescrito para horizonte canónico de 12 sprints com gates S4/S8/S12.
+- `2026-04-17`: plano reescrito para horizonte canónico de 12 sprints com gates S4/S8/S12.

@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Contrato de avaliacao (pesos oficiais)
 | criterio | peso |
@@ -39,4 +39,4 @@
 3. Gates `S4/S8/S12` exigem evidencias anexas de cobertura e coerencia.
 
 ## Changelog
-- `2026-04-14`: contrato oficial de scorecard normalizado e alinhado com pesos 25/20/25/20/10.
+- `2026-04-17`: contrato oficial de scorecard normalizado e alinhado com pesos 25/20/25/20/10.

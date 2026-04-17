@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Objetivo
 Rastreabilidade bidirecional `RF -> BK` gerada automaticamente.
@@ -30,8 +30,6 @@ Rastreabilidade bidirecional `RF -> BK` gerada automaticamente.
 | RF14 | 1 | BK-MF1-02 |
 | RF15 | 1 | BK-MF1-03 |
 | RF16 | 1 | BK-MF1-04 |
-| RF17 | 1 | BK-MF1-05 |
-| RF18 | 1 | BK-MF1-06 |
 | RF19 | 1 | BK-MF1-07 |
 | RF20 | 1 | BK-MF1-08 |
 | RF21 | 1 | BK-MF1-09 |
@@ -72,10 +70,7 @@ Rastreabilidade bidirecional `RF -> BK` gerada automaticamente.
 | RF56 | 1 | BK-MF4-08 |
 | RF57 | 1 | BK-MF4-09 |
 | RF58 | 1 | BK-MF4-10 |
-| RF59 | 1 | BK-MF4-11 |
-| RF60 | 1 | BK-MF4-12 |
 | RF61 | 1 | BK-MF5-01 |
-| RF62 | 1 | BK-MF5-02 |
 
 ## Changelog
-- `2026-04-14`: anexo RF gerado automaticamente.
+- `2026-04-17`: anexo RF gerado automaticamente.

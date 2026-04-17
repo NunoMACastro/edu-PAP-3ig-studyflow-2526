@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Objetivo
 Formalizar ownership canónico dos BK da StudyFlow para evitar drift entre matriz, backlog, sprints e guias.
@@ -19,10 +19,10 @@ Formalizar ownership canónico dos BK da StudyFlow para evitar drift entre matri
 ## Distribuicao consolidada
 | owner | total_bk | esforco_unidades | responsabilidade |
 | --- | --- | --- | --- |
-| Daniel | 12 | 14 | Execucao tecnica e garantia de evidencia por BK |
-| Guilherme | 32 | 48 | Execucao tecnica e garantia de evidencia por BK |
-| Kaua | 25 | 35 | Execucao tecnica e garantia de evidencia por BK |
-| Natalia | 37 | 61 | Execucao tecnica e garantia de evidencia por BK |
+| Daniel | 11 | 13 | Execucao tecnica e garantia de evidencia por BK |
+| Guilherme | 31 | 47 | Execucao tecnica e garantia de evidencia por BK |
+| Kaua | 23 | 33 | Execucao tecnica e garantia de evidencia por BK |
+| Natalia | 36 | 60 | Execucao tecnica e garantia de evidencia por BK |
 
 ## Changelog
-- `2026-04-14`: distribuicao normalizada com base na matriz canonica e unidades de esforco S/M/L.
+- `2026-04-17`: distribuicao normalizada com base na matriz canonica e unidades de esforco S/M/L.

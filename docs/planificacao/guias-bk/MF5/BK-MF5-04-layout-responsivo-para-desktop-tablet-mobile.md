@@ -16,16 +16,16 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF5-05`
 - `guia_path`: `docs/planificacao/guias-bk/MF5/BK-MF5-04-layout-responsivo-para-desktop-tablet-mobile.md`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Contexto do BK
 - Entrega alvo: `Layout responsivo para desktop/tablet/mobile.` com rastreabilidade direta para `RNF02`.
 - Foco da macro `MF5`: Operacao e UX transversal.
-- Regra de governanca: manter IDs e contratos canónicos (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
+- Dominio semântico aplicado: `ux_accessibility`.
 
 ## Bloco pedagogico
 ### Objetivo
-Explicar e executar este BK com autonomia, incluindo caminho principal, validacao negativa e evidencia para defesa.
+Elevar qualidade de experiencia (usabilidade/acessibilidade) com criterios verificaveis.
 
 ### Pre-requisitos
 - Ler o requisito de origem em `docs/RF.md` ou `docs/RNF.md`.
@@ -33,14 +33,14 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 - Confirmar dependencias: `-`.
 
 ### Erros comuns
-- Fechar BK sem validar negativos obrigatorios.
-- Alterar metadados no guia sem sincronizar backlog/matriz.
-- Submeter evidence sem prova verificavel (log/output/screenshot/teste).
+- Validar formulário apenas no backend.
+- Quebrar contraste/foco teclado em componentes principais.
+- Fechar BK sem validar negativos obrigatórios.
 
 ### Check de compreensao
-- [ ] Sei justificar porque este BK existe no fluxo da macro.
-- [ ] Sei apontar o requisito `RNF02` e demostrar cobertura objetiva.
-- [ ] Sei executar pelo menos um cenario negativo relevante.
+- [ ] Sei explicar como `RNF02` se traduz em comportamento implementável.
+- [ ] Sei indicar o principal risco técnico deste BK e como o mitigar.
+- [ ] Sei demonstrar evidência objetiva de sucesso e falha controlada.
 
 ### Tempo estimado
 - `Core`: `45-75 min`
@@ -55,51 +55,59 @@ Explicar e executar este BK com autonomia, incluindo caminho principal, validaca
 
 ### Passos
 1. Confirmar no backlog e na matriz o escopo de `BK-MF5-04` e do requisito `RNF02`.
-2. Validar pre-condicoes tecnicas e dependencias declaradas: `-`.
-3. Definir contrato de entrada/saida do fluxo principal antes de escrever codigo.
-4. Implementar caminho principal com logs suficientes para evidencia tecnica.
-5. Executar smoke test do fluxo principal e registar resultado observavel.
-6. Executar pelo menos `3` cenarios negativos e validar respostas controladas.
-7. Aplicar reforco tecnico no risco dominante (seguranca/performance/robustez).
-8. Atualizar handoff do proximo BK com riscos, bloqueios e decisoes abertas.
+2. Validar pre-condicoes técnicas e dependencias declaradas: `-`.
+3. Modelar contratos de dados e estados para `comportamentos UX críticos (form, feedback, navegação)`.
+4. Implementar o caminho principal de `comportamentos UX críticos (form, feedback, navegação)`.
+5. Aplicar controlos para `acessibilidade básica (labels, foco, contraste)`.
+6. Preparar evidencia operacional: `capturas/relatório de usabilidade`.
+7. Executar smoke test completo do fluxo principal e registar o resultado.
+8. Executar negativos obrigatórios (`3`) e validar erro controlado.
+9. Adicionar reforço técnico orientado ao maior risco (segurança, performance ou robustez).
+10. Concluir handoff técnico com risco aberto, decisão tomada e próximo BK.
+
+### Cenarios negativos recomendados
+- entrada obrigatória em falta
+- estado inválido de negócio
+- permissão insuficiente
 
 ### Validacao
-- Smoke: minimo `1` execucao completa do fluxo principal.
-- Negativos: minimo `3` cenarios com erro controlado.
+- Smoke: mínimo `1` execução completa do fluxo principal.
+- Negativos: mínimo `3` cenários com erro controlado.
+- Fluxo do requisito cumpre contrato de entrada/saída.
+- Persistência e leitura dos dados mantêm consistência.
 - Tecnico: metadados alinhados entre matriz/backlog/guia.
-- Evidence: `pr`, `proof`, `neg` preenchidos com dados reais.
 
 ### Handoff
 - Proximo BK: `BK-MF5-05`
-- Registar: estado de dependencias, risco aberto e decisao tomada.
+- Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
-**Validador de payload de dominio**
+**Validação de formulário com feedback acessível**
 
 ```ts
-type Payload = Record<string, unknown>;
+type FormState = { email: string; nome: string };
 
-export function validarEntradaBK(payload: Payload) {
-  const obrigatorios = ['utilizadorId', 'contextoId'];
-  const emFalta = obrigatorios.filter((k) => !payload[k]);
-  if (emFalta.length) throw new Error(`BK BK-MF5-04: faltam campos ${emFalta.join(', ')}`);
-  return { ok: true, bkId: 'BK-MF5-04', payload };
+export function validarFormulario(state: FormState) {
+  const erros: string[] = [];
+  if (!state.nome.trim()) erros.push('Nome obrigatório');
+  if (!state.email.includes('@')) erros.push('Email inválido');
+  return { bkId: 'BK-MF5-04', req: 'RNF02', valido: erros.length === 0, erros };
 }
 ```
 
-Usar como barreira de entrada no caso principal para reduzir erros de integracao no BK.
+Cria feedback imediato e determinístico no fluxo de UI.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
 - Validacao smoke e negativos concluida sem falha bloqueante.
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
-- Evidence pronta para revisao tecnica e defesa PAP.
+- Evidence pronta para revisão técnica e defesa PAP.
 
 ## Evidence para PR/defesa
-- `pr`: link de PR/commit com resumo do que mudou.
-- `proof`: output/screenshot/log/teste que comprova comportamento esperado.
-- `neg`: evidencia dos cenarios negativos executados.
+- `pr`: link de PR/commit com resumo funcional do BK.
+- `proof`: output/screenshot/log/teste que comprova o caminho principal.
+- `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
 ## Changelog
-- `2026-04-14`: guia normalizado para contrato canónico com bloco pedagogico e operacional completos.
+- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Conversao S/M/L
 - `S`: 1 unidade
@@ -40,4 +40,4 @@
 - Bloqueios >48h com escalacao no scorecard.
 
 ## Changelog
-- `2026-04-14`: plano de sprints reduzido e sincronizado para horizonte canónico `S01..S12`.
+- `2026-04-17`: plano de sprints reduzido e sincronizado para horizonte canónico `S01..S12`.

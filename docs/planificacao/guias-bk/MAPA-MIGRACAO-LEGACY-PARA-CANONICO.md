@@ -4,7 +4,7 @@
 - `doc_id`: `MAPA-MIGRACAO`
 - `path`: `docs/planificacao/guias-bk/MAPA-MIGRACAO-LEGACY-PARA-CANONICO.md`
 - `owner`: `Nuno`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Nota
 - IDs BK mantidos sem alteracao.
@@ -29,8 +29,6 @@
 | MF1/BK-MF1-02.md | MF1/BK-MF1-02-criar-salas-de-estudo-com-outros-alunos-livres-ou-por-disciplina.md |
 | MF1/BK-MF1-03.md | MF1/BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md |
 | MF1/BK-MF1-04.md | MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md |
-| MF1/BK-MF1-05.md | MF1/BK-MF1-05-mini-testes-em-grupo-com-ranking-local.md |
-| MF1/BK-MF1-06.md | MF1/BK-MF1-06-co-edicao-de-apontamentos-com-historico.md |
 | MF1/BK-MF1-07.md | MF1/BK-MF1-07-criar-turmas.md |
 | MF1/BK-MF1-08.md | MF1/BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md |
 | MF1/BK-MF1-09.md | MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md |
@@ -71,10 +69,7 @@
 | MF4/BK-MF4-08.md | MF4/BK-MF4-08-auditoria-completa-materiais-ia-papeis.md |
 | MF4/BK-MF4-09.md | MF4/BK-MF4-09-configurar-modelos-de-ia-e-limites-de-uso.md |
 | MF4/BK-MF4-10.md | MF4/BK-MF4-10-definir-quotas-de-ia-por-aluno-turma-grupo-e-monitorizar-consumo.md |
-| MF4/BK-MF4-11.md | MF4/BK-MF4-11-painel-de-observabilidade-logs-metricas-alertas.md |
-| MF4/BK-MF4-12.md | MF4/BK-MF4-12-integracao-com-calendarios-ics-google.md |
-| MF5/BK-MF5-01.md | MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-co-edicao-com-permissoes.md |
-| MF5/BK-MF5-02.md | MF5/BK-MF5-02-single-sign-on-escolar-oauth-saml.md |
+| MF5/BK-MF5-01.md | MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-importacao-unidirecional-de-materiais-de-estudo.md |
 | MF5/BK-MF5-03.md | MF5/BK-MF5-03-interface-intuitiva-e-clara-para-alunos-e-professores.md |
 | MF5/BK-MF5-04.md | MF5/BK-MF5-04-layout-responsivo-para-desktop-tablet-mobile.md |
 | MF5/BK-MF5-05.md | MF5/BK-MF5-05-feedback-imediato-em-acoes-guardar-ia-uploads.md |
@@ -121,4 +116,4 @@
 | MF8/BK-MF8-11.md | MF8/BK-MF8-11-preparado-para-futura-traducao-i18n.md |
 
 ## Changelog
-- `2026-04-14`: migracao de naming concluida.
+- `2026-04-17`: migracao de naming concluida.

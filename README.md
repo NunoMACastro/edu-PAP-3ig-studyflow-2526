@@ -1,146 +1,114 @@
-# Study Flow - Plataforma Inteligente de Acompanhamento ao Estudo
+# StudyFlow
 
-O Study Flow é uma plataforma inteligente de acompanhamento ao estudo que combina organização académica, colaboração e assistentes de IA personalizados. Permite que cada aluno estude ao seu próprio ritmo, com materiais próprios ou fornecidos pelo professor, enquanto recebe resumos, explicações, quizzes, acompanhamento e planos de estudo adaptados ao seu nível, dificuldades e objetivos. A plataforma permite ao aluno definir os parâmetros da IA, gerir rotinas semanais e monitorizar o seu progresso ao longo do tempo.
+## Metadados
+- Nome da app: StudyFlow
+- Ano letivo: 2025/2026
+- Turma: 12º IG
+- Nome dos alunos: Natália, Daniel, Guilherme, Kaua
+- Orientador: Nuno Castro e Cláudia Marques
 
-Além do estudo individual, o Study Flow permite criar salas de estudo em grupo, onde os alunos partilham materiais, co-editam apontamentos, realizam mini-testes com ranking e utilizam uma IA conjunta baseada nos conteúdos dos membros. Em paralelo, professores podem criar turmas e disciplinas, publicar materiais oficiais, configurar a “voz” da IA docente, acompanhar progresso, propor projetos e testes, e apoiar os alunos com ferramentas pedagógicas avançadas.
+## 1. Visão Geral Extensa da Aplicação
+O StudyFlow é uma plataforma inteligente de aprendizagem que combina estudo individual, aprendizagem colaborativa e acompanhamento docente com suporte de IA. O projeto foi desenhado para reproduzir o funcionamento real de uma turma, sem perder personalização por aluno. Em vez de uma única IA genérica, o StudyFlow trabalha com contextos distintos, com regras próprias de conteúdo, permissões e comportamento pedagógico.
 
-A plataforma integra também ingestão segura de documentos, indexação automática, perfis de IA distintos (aluno, grupo, turma, professor) e guardrails de privacidade, assegurando que cada contexto utiliza apenas os materiais autorizados. Desenvolvido no âmbito da PAP de Informática de Gestão (2025/2026), o Study Flow foca-se numa experiência de estudo moderna, ética e alinhada com o funcionamento real das escolas.
+No contexto da PAP, o StudyFlow é uma aplicação orientada a impacto educativo: ajuda a organizar estudo, melhorar compreensão de conteúdos e criar continuidade entre materiais do professor, trabalho individual e sessões em grupo. A dimensão técnica do projeto está diretamente ligada à dimensão pedagógica.
 
----
+## 2. Problema que Resolve e Proposta de Valor
+O estudo digital em contexto escolar sofre com três problemas recorrentes: fragmentação de materiais, falta de adaptação ao aluno e fraca continuidade entre sala de aula e estudo autónomo. O StudyFlow resolve isso com:
 
-**Índice**
+- modo individual de IA por aluno/área de estudo;
+- modo turma/disciplina com “voz docente” (estilo pedagógico do professor);
+- modo coletivo para grupos de estudo;
+- ingestão estruturada de materiais escolares para suporte factual das respostas.
 
-1. [Contexto do Projeto](#contexto-do-projeto)
-2. [Visão e Objetivos](#visão-e-objetivos)
-3. [Público-Alvo e Stakeholders](#público-alvo-e-stakeholders)
-4. [Funcionalidades Principais](#funcionalidades-principais)
-5. [Requisitos Não Funcionais Essenciais](#requisitos-não-funcionais-essenciais)
-6. [Stack e Arquitetura Recomendada](#stack-e-arquitetura-recomendada)
-7. [Roadmap para o MVP (inclui todos os RF)](#roadmap-para-o-mvp-inclui-todos-os-rf)
-8. [Identificação e Créditos](#identificação-e-créditos)
-9. [Licença](#licença)
-10. [Changelog](#changelog)
+A proposta de valor é oferecer uma experiência única que respeita contexto pedagógico, melhora desempenho do aluno e mantém controlo docente sobre limites da IA.
 
----
+## 3. Público-Alvo e Stakeholders
+- alunos que estudam individualmente e em contexto de turma;
+- professores que querem estender a sua prática pedagógica para fora da aula;
+- turmas/grupos de estudo com necessidade de colaboração estruturada;
+- escola e coordenação pedagógica, interessadas em métricas de progresso e governança;
+- equipa técnica responsável por IA, segurança e operação.
 
-## Contexto do Projeto
+## 4. Funcionalidades Principais por Domínio Funcional
+### 4.1 Modo individual (obrigatório)
+- criação de áreas de estudo pessoais;
+- upload de materiais e geração de resumos/explicações/quizzes;
+- assistente privado por área com histórico de contexto e progresso.
 
--   Extensão digital da sala de aula que permite estudar sozinho, em grupo ou em contexto de turma com suporte de IA.
--   Concilia áreas privadas (aluno), turmas oficiais (professor) e salas colaborativas com guardrails de privacidade.
--   Oferece resumo, quizzes, explicações, cartões, gestão de projetos, notificações e métricas de aprendizagem.
+### 4.2 Modo turma/disciplina com voz docente (obrigatório)
+- assistente de disciplina com base em materiais oficiais;
+- “voz docente” no MVP como adaptação de estilo pedagógico, linguagem e rigor do professor;
+- limites de atuação definidos por regras da turma e conteúdos autorizados.
 
----
+### 4.3 Modo coletivo de estudo (obrigatório)
+- sessões de grupo com IA coletiva;
+- chat/notas/partilha em escopo de grupo;
+- apoio à resolução de dúvidas com referências ao material disponível.
 
-## Visão e Objetivos
+### 4.4 Gestão de materiais e integrações
+- ingestão e indexação de PDFs, DOCX e URLs;
+- separação de materiais por contexto (aluno, grupo, turma);
+- integração Drive em MVP controlado como importação unidirecional para estudo.
 
-1. Facilitar estudo personalizado com IA adaptada ao estilo de cada aluno ou professor.
-2. Fornecer ferramentas de colaboração e co-estudo com segurança e controlo de contexto.
-3. Apoiar professores na criação de materiais, projetos, testes e acompanhamento de dificuldades.
-4. Operar com compliance RGPD e transparência sobre a utilização de dados pela IA.
+### 4.5 Guardrails e qualidade de resposta
+- citações obrigatórias e controlo anti-hallucinação;
+- isolamento entre turmas e entre dados de alunos;
+- controlo de modelos e limites operacionais por contexto.
 
----
+### 4.6 Notificações e automações (escopo simplificado)
+- notificações essenciais de rotina/sessão/material novo;
+- simplificação intencional de preferências/canais avançados no MVP;
+- automação mínima necessária para valor pedagógico imediato.
 
-## Público-Alvo e Stakeholders
+Fontes funcionais canónicas: [docs/RF.md](docs/RF.md), [docs/planificacao/backlogs/BACKLOG-MVP.md](docs/planificacao/backlogs/BACKLOG-MVP.md).
 
--   **Alunos independentes** – criam áreas de estudo privadas, rotinas e objetivos.
--   **Alunos em turmas** – acedem aos materiais oficiais e comunicação docente.
--   **Professores** – gerem turmas, disciplinas, projetos, feedback e IA docente.
--   **Equipa pedagógica/escola** – acompanha métricas globais e conformidade.
--   **Administradores técnicos** – asseguram segurança, quotas de IA e monitorização.
+## 5. Arquitetura/Stack Recomendada (Alto Nível)
+- frontend modular para perfis de aluno, professor e administração;
+- backend por domínios (identidade, materiais, IA, turma, notificações);
+- pipeline de indexação e recuperação documental para respostas fundamentadas;
+- camada de guardrails para políticas por contexto;
+- observabilidade de uso, desempenho e segurança.
 
----
+## 6. Escopo MVP vs Pós-PAP
+### MVP (incluído)
+- dois modos obrigatórios plenamente ativos: individual e turma/disciplina;
+- modo coletivo funcional para sessões de grupo;
+- voz docente como adaptação de estilo pedagógico (sem exigência de clonagem tímbrica);
+- Drive em integração controlada de importação para estudo;
+- notificações essenciais e automações mínimas;
+- guardrails e isolamento de dados como condição de qualidade.
 
-## Funcionalidades Principais
+### Pós-PAP (adiado)
+- clonagem de voz de alta fidelidade tímbrica;
+- automações avançadas multicanal com quotas detalhadas;
+- integrações institucionais amplas (SSO completo, calendários avançados);
+- funcionalidades colaborativas de maior complexidade operacional.
 
-### Estudo Individual e Áreas Privadas
+## 7. Requisitos Não Funcionais Críticos
+- segurança de sessão, proteção de dados e separação de contextos;
+- desempenho consistente na consulta e resposta de IA;
+- fiabilidade operacional com logs e recuperação;
+- explicabilidade de respostas com referência a fontes;
+- documentação e rastreabilidade alinhadas com backlog e sprints.
 
--   Registo, login seguro, perfis editáveis e possibilidade de estudar sem turma (RF01–RF06).
--   Criação de áreas de estudo com upload de materiais (PDF, DOCX, URLs), definição da “voz” de IA e geração de resumos, explicações, quizzes e cartões (RF07–RF13).
--   Rotinas e objetivos semanais, histórico de estudo e acompanhamento por dificuldade.
+Fonte canónica RNF: [docs/RNF.md](docs/RNF.md).
 
-### Estudo em Grupo e Comunidade
+## 8. Roadmap Resumido por Fases
+1. fundação de conta, áreas de estudo e assistente individual;
+2. ativação de turmas/disciplina e voz docente;
+3. sessões coletivas, integrações essenciais e notificações simplificadas;
+4. reforço operacional, governança e preparação de defesa.
 
--   Salas de estudo partilhadas, materiais colaborativos, IA da sala baseada nos conteúdos dos membros, mini-testes com ranking e co-edição com histórico (RF14–RF18, RF41–RF44).
--   Guardrails para garantir que apenas membros têm acesso aos materiais do grupo.
+## 9. Créditos, Licença e Changelog
+### Créditos
+- Projeto: StudyFlow
+- Tipo: PAP - Curso Profissional de Informática de Gestão
+- Ano letivo: 2025/2026
+- Equipa: Natália, Daniel, Guilherme, Kaua
+- Orientador: Nuno Castro e Cláudia Marques
 
-### Professores, Turmas e Disciplinas
+### Licença
+Projeto académico para fins educativos.
 
--   Criação de turmas/disciplinas, submissão de materiais oficiais e personalização do tom da IA docente (RF19–RF25).
--   Publicação de avisos, salas de estudo guiado, acompanhamento de projetos e testes com critérios e rubricas (RF26–RF34).
--   Painéis de progresso por turma, identificação de dificuldades e recomendações de apoio (RF35–RF39).
-
-### Sistema e IA
-
--   Ingestão segura de materiais, indexação assíncrona, perfis IA diferenciados (aluno, turma, professor) e guardrails por contexto (RF31–RF38).
--   Critérios de aceitação definidos para resumos, quizzes, estudo em grupo, projetos e integração curricular (secção 13 dos RF).
-
-### Administração e Operação
-
--   Gestão de utilizadores/papéis, auditoria, configuração de modelos IA, limites de utilização, notificações e integrações (RF47–RF55).
--   Privacidade/RGPD: exportação/eliminação de dados, consentimentos e separação de contextos.
-
-> Detalhes completos em [`docs/RF.md`](docs/RF.md#índice).
-
----
-
-## Requisitos Não Funcionais Essenciais
-
--   **Usabilidade/Acessibilidade** – UI consistente para alunos e professores, responsiva, com validação preventiva e notificações discretas (RNF01–RNF07).
--   **Performance** – Dashboards ≤2s, respostas IA ≤4s, indexação assíncrona que não bloqueia UI e geração de quizzes em background (RNF08–RNF13).
--   **Segurança/Privacidade** – HTTPS, hashing seguro, cookies protegidos, sandbox de documentos, guardrails IA e isolamento entre turmas/alunos (RNF14–RNF20).
--   **Fiabilidade/Operação** – Backups diários, auto-recovery, logs estruturados e downtime <1h/mês (RNF21–RNF24).
--   **Manutenção/Qualidade** – Backend e frontend modulares, documentação técnica, testes automatizados, deploy com rollback e health-check (RNF25–RNF30).
--   **IA Ética** – Citações de origem, respeito por perfis distintos, limites definidos pelo professor e prevenção de hallucinações (RNF31–RNF37).
--   **Compatibilidade/Localização** – Browsers modernos, importação UTF-8, exportação PDF/Markdown, interface em PT-PT e preparação para i18n (RNF38–RNF44).
-
-> Detalhes completos em [`docs/RNF.md`](docs/RNF.md#índice).
-
----
-
-## Stack e Arquitetura Recomendada
-
-```
-frontend/   # Next.js/React + TypeScript, Tailwind, Zustand/TanStack Query
-backend/    # NestJS (Node.js) com Prisma, módulos por domínio (aluno, professor, IA, materiais)
-ia/         # Serviços dedicados à personalização, indexação e guardrails
-docs/       # RF, RNF, fluxos, arquitetura e decisões técnicas
-scripts/    # Ferramentas para ingestão, seeds e manutenção
-```
-
--   **Base de dados:** PostgreSQL + Redis para cache/sessões.
--   **IA:** OpenAI API combinada com microserviço Python/Node para indexação e personalização.
--   **Integrações:** Calendários (ICS/Google), Drive, SSO escolar (OAuth/SAML) no roadmap.
--   **DevOps:** Railway/Render/Fly.io, GitHub Actions, monitorização e backups automáticos.
-
----
-
-## Roadmap para o MVP (inclui todos os RF)
-
-1. **Fase 1 - Áreas Privadas:** autenticação, perfis, upload/indexação básica, assistente IA com citações e rotinas individuais.
-2. **Fase 2 - Turmas e Professores:** gestão de turmas/disciplines, materiais oficiais, IA docente, projetos, testes e painéis de progresso.
-3. **Fase 3 - Colaboração e Comunidade:** salas de estudo em grupo, mini-testes, co-edição, notificações e integrações iniciais.
-4. **Fase 4 - Operação e Escala:** administração avançada, guardrails refinados, integrações externas e otimizações de performance/observabilidade.
-
----
-
-## Identificação e Créditos
-
-> **Projeto:** Study Flow - Plataforma Inteligente de Acompanhamento ao Estudo  
-> **Tipo:** PAP - Curso Profissional de Informática de Gestão  
-> **Áreas:** Programação · Gestão · Base de Dados  
-> **Ano letivo:** 2025/2026  
-> **Versão:** 1.0  
-> **Equipa:** [Natália, Daniel, Kaua, Guilherme]  
-> **Professor Orientador:** Nuno Castro e Cláudia Marques
-
----
-
-## Licença
-
-Projeto académico destinado exclusivamente a fins educativos.
-
----
-
-## Changelog
-
--   **2024-04-27** – README reorganizado com estrutura uniforme, funcionalidades detalhadas e roadmap.
+### Changelog
+- 2026-04-17: README reescrito integralmente com estrutura canónica e explicitação dos 2 modos obrigatórios de IA + modo coletivo.

@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Objetivo
 Normalizar a planificacao da StudyFlow ao padrao OPSA/FaithFlix com governanca completa, cobertura rastreavel e foco pedagogico para 12o ano.
@@ -17,14 +17,16 @@ Normalizar a planificacao da StudyFlow ao padrao OPSA/FaithFlix com governanca c
 3. `sprints/PLANO-SPRINTS.md`
 4. `sprints/SCORECARD-SPRINTS.md`
 5. `sprints/GUIAO-DOCENTE-SEMANAL.md`
-6. `backlogs/MATRIZ-CANONICA-BK.md`
-7. `backlogs/BACKLOG-MVP.md`
-8. `backlogs/MF-VIEWS.md`
-9. `backlogs/CONTRATO-CAMPOS-BK.md`
-10. `backlogs/ANEXO-RF-PARA-BKS.md`
-11. `backlogs/ANEXO-RNF-PARA-BKS.md`
-12. `backlogs/ANEXO-BK-SPRINT-OWNER.md`
-13. `guias-bk/README.md`
+6. `sprints/GATES-S4-S8-S12.md`
+7. `backlogs/MATRIZ-CANONICA-BK.md`
+8. `backlogs/BACKLOG-MVP.md`
+9. `backlogs/MF-VIEWS.md`
+10. `backlogs/CONTRATO-CAMPOS-BK.md`
+11. `backlogs/ANEXO-RF-PARA-BKS.md`
+12. `backlogs/ANEXO-RNF-PARA-BKS.md`
+13. `backlogs/ANEXO-BK-SPRINT-OWNER.md`
+14. `guias-bk/README.md`
+15. `CONFORMIDADE-PLANIFICACAO.md`
 
 ## Regra de precedencia
 - Em conflito de dados operacionais, prevalece a ordem da hierarquia canónica.
@@ -35,8 +37,8 @@ Normalizar a planificacao da StudyFlow ao padrao OPSA/FaithFlix com governanca c
 1. Atualizar matriz.
 2. Regenerar backlog e MF views.
 3. Regenerar guias BK e anexos de rastreabilidade.
-4. Atualizar sprints e scorecard.
-5. Executar `scripts/validate-planificacao.sh`.
+4. Atualizar sprints/scorecard/gates.
+5. Executar `scripts/validate-planificacao.sh` e publicar relatorio de conformidade.
 
 ## Contrato de scorecard (pesos oficiais)
 - Cobertura/rastreabilidade: `25`
@@ -50,4 +52,4 @@ Normalizar a planificacao da StudyFlow ao padrao OPSA/FaithFlix com governanca c
 - Estado alvo apos normalizacao: `PASS` em auditoria automatica.
 
 ## Changelog
-- `2026-04-14`: estrutura/layout normalizados para alinhamento total com baseline OPSA+FaithFlix.
+- `2026-04-17`: estrutura/layout normalizados para alinhamento total com baseline OPSA+FaithFlix.

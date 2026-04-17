@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-14`
+- `last_updated`: `2026-04-17`
 
 ## Regra de naming oficial
 - Formato obrigatorio: `BK-MF*-**-slug-semantico.md`.
@@ -14,6 +14,11 @@
 
 ## Contrato de header obrigatorio
 - Campos obrigatorios: `bk_id`, `macro`, `owner`, `apoio`, `prioridade`, `estado`, `esforco`, `dependencias`, `rf_rnf`, `fase_documental`, `sprint`, `core_or_reforco`, `proximo_bk`, `guia_path`, `last_updated`.
+
+## Contrato semântico obrigatório
+- O `rf_rnf` do header deve estar refletido nos `Passos`, `Validacao` e `Cenarios negativos recomendados`.
+- O `Snippet tecnico aplicavel` deve pertencer ao dominio funcional do BK (nao sao aceites snippets genéricos).
+- `Evidence` deve incluir prova do caminho principal e prova de falha controlada.
 
 ## Indice completo
 ### MF0
@@ -35,8 +40,6 @@
 - [BK-MF1-02 - Criar salas de estudo com outros alunos (livres ou por disciplina).](MF1/BK-MF1-02-criar-salas-de-estudo-com-outros-alunos-livres-ou-por-disciplina.md)
 - [BK-MF1-03 - Partilhar materiais e apontamentos na sala.](MF1/BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md)
 - [BK-MF1-04 - IA partilhada da sala (mistura das áreas dos membros).](MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md)
-- [BK-MF1-05 - Mini-testes em grupo com ranking local.](MF1/BK-MF1-05-mini-testes-em-grupo-com-ranking-local.md)
-- [BK-MF1-06 - Co-edição de apontamentos com histórico.](MF1/BK-MF1-06-co-edicao-de-apontamentos-com-historico.md)
 - [BK-MF1-07 - Criar turmas.](MF1/BK-MF1-07-criar-turmas.md)
 - [BK-MF1-08 - Criar disciplinas e associá-las às turmas.](MF1/BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md)
 - [BK-MF1-09 - Submeter materiais da disciplina (versão oficial).](MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md)
@@ -83,12 +86,9 @@
 - [BK-MF4-08 - Auditoria completa (materiais, IA, papéis).](MF4/BK-MF4-08-auditoria-completa-materiais-ia-papeis.md)
 - [BK-MF4-09 - Configurar modelos de IA e limites de uso.](MF4/BK-MF4-09-configurar-modelos-de-ia-e-limites-de-uso.md)
 - [BK-MF4-10 - Definir quotas de IA por aluno/turma/grupo e monitorizar consumo.](MF4/BK-MF4-10-definir-quotas-de-ia-por-aluno-turma-grupo-e-monitorizar-consumo.md)
-- [BK-MF4-11 - Painel de observabilidade (logs, métricas, alertas).](MF4/BK-MF4-11-painel-de-observabilidade-logs-metricas-alertas.md)
-- [BK-MF4-12 - Integração com calendários (ICS/Google).](MF4/BK-MF4-12-integracao-com-calendarios-ics-google.md)
 
 ### MF5
-- [BK-MF5-01 - Integração com Drives (Google/OneDrive) para co-edição com permissões.](MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-co-edicao-com-permissoes.md)
-- [BK-MF5-02 - Single Sign-On escolar (OAuth/SAML).](MF5/BK-MF5-02-single-sign-on-escolar-oauth-saml.md)
+- [BK-MF5-01 - Integração com Drives (Google/OneDrive) para importação unidirecional de materiais de estudo.](MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-importacao-unidirecional-de-materiais-de-estudo.md)
 - [BK-MF5-03 - Interface intuitiva e clara para alunos e professores.](MF5/BK-MF5-03-interface-intuitiva-e-clara-para-alunos-e-professores.md)
 - [BK-MF5-04 - Layout responsivo para desktop/tablet/mobile.](MF5/BK-MF5-04-layout-responsivo-para-desktop-tablet-mobile.md)
 - [BK-MF5-05 - Feedback imediato em ações (guardar, IA, uploads).](MF5/BK-MF5-05-feedback-imediato-em-acoes-guardar-ia-uploads.md)
@@ -141,4 +141,4 @@
 - [BK-MF8-11 - Preparado para futura tradução i18n.](MF8/BK-MF8-11-preparado-para-futura-traducao-i18n.md)
 
 ## Changelog
-- `2026-04-14`: indice regenerado com naming semantico e layout canónico.
+- `2026-04-17`: indice regenerado com naming semantico e layout canónico.
