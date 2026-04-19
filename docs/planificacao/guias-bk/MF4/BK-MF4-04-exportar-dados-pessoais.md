@@ -12,11 +12,11 @@
 - `dependencias`: `-`
 - `rf_rnf`: `RF52`
 - `fase_documental`: `Fase 2`
-- `sprint`: `S08-S09`
+- `sprint`: `S08`
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF4-05`
 - `guia_path`: `docs/planificacao/guias-bk/MF4/BK-MF4-04-exportar-dados-pessoais.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `Exportar dados pessoais.` com rastreabilidade direta para `RF52`.
@@ -61,7 +61,7 @@ Cumprir direitos RGPD (exportacao, eliminacao, consentimento) com trilho auditav
 5. Aplicar controlos para `política de retenção e trilho de prova`.
 6. Preparar evidencia operacional: `registo de pedido + execução`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`3`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 3) e validar erro controlado.
 9. Adicionar reforço técnico orientado ao maior risco (segurança, performance ou robustez).
 10. Concluir handoff técnico com risco aberto, decisão tomada e próximo BK.
 
@@ -71,19 +71,25 @@ Cumprir direitos RGPD (exportacao, eliminacao, consentimento) com trilho auditav
 - consentimento retirado em uso ativo
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `3` cenários com erro controlado.
-- Pedido RGPD deixa trilho auditável com timestamp.
-- Exportação/eliminação trata dados relacionais sem fuga.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `3` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Pedido RGPD deixa trilho auditável com timestamp.
+- [ ] Exportação/eliminação trata dados relacionais sem fuga.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF4-05`
+- Proximo BK recomendado: `BK-MF4-05`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Registo de consentimento versionado**
+- BK vinculado: `BK-MF4-04`.
 
 ```ts
 type Consentimento = { userId: string; finalidade: string; aceite: boolean; versao: string };
@@ -95,10 +101,12 @@ export function registarConsentimento(c: Consentimento) {
 ```
 
 Cria trilho auditável obrigatório para RGPD.
+- Requisitos alvo deste BK: `RF52`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `3` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P0`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -107,5 +115,8 @@ Cria trilho auditável obrigatório para RGPD.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF4-05`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

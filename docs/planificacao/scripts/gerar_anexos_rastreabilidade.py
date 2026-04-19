@@ -5,7 +5,7 @@ from pathlib import Path
 from collections import defaultdict
 import re
 
-TODAY = "2026-04-17"
+TODAY = "2026-04-19"
 
 
 def split_md_row(line: str) -> list[str]:

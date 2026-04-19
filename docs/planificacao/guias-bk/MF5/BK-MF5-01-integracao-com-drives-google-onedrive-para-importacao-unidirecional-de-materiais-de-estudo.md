@@ -12,11 +12,11 @@
 - `dependencias`: `-`
 - `rf_rnf`: `RF61`
 - `fase_documental`: `Fase 2`
-- `sprint`: `S09-S10`
+- `sprint`: `S09`
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF5-03`
 - `guia_path`: `docs/planificacao/guias-bk/MF5/BK-MF5-01-integracao-com-drives-google-onedrive-para-importacao-unidirecional-de-materiais-de-estudo.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `Integração com Drives (Google/OneDrive) para importação unidirecional de materiais de estudo.` com rastreabilidade direta para `RF61`.
@@ -61,26 +61,32 @@ Integrar fontes externas em modo controlado, idempotente e observavel.
 5. Aplicar controlos para `idempotência e mapeamento de origem`.
 6. Preparar evidencia operacional: `histórico de sincronização`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`2`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 2) e validar erro controlado.
 
 ### Cenarios negativos recomendados
 - entrada obrigatória em falta
 - estado inválido de negócio
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `2` cenários com erro controlado.
-- Fluxo do requisito cumpre contrato de entrada/saída.
-- Persistência e leitura dos dados mantêm consistência.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `2` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Fluxo do requisito cumpre contrato de entrada/saída.
+- [ ] Persistência e leitura dos dados mantêm consistência.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF5-03`
+- Proximo BK recomendado: `BK-MF5-03`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Importação unidirecional com idempotência**
+- BK vinculado: `BK-MF5-01`.
 
 ```ts
 type FicheiroExterno = { sourceId: string; hash: string };
@@ -92,10 +98,12 @@ export function deduplicarImportacao(existente: Set<string>, f: FicheiroExterno)
 ```
 
 Evita duplicados na sincronização de materiais externos.
+- Requisitos alvo deste BK: `RF61`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `2` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P1`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -104,5 +112,8 @@ Evita duplicados na sincronização de materiais externos.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF5-03`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

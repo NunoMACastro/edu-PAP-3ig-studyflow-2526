@@ -4,7 +4,7 @@
 - `doc_id`: `GUIA-BK-MF6-11`
 - `bk_id`: `BK-MF6-11`
 - `macro`: `MF6`
-- `owner`: `Daniel`
+- `owner`: `Kaua`
 - `apoio`: `Kaua`
 - `prioridade`: `P1`
 - `estado`: `TODO`
@@ -12,11 +12,11 @@
 - `dependencias`: `-`
 - `rf_rnf`: `RNF21`
 - `fase_documental`: `Fase 3`
-- `sprint`: `S10-S11`
+- `sprint`: `S10`
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF6-12`
 - `guia_path`: `docs/planificacao/guias-bk/MF6/BK-MF6-11-backups-diarios-automaticos.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `Backups diários automáticos.` com rastreabilidade direta para `RNF21`.
@@ -61,26 +61,32 @@ Garantir continuidade operacional (logs, backups, recovery, deploy seguro).
 5. Aplicar controlos para `circuit-breaker/retry/rollback`.
 6. Preparar evidencia operacional: `runbook de falha + recuperação`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`2`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 2) e validar erro controlado.
 
 ### Cenarios negativos recomendados
 - entrada obrigatória em falta
 - estado inválido de negócio
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `2` cenários com erro controlado.
-- Fluxo do requisito cumpre contrato de entrada/saída.
-- Persistência e leitura dos dados mantêm consistência.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `2` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Fluxo do requisito cumpre contrato de entrada/saída.
+- [ ] Persistência e leitura dos dados mantêm consistência.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF6-12`
+- Proximo BK recomendado: `BK-MF6-12`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Health-check e retry controlado**
+- BK vinculado: `BK-MF6-11`.
 
 ```ts
 export function healthCheck(dbOk: boolean, filaOk: boolean) {
@@ -90,10 +96,12 @@ export function healthCheck(dbOk: boolean, filaOk: boolean) {
 ```
 
 Suporta operação e diagnóstico rápido em incidente.
+- Requisitos alvo deste BK: `RNF21`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `2` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P1`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -102,5 +110,8 @@ Suporta operação e diagnóstico rápido em incidente.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF6-12`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

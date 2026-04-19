@@ -12,11 +12,11 @@
 - `dependencias`: `-`
 - `rf_rnf`: `RNF43`
 - `fase_documental`: `Fase 3`
-- `sprint`: `S12`
+- `sprint`: `S07`
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF8-11`
 - `guia_path`: `docs/planificacao/guias-bk/MF8/BK-MF8-10-datas-no-formato-dd-mm-aaaa.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `Datas no formato dd/mm/aaaa.` com rastreabilidade direta para `RNF43`.
@@ -61,7 +61,7 @@ Garantir localizacao PT-PT e preparo i18n sem regressao funcional.
 5. Aplicar controlos para `normalização de datas/números e encoding`.
 6. Preparar evidencia operacional: `evidência de UI + ficheiros gerados`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`3`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 3) e validar erro controlado.
 9. Adicionar reforço técnico orientado ao maior risco (segurança, performance ou robustez).
 10. Concluir handoff técnico com risco aberto, decisão tomada e próximo BK.
 
@@ -71,19 +71,25 @@ Garantir localizacao PT-PT e preparo i18n sem regressao funcional.
 - permissão insuficiente
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `3` cenários com erro controlado.
-- Interface e datas seguem PT-PT sem exceções no fluxo.
-- Importação/exportação preserva UTF-8 e acentuação.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `3` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Interface e datas seguem PT-PT sem exceções no fluxo.
+- [ ] Importação/exportação preserva UTF-8 e acentuação.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF8-11`
+- Proximo BK recomendado: `BK-MF8-11`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Normalização de locale PT-PT**
+- BK vinculado: `BK-MF8-10`.
 
 ```ts
 export function formatarDataPT(dataIso: string) {
@@ -93,10 +99,12 @@ export function formatarDataPT(dataIso: string) {
 ```
 
 Garante coerência de apresentação de datas em PT-PT.
+- Requisitos alvo deste BK: `RNF43`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `3` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P0`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -105,5 +113,8 @@ Garante coerência de apresentação de datas em PT-PT.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF8-11`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

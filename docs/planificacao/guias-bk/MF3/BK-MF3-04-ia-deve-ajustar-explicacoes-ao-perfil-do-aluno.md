@@ -12,11 +12,11 @@
 - `dependencias`: `BK-MF1-01`
 - `rf_rnf`: `RF40`
 - `fase_documental`: `Fase 2`
-- `sprint`: `S07-S08`
+- `sprint`: `S06`
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF3-05`
 - `guia_path`: `docs/planificacao/guias-bk/MF3/BK-MF3-04-ia-deve-ajustar-explicacoes-ao-perfil-do-aluno.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `IA deve ajustar explicações ao perfil do aluno.` com rastreabilidade direta para `RF40`.
@@ -61,26 +61,32 @@ Garantir respostas de IA fundamentadas, com guardrails e adaptacao ao contexto a
 5. Aplicar controlos para `guardrails por perfil (aluno, turma, professor)`.
 6. Preparar evidencia operacional: `amostras de prompts/respostas com fontes`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`2`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 2) e validar erro controlado.
 
 ### Cenarios negativos recomendados
 - pedido sem contexto documental
 - pedido que tenta contornar guardrails
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `2` cenários com erro controlado.
-- Resposta referencia fontes reais (doc/página/secção).
-- Perfil de IA aplicado corresponde ao contexto do pedido.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `2` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Resposta referencia fontes reais (doc/página/secção).
+- [ ] Perfil de IA aplicado corresponde ao contexto do pedido.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF3-05`
+- Proximo BK recomendado: `BK-MF3-05`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Resposta IA com guardrails e fontes**
+- BK vinculado: `BK-MF3-04`.
 
 ```ts
 type Fonte = { doc: string; secao: string };
@@ -93,10 +99,12 @@ export function responderIA(perfil: 'ALUNO' | 'TURMA' | 'PROFESSOR', pergunta: s
 ```
 
 Força citação de fonte e aplica perfil de guardrail por contexto.
+- Requisitos alvo deste BK: `RF40`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `2` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P1`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -105,5 +113,8 @@ Força citação de fonte e aplica perfil de guardrail por contexto.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF3-05`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

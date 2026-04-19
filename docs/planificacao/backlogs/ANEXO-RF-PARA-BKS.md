@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Objetivo
 Rastreabilidade bidirecional `RF -> BK` gerada automaticamente.
@@ -73,4 +73,4 @@ Rastreabilidade bidirecional `RF -> BK` gerada automaticamente.
 | RF61 | 1 | BK-MF5-01 |
 
 ## Changelog
-- `2026-04-17`: anexo RF gerado automaticamente.
+- `2026-04-19`: anexo RF gerado automaticamente.

@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core|Reforco`
 - `proximo_bk`: `BK-...|-`
 - `guia_path`: `docs/planificacao/guias-bk/MF*/BK-MF*-**-slug-semantico.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 ## Bloco pedagogico
@@ -29,7 +29,9 @@
 ## Bloco operacional
 ### Entrada
 ### Passos
+### Cenarios negativos recomendados
 ### Validacao
+### Matriz minima de testes por prioridade
 ### Handoff
 
 ## Snippet tecnico aplicavel
@@ -39,4 +41,5 @@
 
 ## Criterios de aceite
 ## Evidence para PR/defesa
+## Proximo BK recomendado
 ## Changelog

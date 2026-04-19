@@ -12,11 +12,11 @@
 - `dependencias`: `BK-MF0-05`
 - `rf_rnf`: `RF48`
 - `fase_documental`: `Fase 2`
-- `sprint`: `S07-S08`
+- `sprint`: `S06`
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF4-01`
 - `guia_path`: `docs/planificacao/guias-bk/MF3/BK-MF3-12-alertar-alunos-sobre-rotinas-objetivos-e-sessoes-de-estudo-agendadas.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `Alertar alunos sobre rotinas, objetivos e sessões de estudo agendadas.` com rastreabilidade direta para `RF48`.
@@ -61,26 +61,32 @@ Orquestrar notificacoes por contexto com quotas, preferencias e prioridade contr
 5. Aplicar controlos para `respeito por preferências e quotas`.
 6. Preparar evidencia operacional: `eventos de envio, supressão e fallback`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`2`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 2) e validar erro controlado.
 
 ### Cenarios negativos recomendados
 - entrada obrigatória em falta
 - estado inválido de negócio
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `2` cenários com erro controlado.
-- Preferência de canal é respeitada por utilizador.
-- Quota máxima impede spam em eventos repetidos.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `2` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Preferência de canal é respeitada por utilizador.
+- [ ] Quota máxima impede spam em eventos repetidos.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF4-01`
+- Proximo BK recomendado: `BK-MF4-01`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Despacho de notificações com quota**
+- BK vinculado: `BK-MF3-12`.
 
 ```ts
 type Preferencia = { canal: 'app' | 'email' | 'push'; ativo: boolean };
@@ -92,10 +98,12 @@ export function podeNotificar(pref: Preferencia, enviadosHoje: number, quota: nu
 ```
 
 Impõe preferências e quota máxima antes do envio.
+- Requisitos alvo deste BK: `RF48`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `2` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P1`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -104,5 +112,8 @@ Impõe preferências e quota máxima antes do envio.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF4-01`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

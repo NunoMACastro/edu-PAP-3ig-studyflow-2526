@@ -4,7 +4,7 @@
 - `doc_id`: `GUIA-BK-MF5-06`
 - `bk_id`: `BK-MF5-06`
 - `macro`: `MF5`
-- `owner`: `Guilherme`
+- `owner`: `Kaua`
 - `apoio`: `Natalia`
 - `prioridade`: `P1`
 - `estado`: `TODO`
@@ -12,11 +12,11 @@
 - `dependencias`: `-`
 - `rf_rnf`: `RNF04`
 - `fase_documental`: `Fase 2`
-- `sprint`: `S09-S10`
+- `sprint`: `S08`
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF5-07`
 - `guia_path`: `docs/planificacao/guias-bk/MF5/BK-MF5-06-navegacao-consistente-entre-modulos.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `Navegação consistente entre módulos.` com rastreabilidade direta para `RNF04`.
@@ -61,26 +61,32 @@ Elevar qualidade de experiencia (usabilidade/acessibilidade) com criterios verif
 5. Aplicar controlos para `acessibilidade básica (labels, foco, contraste)`.
 6. Preparar evidencia operacional: `capturas/relatório de usabilidade`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`2`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 2) e validar erro controlado.
 
 ### Cenarios negativos recomendados
 - entrada obrigatória em falta
 - estado inválido de negócio
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `2` cenários com erro controlado.
-- Fluxo do requisito cumpre contrato de entrada/saída.
-- Persistência e leitura dos dados mantêm consistência.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `2` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Fluxo do requisito cumpre contrato de entrada/saída.
+- [ ] Persistência e leitura dos dados mantêm consistência.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF5-07`
+- Proximo BK recomendado: `BK-MF5-07`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Validação de formulário com feedback acessível**
+- BK vinculado: `BK-MF5-06`.
 
 ```ts
 type FormState = { email: string; nome: string };
@@ -94,10 +100,12 @@ export function validarFormulario(state: FormState) {
 ```
 
 Cria feedback imediato e determinístico no fluxo de UI.
+- Requisitos alvo deste BK: `RNF04`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `2` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P1`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -106,5 +114,8 @@ Cria feedback imediato e determinístico no fluxo de UI.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF5-07`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

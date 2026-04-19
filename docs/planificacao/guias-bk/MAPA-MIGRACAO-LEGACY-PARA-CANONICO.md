@@ -4,7 +4,7 @@
 - `doc_id`: `MAPA-MIGRACAO`
 - `path`: `docs/planificacao/guias-bk/MAPA-MIGRACAO-LEGACY-PARA-CANONICO.md`
 - `owner`: `Nuno`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Nota
 - IDs BK mantidos sem alteracao.
@@ -116,4 +116,4 @@
 | MF8/BK-MF8-11.md | MF8/BK-MF8-11-preparado-para-futura-traducao-i18n.md |
 
 ## Changelog
-- `2026-04-17`: migracao de naming concluida.
+- `2026-04-19`: migracao de naming concluida.

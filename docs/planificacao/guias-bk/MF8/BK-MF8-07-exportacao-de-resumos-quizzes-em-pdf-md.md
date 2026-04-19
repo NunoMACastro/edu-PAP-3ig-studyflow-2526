@@ -4,7 +4,7 @@
 - `doc_id`: `GUIA-BK-MF8-07`
 - `bk_id`: `BK-MF8-07`
 - `macro`: `MF8`
-- `owner`: `Natalia`
+- `owner`: `Guilherme`
 - `apoio`: `Guilherme`
 - `prioridade`: `P1`
 - `estado`: `TODO`
@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF8-08`
 - `guia_path`: `docs/planificacao/guias-bk/MF8/BK-MF8-07-exportacao-de-resumos-quizzes-em-pdf-md.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `Exportação de resumos/quizzes em PDF/MD.` com rastreabilidade direta para `RNF40`.
@@ -61,26 +61,32 @@ Assegurar ingestao/indexacao de materiais com rastreabilidade e isolamento por c
 5. Aplicar controlos para `validação de MIME/tamanho e isolamento por contexto`.
 6. Preparar evidencia operacional: `logs de parsing + índices criados`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`2`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 2) e validar erro controlado.
 
 ### Cenarios negativos recomendados
 - ficheiro com formato não suportado
 - upload acima do limite
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `2` cenários com erro controlado.
-- Documento indexado gera entradas pesquisáveis.
-- Falha de parsing não bloqueia interface do utilizador.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `2` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Documento indexado gera entradas pesquisáveis.
+- [ ] Falha de parsing não bloqueia interface do utilizador.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF8-08`
+- Proximo BK recomendado: `BK-MF8-08`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Pipeline de ingestão assíncrona**
+- BK vinculado: `BK-MF8-07`.
 
 ```ts
 type Material = { id: string; tipo: 'PDF' | 'DOCX' | 'URL'; bytes: number };
@@ -92,10 +98,12 @@ export function enfileirarIndexacao(material: Material) {
 ```
 
 Separa validação e indexação para não bloquear o utilizador.
+- Requisitos alvo deste BK: `RNF40`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `2` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P1`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -104,5 +112,8 @@ Separa validação e indexação para não bloquear o utilizador.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF8-08`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

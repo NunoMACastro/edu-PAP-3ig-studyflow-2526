@@ -6,12 +6,12 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Resultado global
 - Estado da auditoria: `PASS`
 - Score total: `100/100`
-- Meta oficial: `>=93/100`
+- Meta oficial: `>=97/100`
 - Resultado da meta: `ATINGIDA`
 
 ## Score por criterio
@@ -29,15 +29,14 @@
 - BK na matriz: `101`
 - BK no backlog: `101`
 - Guias BK: `101`
-- Orfaos RF/RNF: `0`
+- Missing artifacts: `0`
+- Broken links: `0`
 - Issues de guias: `0`
-- Issues semanticas de guias: `0`
-- Issues internas RF (indice/criterios): `0`
-- Artefactos de governanca em falta: `0`
+- Drift critical count: `0`
 
 ## Evidencia tecnica
 - Fonte de auditoria: `docs/planificacao/scripts/latest-audit.json`
-- Comando de validacao: `./scripts/validate-planificacao.sh`
+- Comando de validacao: `bash scripts/validate-planificacao.sh`
 
 ## Changelog
-- `2026-04-17`: relatorio atualizado automaticamente a partir da auditoria deterministica.
+- `2026-04-19`: relatorio atualizado automaticamente a partir da auditoria canonica.

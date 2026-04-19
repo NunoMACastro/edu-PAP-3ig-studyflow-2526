@@ -18,6 +18,7 @@
 
 ---
 
+<a id="1-usabilidade-e-acessibilidade"></a>
 ## 1. Usabilidade e Acessibilidade
 
 | Código | Requisito                                              | Tipo           | Prioridade |
@@ -32,6 +33,7 @@
 
 ---
 
+<a id="2-performance-e-escalabilidade"></a>
 ## 2. Performance e Escalabilidade
 
 | Código | Requisito                                                      | Tipo           | Prioridade |
@@ -45,6 +47,7 @@
 
 ---
 
+<a id="3-segurança-e-proteção-de-dados"></a>
 ## 3. Segurança e Proteção de Dados
 
 | Código | Requisito                                           | Tipo         | Prioridade |
@@ -59,6 +62,7 @@
 
 ---
 
+<a id="4-fiabilidade-backups-e-continuidade"></a>
 ## 4. Fiabilidade, Backups e Continuidade
 
 | Código | Requisito                             | Tipo        | Prioridade |
@@ -70,6 +74,7 @@
 
 ---
 
+<a id="5-manutenção-organização-e-qualidade"></a>
 ## 5. Manutenção, Organização e Qualidade
 
 | Código | Requisito                                                       | Tipo       | Prioridade |
@@ -83,6 +88,7 @@
 
 ---
 
+<a id="6-ia-ética-controlo-e-explicabilidade"></a>
 ## 6. IA - Ética, Controlo e Explicabilidade
 
 | Código | Requisito                                               | Tipo            | Prioridade |
@@ -97,6 +103,7 @@
 
 ---
 
+<a id="7-compatibilidade-integração-e-formatos"></a>
 ## 7. Compatibilidade, Integração e Formatos
 
 | Código | Requisito                                     | Tipo            | Prioridade |
@@ -108,6 +115,7 @@
 
 ---
 
+<a id="8-localização-e-preferências"></a>
 ## 8. Localização e Preferências
 
 | Código | Requisito                            | Tipo        | Prioridade |
@@ -118,6 +126,7 @@
 
 ---
 
+<a id="9-stack-tecnológica-recomendada"></a>
 ## 9. Stack Tecnológica Recomendada
 
 ### Frontend
@@ -148,12 +157,14 @@
 
 ---
 
+<a id="licença"></a>
 ## Licença
 
 Projeto académico orientado a fins educativos.
 
 ---
 
+<a id="changelog"></a>
 ## Changelog
 
 -   **2024-06-15** - Versão inicial dos Requisitos Não Funcionais (RNF) e Stack Tecnológica Recomendada.

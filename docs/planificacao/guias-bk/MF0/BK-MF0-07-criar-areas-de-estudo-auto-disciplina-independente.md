@@ -4,7 +4,7 @@
 - `doc_id`: `GUIA-BK-MF0-07`
 - `bk_id`: `BK-MF0-07`
 - `macro`: `MF0`
-- `owner`: `Natalia`
+- `owner`: `Guilherme`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
 - `estado`: `TODO`
@@ -12,11 +12,11 @@
 - `dependencias`: `BK-MF0-03`
 - `rf_rnf`: `RF07`
 - `fase_documental`: `Fase 1`
-- `sprint`: `S01-S02`
+- `sprint`: `S01`
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-08`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-07-criar-areas-de-estudo-auto-disciplina-independente.md`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Contexto do BK
 - Entrega alvo: `Criar “Áreas de Estudo” (auto-disciplina independente).` com rastreabilidade direta para `RF07`.
@@ -61,7 +61,7 @@ Implementar operacao professor/turma/disciplina com controlo de acesso e curador
 5. Aplicar controlos para `autorização por inscrição e papel docente`.
 6. Preparar evidencia operacional: `evidência de acesso autorizado/negado`.
 7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar negativos obrigatórios (`3`) e validar erro controlado.
+8. Executar cenarios negativos obrigatorios (minimo 3) e validar erro controlado.
 9. Adicionar reforço técnico orientado ao maior risco (segurança, performance ou robustez).
 10. Concluir handoff técnico com risco aberto, decisão tomada e próximo BK.
 
@@ -71,19 +71,25 @@ Implementar operacao professor/turma/disciplina com controlo de acesso e curador
 - permissão insuficiente
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `3` cenários com erro controlado.
-- Fluxo do requisito cumpre contrato de entrada/saída.
-- Persistência e leitura dos dados mantêm consistência.
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `3` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Fluxo do requisito cumpre contrato de entrada/saída.
+- [ ] Persistência e leitura dos dados mantêm consistência.
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `BK-MF0-08`
+- Proximo BK recomendado: `BK-MF0-08`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **Autorização por turma e disciplina**
+- BK vinculado: `BK-MF0-07`.
 
 ```ts
 type Contexto = { turmaId: string; disciplinaId: string; papel: 'ALUNO' | 'PROFESSOR' };
@@ -96,10 +102,12 @@ export function autorizarContexto(c: Contexto) {
 ```
 
 Evita operações docentes fora do contexto da turma/disciplina.
+- Requisitos alvo deste BK: `RF07`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `3` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`P0`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -108,5 +116,8 @@ Evita operações docentes fora do contexto da turma/disciplina.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
 
+## Proximo BK recomendado
+`BK-MF0-08`
+
 ## Changelog
-- `2026-04-17`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.

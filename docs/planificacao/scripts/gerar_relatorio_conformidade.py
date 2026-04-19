@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from pathlib import Path
 import json
 import sys
+from pathlib import Path
 
-TODAY = "2026-04-17"
-
-
-def score_dim(pass_flag: bool, full: int, partial: int) -> int:
-    return full if pass_flag else partial
+TODAY = "2026-04-19"
 
 
 def main() -> None:
@@ -19,31 +15,14 @@ def main() -> None:
     audit_path = Path(sys.argv[1]).resolve()
     data = json.loads(audit_path.read_text(encoding="utf-8"))
 
-    st = data.get("status", {})
-    coverage_pass = bool(st.get("coverage_pass"))
-    consistency_pass = bool(st.get("consistency_pass"))
-    guides_pass = bool(st.get("guides_pass"))
-    governance_pass = bool(st.get("governance_pass"))
-
-    # Adequacao ao 12o acompanha sobretudo qualidade dos guias e coerencia de sprints.
-    adequacao_pass = guides_pass and consistency_pass
-
-    s_cov = score_dim(coverage_pass, 25, 15)
-    s_cons = score_dim(consistency_pass, 20, 12)
-    s_ped = score_dim(guides_pass, 25, 14)
-    s_adq = score_dim(adequacao_pass, 20, 12)
-    s_gov = score_dim(governance_pass, 10, 5)
-    total = s_cov + s_cons + s_ped + s_adq + s_gov
-
-    status_text = "PASS" if bool(st.get("overall_pass")) else "FAIL"
+    status = data.get("status", {})
+    score = data.get("governance", {}).get("score", {})
+    breakdown = score.get("breakdown", {})
+    total = score.get("total", 0)
 
     counts = data.get("counts", {})
-    missing_artifacts = data.get("governance", {}).get("missing_artifacts", [])
-    missing_rf = len(data.get("coverage", {}).get("missing_rf_matrix", [])) + len(data.get("coverage", {}).get("missing_rf_backlog", []))
-    missing_rnf = len(data.get("coverage", {}).get("missing_rnf_matrix", [])) + len(data.get("coverage", {}).get("missing_rnf_backlog", []))
-    guide_issues = len(data.get("guides_quality", {}).get("guide_header_issues", [])) + len(data.get("guides_quality", {}).get("guide_content_issues", []))
-    semantic_guide_issues = len(data.get("guides_quality", {}).get("guide_semantic_issues", []))
-    rf_internal_issues = len(data.get("consistency", {}).get("rf_internal_issues", []))
+    consistency = data.get("consistency", {})
+    guides = data.get("guides_quality", {})
 
     plan_root = Path(__file__).resolve().parents[1]
     out_path = plan_root / "CONFORMIDADE-PLANIFICACAO.md"
@@ -59,19 +38,19 @@ def main() -> None:
 - `last_updated`: `{TODAY}`
 
 ## Resultado global
-- Estado da auditoria: `{status_text}`
+- Estado da auditoria: `{'PASS' if status.get('overall_pass') else 'FAIL'}`
 - Score total: `{total}/100`
-- Meta oficial: `>=93/100`
-- Resultado da meta: `{'ATINGIDA' if total >= 93 else 'NAO ATINGIDA'}`
+- Meta oficial: `>=97/100`
+- Resultado da meta: `{'ATINGIDA' if total >= 97 else 'NAO ATINGIDA'}`
 
 ## Score por criterio
 | criterio | peso | score |
 | --- | --- | --- |
-| Cobertura/rastreabilidade | 25 | {s_cov} |
-| Coerencia documental | 20 | {s_cons} |
-| Pedagogia/guidance/step-by-step | 25 | {s_ped} |
-| Adequacao ao 12o | 20 | {s_adq} |
-| Governanca/avaliacao | 10 | {s_gov} |
+| Cobertura/rastreabilidade | 25 | {breakdown.get('Cobertura/rastreabilidade', 0)} |
+| Coerencia documental | 20 | {breakdown.get('Coerencia documental', 0)} |
+| Pedagogia/guidance/step-by-step | 25 | {breakdown.get('Pedagogia/guidance/step-by-step', 0)} |
+| Adequacao ao 12o | 20 | {breakdown.get('Adequacao ao 12o', 0)} |
+| Governanca/avaliacao | 10 | {breakdown.get('Governanca/avaliacao', 0)} |
 
 ## Evidencias quantitativas
 - RF detectados: `{counts.get('rf_docs', 0)}`
@@ -79,18 +58,17 @@ def main() -> None:
 - BK na matriz: `{counts.get('matriz_bk', 0)}`
 - BK no backlog: `{counts.get('backlog_bk', 0)}`
 - Guias BK: `{counts.get('guide_bk', 0)}`
-- Orfaos RF/RNF: `{missing_rf + missing_rnf}`
-- Issues de guias: `{guide_issues}`
-- Issues semanticas de guias: `{semantic_guide_issues}`
-- Issues internas RF (indice/criterios): `{rf_internal_issues}`
-- Artefactos de governanca em falta: `{len(missing_artifacts)}`
+- Missing artifacts: `{len(consistency.get('missing_artifacts', []))}`
+- Broken links: `{len(consistency.get('broken_links_docs', []))}`
+- Issues de guias: `{len(guides.get('guide_header_issues', [])) + len(guides.get('guide_content_issues', []))}`
+- Drift critical count: `{consistency.get('drift_critical_count', 0)}`
 
 ## Evidencia tecnica
 - Fonte de auditoria: `docs/planificacao/scripts/latest-audit.json`
-- Comando de validacao: `./scripts/validate-planificacao.sh`
+- Comando de validacao: `bash scripts/validate-planificacao.sh`
 
 ## Changelog
-- `{TODAY}`: relatorio atualizado automaticamente a partir da auditoria deterministica.
+- `{TODAY}`: relatorio atualizado automaticamente a partir da auditoria canonica.
 """
 
     out_path.write_text(content, encoding="utf-8")

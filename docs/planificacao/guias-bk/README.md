@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Regra de naming oficial
 - Formato obrigatorio: `BK-MF*-**-slug-semantico.md`.
@@ -19,6 +19,7 @@
 - O `rf_rnf` do header deve estar refletido nos `Passos`, `Validacao` e `Cenarios negativos recomendados`.
 - O `Snippet tecnico aplicavel` deve pertencer ao dominio funcional do BK (nao sao aceites snippets genéricos).
 - `Evidence` deve incluir prova do caminho principal e prova de falha controlada.
+- Politica de negativos: `P0=>3`, `P1=>2`, `P2=>1`.
 
 ## Indice completo
 ### MF0
@@ -141,4 +142,4 @@
 - [BK-MF8-11 - Preparado para futura tradução i18n.](MF8/BK-MF8-11-preparado-para-futura-traducao-i18n.md)
 
 ## Changelog
-- `2026-04-17`: indice regenerado com naming semantico e layout canónico.
+- `2026-04-19`: indice regenerado com naming semantico e layout canónico.

@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import re
+import subprocess
+import sys
 import unicodedata
 from collections import Counter, defaultdict
 
-TODAY = "2026-04-17"
+TODAY = "2026-04-19"
+
+NEG_MIN_BY_PRIORITY = {"P0": 3, "P1": 2, "P2": 1}
 
 SPRINT_WINDOW_BY_MACRO = {
     "MF0": "S01-S02",
@@ -63,7 +68,7 @@ def parse_global_rows_from_backlog(path: Path) -> list[dict[str, str]]:
     lines = path.read_text(encoding="utf-8").splitlines()
     header_idx = None
     for i, line in enumerate(lines):
-        if line.startswith("| bk_id | macro |") and "| titulo |" in line and "| owner |" in line:
+        if line.strip().startswith("|") and "bk_id" in line and "macro" in line and "titulo" in line and "owner" in line and "guia" in line:
             header_idx = i
             break
     if header_idx is None:
@@ -117,6 +122,7 @@ def normalize_rows(raw_rows: list[dict[str, str]]) -> list[dict[str, str]]:
                 "dependencias": g("dependencias", "-"),
                 "rf_rnf": g("rf_rnf"),
                 "fase_documental": g("fase_documental", "Fase 1"),
+                "sprint": g("sprint", sprint_window(macro)),
                 "proximo_bk": proximo,
             }
         )
@@ -165,6 +171,10 @@ def sprint_window(macro: str) -> str:
     return SPRINT_WINDOW_BY_MACRO.get(macro, "S12")
 
 
+def assigned_sprint(row: dict[str, str]) -> str:
+    return row.get("sprint", "").strip() or sprint_window(row["macro"])
+
+
 def guide_filename(row: dict[str, str]) -> str:
     return f"{row['bk_id']}-{slugify(row['titulo'])}.md"
 
@@ -179,6 +189,43 @@ def guide_path(row: dict[str, str]) -> str:
 
 def effort_units(esforco: str) -> int:
     return {"S": 1, "M": 2, "L": 3}.get(esforco.strip(), 1)
+
+
+def parse_sprint_window_tokens(window: str) -> list[str]:
+    raw = window.strip()
+    if not raw:
+        return []
+    m = re.fullmatch(r"(S\d{2})-(S\d{2})", raw)
+    if m:
+        start = int(m.group(1)[1:])
+        end = int(m.group(2)[1:])
+        if start > end:
+            return []
+        return [f"S{i:02d}" for i in range(start, end + 1)]
+    if re.fullmatch(r"S\d{2}(,S\d{2})*", raw):
+        return [p.strip() for p in raw.split(",") if p.strip()]
+    return []
+
+
+def format_number(value: float) -> str:
+    rounded = round(value, 2)
+    if abs(rounded - int(rounded)) < 1e-9:
+        return str(int(rounded))
+    text = f"{rounded:.2f}"
+    return text.rstrip("0").rstrip(".")
+
+
+def compute_sprint_loads(rows: list[dict[str, str]]) -> dict[str, float]:
+    loads: dict[str, float] = {sprint: 0.0 for sprint, *_ in SPRINTS}
+    for row in rows:
+        tokens = parse_sprint_window_tokens(assigned_sprint(row))
+        if not tokens:
+            continue
+        share = effort_units(row["esforco"]) / len(tokens)
+        for token in tokens:
+            if token in loads:
+                loads[token] += share
+    return loads
 
 
 def first_req(reqs: str) -> str:
@@ -237,6 +284,260 @@ def classify_domain(row: dict[str, str]) -> str:
     if req in {"RF61", "RNF41"} or any(k in titulo for k in ["drive", "onedrive", "ics", "lms", "integração"]):
         return "integrations"
     return "learning_foundation"
+
+
+def classify_core_dual(row: dict[str, str]) -> tuple[str, str, str, str, str]:
+    domain = classify_domain(row)
+    mapping = {
+        "ai_orchestration": (
+            "CORE-IA",
+            "AprendizagemInteligente",
+            "taxa_resposta_util",
+            "tempo_resposta_p95",
+            "impacto direto no tutor de IA e personalizacao academica",
+        ),
+        "materials_ingestion": (
+            "CORE-IA",
+            "AprendizagemInteligente",
+            "taxa_resposta_util",
+            "tempo_resposta_p95",
+            "materiais indexados alimentam diretamente a qualidade das respostas",
+        ),
+        "classroom_teacher": (
+            "CORE-COM",
+            "OperacaoPedagogica",
+            "adesao_turma_semana",
+            "taxa_tarefas_concluidas",
+            "impacto direto na operacao de turma e disciplina",
+        ),
+        "projects_assessment": (
+            "CORE-COM",
+            "OperacaoPedagogica",
+            "adesao_turma_semana",
+            "taxa_tarefas_concluidas",
+            "projetos e avaliacao sao entrega pedagogica central da app",
+        ),
+        "learning_foundation": (
+            "CORE-HIBRIDO",
+            "AprendizagemComEngajamento",
+            "tempo_estudo_semana",
+            "taxa_retencao_30d",
+            "fundacao funcional com impacto simultaneo em aprendizagem e uso recorrente",
+        ),
+        "collaboration": (
+            "CORE-HIBRIDO",
+            "AprendizagemComEngajamento",
+            "tempo_estudo_semana",
+            "taxa_retencao_30d",
+            "colaboracao aumenta engagement e reforca aprendizagem assistida",
+        ),
+        "notifications": (
+            "CORE-HIBRIDO",
+            "AprendizagemComEngajamento",
+            "tempo_estudo_semana",
+            "taxa_retencao_30d",
+            "notificacoes influenciam disciplina de estudo e continuidade",
+        ),
+        "privacy_rgpd": (
+            "CORE-HIBRIDO",
+            "ConfiancaProduto",
+            "taxa_consentimento_ativo",
+            "taxa_retencao_30d",
+            "privacidade reforca confianca e continuidade de uso",
+        ),
+        "admin_governance": (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            "governanca operacional sem entrega core direta ao utilizador final",
+        ),
+        "ux_accessibility": (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            "qualidade de interface e acessibilidade como habilitador transversal",
+        ),
+        "performance_scalability": (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            "performance/escalabilidade suportam continuidade, sem feature core isolada",
+        ),
+        "security_hardening": (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            "seguranca e protecao de dados como camada estrutural de suporte",
+        ),
+        "reliability_ops": (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            "operacao e continuidade sem output core funcional direto",
+        ),
+        "quality_architecture": (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            "modularidade e testes sustentam o produto transversalmente",
+        ),
+        "compatibility_browser": (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            "compatibilidade multi-browser e requisito transversal de sustentacao",
+        ),
+        "localization": (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            "localizacao e i18n como habilitador operacional da experiencia",
+        ),
+        "integrations": (
+            "CORE-HIBRIDO",
+            "AprendizagemComEngajamento",
+            "tempo_estudo_semana",
+            "taxa_retencao_30d",
+            "integracoes ampliam utilidade real da app no fluxo de estudo",
+        ),
+    }
+    base = mapping.get(
+        domain,
+        (
+            "CORE-HIBRIDO",
+            "AprendizagemComEngajamento",
+            "tempo_estudo_semana",
+            "taxa_retencao_30d",
+            "impacto transversal no valor central da app",
+        ),
+    )
+    override = row.get("classe_core_dual", "").strip()
+    if not override or override == base[0]:
+        return base
+    if override == "CORE-IA":
+        return (
+            "CORE-IA",
+            "AprendizagemInteligente",
+            "taxa_resposta_util",
+            "tempo_resposta_p95",
+            f"reclassificacao deterministica para core dual no dominio {domain}",
+        )
+    if override == "CORE-COM":
+        return (
+            "CORE-COM",
+            "OperacaoPedagogica",
+            "adesao_turma_semana",
+            "taxa_tarefas_concluidas",
+            f"reclassificacao deterministica para core dual no dominio {domain}",
+        )
+    if override == "SUPORTE":
+        return (
+            "SUPORTE",
+            "FundacaoQualidade",
+            "taxa_incidentes_criticos",
+            "taxa_conformidade_gates",
+            f"reclassificacao deterministica para suporte no dominio {domain}",
+        )
+    return (
+        "CORE-HIBRIDO",
+        "AprendizagemComEngajamento",
+        "tempo_estudo_semana",
+        "taxa_retencao_30d",
+        f"reclassificacao deterministica para core dual no dominio {domain}",
+    )
+
+
+def compute_core_dual_percent_by_sprint(rows: list[dict[str, str]]) -> dict[str, float]:
+    total: dict[str, float] = {sprint: 0.0 for sprint, *_ in SPRINTS}
+    core: dict[str, float] = {sprint: 0.0 for sprint, *_ in SPRINTS}
+    for row in rows:
+        tokens = parse_sprint_window_tokens(assigned_sprint(row))
+        if not tokens:
+            continue
+        weight = effort_units(row["esforco"]) / len(tokens)
+        classe, *_ = classify_core_dual(row)
+        for token in tokens:
+            if token not in total:
+                continue
+            total[token] += weight
+            if classe != "SUPORTE":
+                core[token] += weight
+
+    out: dict[str, float] = {}
+    for sprint in total:
+        if total[sprint] <= 0:
+            out[sprint] = 100.0
+        else:
+            out[sprint] = round((core[sprint] / total[sprint]) * 100, 1)
+    return out
+
+
+def load_constraints_contract(plan_root: Path) -> dict:
+    path = plan_root / "scripts" / "plan_constraints_studyflow.json"
+    if not path.exists():
+        raise FileNotFoundError(f"Contrato de constraints nao encontrado: {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def run_solver_and_load(plan_root: Path) -> dict:
+    solver_script = plan_root / "scripts" / "solver_replaneamento.py"
+    solver_out = plan_root / "scripts" / "solver_reassignments.json"
+    if not solver_script.exists():
+        raise FileNotFoundError(f"Solver de replaneamento nao encontrado: {solver_script}")
+    subprocess.run(
+        [sys.executable, str(solver_script), "--out", str(solver_out)],
+        check=True,
+        cwd=solver_script.parent,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(solver_out.read_text(encoding="utf-8"))
+
+
+def apply_solver_assignments(rows: list[dict[str, str]], solver_payload: dict) -> list[dict[str, str]]:
+    assignments = solver_payload.get("assignments", [])
+    by_bk = {a.get("bk_id", ""): a for a in assignments if a.get("bk_id")}
+    out: list[dict[str, str]] = []
+    missing: list[str] = []
+    for row in rows:
+        bk_id = row["bk_id"]
+        data = by_bk.get(bk_id)
+        if not data:
+            missing.append(bk_id)
+            continue
+        row = dict(row)
+        row["owner"] = data.get("owner", row["owner"])
+        row["sprint"] = data.get("sprint", row["sprint"])
+        row["classe_core_dual"] = data.get("classe_core_dual", "")
+        out.append(row)
+    if missing:
+        raise RuntimeError(f"Solver sem assignments para BK: {', '.join(missing[:10])}")
+    return out
+
+
+def macro_window_from_rows(rows: list[dict[str, str]], macro: str) -> str:
+    idxs: list[int] = []
+    for row in rows:
+        if row["macro"] != macro:
+            continue
+        for token in parse_sprint_window_tokens(assigned_sprint(row)):
+            if re.fullmatch(r"S\d{2}", token):
+                idxs.append(int(token[1:]))
+    if not idxs:
+        return sprint_window(macro)
+    lo = min(idxs)
+    hi = max(idxs)
+    if lo == hi:
+        return f"S{lo:02d}"
+    return f"S{lo:02d}-S{hi:02d}"
 
 
 def domain_objective(domain: str) -> str:
@@ -572,7 +873,7 @@ def render_guide(row: dict[str, str]) -> str:
     deps = parse_items(row["dependencias"])
     deps_fmt = ", ".join(deps) if deps else "-"
     req = first_req(row["rf_rnf"])
-    min_neg = 3 if prioridade == "P0" else 2
+    min_neg = NEG_MIN_BY_PRIORITY.get(prioridade, 1)
     domain = classify_domain(row)
     objetivo = domain_objective(domain)
     erros = domain_errors(domain)
@@ -588,7 +889,7 @@ def render_guide(row: dict[str, str]) -> str:
         f"Aplicar controlos para `{acao_controle}`.",
         f"Preparar evidencia operacional: `{acao_evidencia}`.",
         "Executar smoke test completo do fluxo principal e registar o resultado.",
-        f"Executar negativos obrigatórios (`{min_neg}`) e validar erro controlado.",
+        f"Executar cenarios negativos obrigatorios (minimo {min_neg}) e validar erro controlado.",
     ]
     if prioridade == "P0":
         steps.extend(
@@ -618,7 +919,7 @@ def render_guide(row: dict[str, str]) -> str:
 - `dependencias`: `{deps_fmt}`
 - `rf_rnf`: `{row['rf_rnf']}`
 - `fase_documental`: `{row['fase_documental']}`
-- `sprint`: `{sprint_window(macro)}`
+- `sprint`: `{assigned_sprint(row)}`
 - `core_or_reforco`: `{core_or_reforco(prioridade)}`
 - `proximo_bk`: `{row['proximo_bk']}`
 - `guia_path`: `{guide_path(row)}`
@@ -665,28 +966,36 @@ def render_guide(row: dict[str, str]) -> str:
 {negativos_md}
 
 ### Validacao
-- Smoke: mínimo `1` execução completa do fluxo principal.
-- Negativos: mínimo `{min_neg}` cenários com erro controlado.
-{validacao_md}
-- Tecnico: metadados alinhados entre matriz/backlog/guia.
+- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
+- [ ] Negativos: minimo `{min_neg}` cenarios com resultado controlado.
+- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
+{chr(10).join(f"- [ ] {v}" for v in validacoes)}
+
+### Matriz minima de testes por prioridade
+- `P0`: unit + integration + e2e + 3 negativos.
+- `P1`: unit/integration + 2 negativos.
+- `P2`: teste focal + 1 negativo.
 
 ### Handoff
-- Proximo BK: `{row['proximo_bk']}`
+- Proximo BK recomendado: `{row['proximo_bk']}`
 - Registar bloqueios, decisão técnica e risco residual.
 - Escalar no scorecard se bloqueio >48h.
 
 ## Snippet tecnico aplicavel
 **{snippet_name}**
+- BK vinculado: `{bk_id}`.
 
 ```{snippet_lang}
 {snippet_code.rstrip()}
 ```
 
 {snippet_desc}
+- Requisitos alvo deste BK: `{row['rf_rnf']}`.
 
 ## Criterios de aceite
 - Fluxo principal implementado no scope definido.
-- Validacao smoke e negativos concluida sem falha bloqueante.
+- Cenarios negativos concluidos: minimo `{min_neg}` com resultado controlado.
+- Evidencia de testes por camada conforme prioridade (`{prioridade}`).
 - Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
 - Evidence pronta para revisão técnica e defesa PAP.
 
@@ -694,6 +1003,9 @@ def render_guide(row: dict[str, str]) -> str:
 - `pr`: link de PR/commit com resumo funcional do BK.
 - `proof`: output/screenshot/log/teste que comprova o caminho principal.
 - `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
+
+## Proximo BK recomendado
+`{row['proximo_bk']}`
 
 ## Changelog
 - `{TODAY}`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
@@ -706,6 +1018,9 @@ def render_guide(row: dict[str, str]) -> str:
 
 
 def write_readme(plan_root: Path) -> None:
+    rf_count = len(set(re.findall(r"\bRF\d{2}\b", (plan_root.parent / "RF.md").read_text(encoding="utf-8"))))
+    rnf_count = len(set(re.findall(r"\bRNF\d{2}\b", (plan_root.parent / "RNF.md").read_text(encoding="utf-8"))))
+
     content = f"""# PLANIFICACAO-STUDYFLOW
 
 ## Header
@@ -726,15 +1041,20 @@ Normalizar a planificacao da StudyFlow ao padrao OPSA/FaithFlix com governanca c
 4. `sprints/SCORECARD-SPRINTS.md`
 5. `sprints/GUIAO-DOCENTE-SEMANAL.md`
 6. `sprints/GATES-S4-S8-S12.md`
-7. `backlogs/MATRIZ-CANONICA-BK.md`
-8. `backlogs/BACKLOG-MVP.md`
-9. `backlogs/MF-VIEWS.md`
-10. `backlogs/CONTRATO-CAMPOS-BK.md`
-11. `backlogs/ANEXO-RF-PARA-BKS.md`
-12. `backlogs/ANEXO-RNF-PARA-BKS.md`
-13. `backlogs/ANEXO-BK-SPRINT-OWNER.md`
-14. `guias-bk/README.md`
-15. `CONFORMIDADE-PLANIFICACAO.md`
+7. `sprints/OPERACAO-DEPLOY-ROLLBACK.md`
+8. `CORE-DUAL-CONTRATO.md`
+9. `scripts/plan_constraints_studyflow.json`
+10. `scripts/solver_reassignments.json`
+11. `backlogs/MATRIZ-CANONICA-BK.md`
+12. `backlogs/BACKLOG-MVP.md`
+13. `backlogs/MF-VIEWS.md`
+14. `backlogs/CONTRATO-CAMPOS-BK.md`
+15. `backlogs/ANEXO-RF-PARA-BKS.md`
+16. `backlogs/ANEXO-RNF-PARA-BKS.md`
+17. `backlogs/ANEXO-BK-SPRINT-OWNER.md`
+18. `backlogs/ANEXO-CORE-DUAL-BK.md`
+19. `guias-bk/README.md`
+20. `CONFORMIDADE-PLANIFICACAO.md`
 
 ## Regra de precedencia
 - Em conflito de dados operacionais, prevalece a ordem da hierarquia canónica.
@@ -742,11 +1062,12 @@ Normalizar a planificacao da StudyFlow ao padrao OPSA/FaithFlix com governanca c
 - `BACKLOG-MVP.md` e `guias-bk` herdam os metadados da matriz sem excecoes.
 
 ## Regra de atualizacao em cadeia
-1. Atualizar matriz.
-2. Regenerar backlog e MF views.
-3. Regenerar guias BK e anexos de rastreabilidade.
-4. Atualizar sprints/scorecard/gates.
-5. Executar `scripts/validate-planificacao.sh` e publicar relatorio de conformidade.
+1. Executar solver com constraints formais (`scripts/plan_constraints_studyflow.json` -> `scripts/solver_reassignments.json`).
+2. Atualizar matriz.
+3. Regenerar backlog e MF views.
+4. Regenerar guias BK e anexos de rastreabilidade.
+5. Atualizar sprints/scorecard/gates.
+6. Executar `scripts/validate-planificacao.sh` e publicar relatorio de conformidade.
 
 ## Contrato de scorecard (pesos oficiais)
 - Cobertura/rastreabilidade: `25`
@@ -755,8 +1076,12 @@ Normalizar a planificacao da StudyFlow ao padrao OPSA/FaithFlix com governanca c
 - Adequacao ao 12o: `20`
 - Governanca/avaliacao: `10`
 
+## Contagem oficial de requisitos
+- Total RF: **{rf_count}**
+- Total RNF: **{rnf_count}**
+
 ## Meta documental oficial
-- Meta: `>=93/100`
+- Meta: `>=97/100`
 - Estado alvo apos normalizacao: `PASS` em auditoria automatica.
 
 ## Changelog
@@ -785,13 +1110,15 @@ def write_plano_implementacao(plan_root: Path, rows: list[dict[str, str]]) -> No
         "- Pesos oficiais: `25/20/25/20/10`.",
         "- Politica Core/Reforco: `P0 => Reforco`, `P1/P2 => Core`.",
         "- Gates obrigatorios de revisao: `S4`, `S8`, `S12`.",
+        "- Replaneamento deterministico por constraints: `scripts/plan_constraints_studyflow.json`.",
+        "- Output operacional do solver: `scripts/solver_reassignments.json`.",
         "- Invariantes: IDs BK preservados e cobertura `RF/RNF/BK` sem orfaos.",
         "",
         "## Calendario macro",
     ]
 
     for macro in MACRO_ORDER:
-        lines.append(f"- `{macro}` ({MACRO_LABEL[macro]}): janela `{sprint_window(macro)}` com `{by_macro.get(macro, 0)}` BK.")
+        lines.append(f"- `{macro}` ({MACRO_LABEL[macro]}): janela `{macro_window_from_rows(rows, macro)}` com `{by_macro.get(macro, 0)}` BK.")
 
     lines.extend(
         [
@@ -815,22 +1142,32 @@ def write_plano_implementacao(plan_root: Path, rows: list[dict[str, str]]) -> No
     (plan_root / "PLANO-IMPLEMENTACAO-TOTAL.md").write_text("\n".join(lines), encoding="utf-8")
 
 
-def write_distribuicao(plan_root: Path, rows: list[dict[str, str]]) -> None:
+def write_distribuicao(plan_root: Path, rows: list[dict[str, str]], constraints: dict) -> None:
     owner_counts = Counter(r["owner"] for r in rows)
     owner_effort = defaultdict(int)
+    owner_prio = defaultdict(Counter)
     for r in rows:
         owner_effort[r["owner"]] += effort_units(r["esforco"])
+        owner_prio[r["owner"]][r["prioridade"]] += 1
+    owner_caps_cfg = {k: float(v) for k, v in constraints["owner_capacity_weekly"].items()}
+    owner_order = constraints.get("owner_target_order", list(owner_caps_cfg.keys()))
+    owner_list = [o for o in owner_order if o in owner_counts]
+    owner_list.extend(sorted(set(owner_counts.keys()) - set(owner_list)))
 
     table = fmt_md_table(
-        ["owner", "total_bk", "esforco_unidades", "responsabilidade"],
+        ["owner", "total_bk", "esforco_unidades", "P0", "P1", "P2", "capacidade_u_semana", "responsabilidade"],
         [
             [
                 owner,
                 str(owner_counts[owner]),
                 str(owner_effort[owner]),
+                str(owner_prio[owner]["P0"]),
+                str(owner_prio[owner]["P1"]),
+                str(owner_prio[owner]["P2"]),
+                format_number(owner_caps_cfg.get(owner, 0.0)),
                 "Execucao tecnica e garantia de evidencia por BK",
             ]
-            for owner in sorted(owner_counts.keys())
+            for owner in owner_list
         ],
     )
 
@@ -856,16 +1193,39 @@ Formalizar ownership canónico dos BK da StudyFlow para evitar drift entre matri
 {table}
 
 ## Changelog
-- `{TODAY}`: distribuicao normalizada com base na matriz canonica e unidades de esforco S/M/L.
+- `{TODAY}`: distribuicao normalizada com capacidade diferenciada e rastreio `P0/P1/P2` por owner.
 """
     (plan_root / "DISTRIBUICAO-RESPONSABILIDADES.md").write_text(content, encoding="utf-8")
 
 
-def write_plano_sprints(plan_root: Path) -> None:
+def write_plano_sprints(plan_root: Path, rows: list[dict[str, str]], constraints: dict) -> None:
+    sprint_loads = compute_sprint_loads(rows)
+    owner_caps_cfg = {k: float(v) for k, v in constraints["owner_capacity_weekly"].items()}
+    owner_order = constraints.get("owner_target_order", list(owner_caps_cfg.keys()))
+    owner_list = [o for o in owner_order if o in owner_caps_cfg]
+    owner_list.extend(sorted(set(owner_caps_cfg.keys()) - set(owner_list)))
+    owner_capacity_rows = [[owner, format_number(owner_caps_cfg[owner])] for owner in owner_list]
+    owner_capacity_rows.append(["Total equipa", format_number(sum(owner_caps_cfg.values()))])
+    total_unique_effort = sum(effort_units(r["esforco"]) for r in rows)
+    gate_set = set(constraints["sprint_capacity"].get("gates", []))
+    cap_default = float(constraints["sprint_capacity"]["default"])
+    cap_gate = float(constraints["sprint_capacity"]["gate"])
+    total_capacity = 0.0
+
     table_rows = []
-    for sprint, start, end, foco, objetivo in SPRINTS:
+    for sprint, start, end, foco, _ in SPRINTS:
+        total_capacity += cap_gate if sprint in gate_set else cap_default
         gate = "SIM" if sprint in {"S04", "S08", "S12"} else "NAO"
-        table_rows.append([sprint, f"{start} a {end}", foco, objetivo, gate])
+        table_rows.append(
+            [
+                sprint,
+                f"{start} a {end}",
+                foco,
+                "Carga planeada e entrega com evidence completa",
+                format_number(sprint_loads.get(sprint, 0.0)),
+                gate,
+            ]
+        )
 
     content = f"""# PLANO-SPRINTS
 
@@ -882,18 +1242,44 @@ def write_plano_sprints(plan_root: Path) -> None:
 - `M`: 2 unidades
 - `L`: 3 unidades
 
+## Capacidade semanal por aluno
+{fmt_md_table(['Pessoa', 'Capacidade alvo (u/semana)'], owner_capacity_rows)}
+
+## Carga global planeada (modelo normalizado)
+- BK totais: `{len(rows)}`
+- `esforco_unico_total_u`: `{total_unique_effort}` (cada BK conta 1x com `S=1`, `M=2`, `L=3`)
+- `carga_planeada_sprint_u`: distribuicao do esforco pelas janelas declaradas (`Sxx-Syy`)
+- Janela de execucao: `12` sprints (`2026-04-13` a `2026-07-05`)
+- Capacidade total da janela: `{format_number(total_capacity)}` unidades
+- Margem operacional global (capacidade - esforco_unico_total_u): `{format_number(total_capacity - total_unique_effort)}` unidades
+
 ## Linha temporal oficial (12 sprints)
-{fmt_md_table(['sprint', 'periodo', 'foco_macro', 'objetivo_operacional', 'gate'], table_rows)}
+{fmt_md_table(['sprint', 'periodo', 'foco_macro', 'objetivo_operacional', 'carga_planeada_u', 'gate'], table_rows)}
 
 ## Regra de replaneamento
 1. Replaneamento apenas no fecho da sprint, exceto bloqueio critico.
 2. Prioridade de execucao: `P0 > P1 > P2`.
 3. Qualquer desvio exige sincronizacao de `MATRIZ-CANONICA-BK`, `BACKLOG-MVP`, `MF-VIEWS` e `guias-bk`.
+4. Em sobrecarga, reduzir primeiro paralelismo `P1/P2` sem perder cobertura RF/RNF.
+
+## Matriz minima de testes por prioridade
+- `P0`: evidencias obrigatorias de `unit + integration + e2e` e minimo `3` negativos.
+- `P1`: evidencias obrigatorias de `unit/integration` e minimo `2` negativos.
+- `P2`: teste focal do fluxo alterado e minimo `1` negativo.
+- Aplicacao canónica: BK em `Sxx-Syy` distribui carga `50/50` por sprint para auditoria.
 
 ## KPI minimos por sprint
 - Cobertura de BK planeados concluida >= 85%.
 - Checklists smoke/negativos/tecnico completos por BK >= 90%.
 - Bloqueios >48h com escalacao no scorecard.
+- Esforco em core dual (CORE-IA + CORE-COM + CORE-HIBRIDO) >= 70%.
+
+## Artefactos obrigatorios
+- `SCORECARD-SPRINTS.md`
+- `GUIAO-DOCENTE-SEMANAL.md`
+- `GATES-S4-S8-S12.md`
+- `OPERACAO-DEPLOY-ROLLBACK.md`
+- `ANEXO-CORE-DUAL-BK.md`
 
 ## Changelog
 - `{TODAY}`: plano de sprints reduzido e sincronizado para horizonte canónico `S01..S12`.
@@ -901,8 +1287,33 @@ def write_plano_sprints(plan_root: Path) -> None:
     (plan_root / "sprints" / "PLANO-SPRINTS.md").write_text(content, encoding="utf-8")
 
 
-def write_scorecard(plan_root: Path) -> None:
-    rows = [[s[0], "0", "0", "0", "0", "0", "0", "0", "0", "PENDING"] for s in SPRINTS]
+def write_scorecard(plan_root: Path, rows: list[dict[str, str]]) -> None:
+    sprint_loads = compute_sprint_loads(rows)
+    core_percent = compute_core_dual_percent_by_sprint(rows)
+    table_rows: list[list[str]] = []
+    for sprint, *_ in SPRINTS:
+        carga = format_number(sprint_loads.get(sprint, 0.0))
+        pct = format_number(core_percent.get(sprint, 100.0))
+        table_rows.append(
+            [
+                sprint,
+                "PLANEADA",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "S=1,M=2,L=3 + split 50/50",
+                carga,
+                pct,
+                "SIM" if float(pct) >= 70 else "NAO",
+                "-",
+                "-",
+                "N/A",
+                "-",
+            ]
+        )
+
     content = f"""# SCORECARD-SPRINTS
 
 ## Header
@@ -921,17 +1332,41 @@ def write_scorecard(plan_root: Path) -> None:
 | Pedagogia/guidance/step-by-step | 25 |
 | Adequacao ao 12o | 20 |
 | Governanca/avaliacao | 10 |
+| Total | 100 |
 
 ## Scorecard por sprint
-{fmt_md_table(['sprint', 'cobertura_25', 'coerencia_20', 'pedagogia_25', 'adequacao_20', 'governanca_10', 'total_100', 'bloqueios_48h', 'acoes_corretivas', 'estado'], rows)}
+{fmt_md_table([
+    'sprint',
+    'estado_sprint',
+    'cobertura',
+    'coerencia',
+    'pedagogia_guidance_step_by_step',
+    'adequacao_12o',
+    'governanca',
+    'modelo_carga',
+    'carga_planeada_u',
+    'core_dual_percent',
+    'core_dual_ok',
+    'carga_real_u',
+    'desvio_u',
+    'risco_semaforo',
+    'acao_corretiva',
+], table_rows)}
 
 ## Regra de preenchimento
-1. Score preenchido no fecho de cada sprint.
-2. Sprint com total < 93 exige plano corretivo na sprint seguinte.
-3. Gates `S4/S8/S12` exigem evidencias anexas de cobertura e coerencia.
+1. `estado_sprint` so pode ser `PLANEADA`, `EM_CURSO` ou `FECHADA`.
+2. Quando `carga_real_u` estiver vazia (`-`), `desvio_u` deve ficar `-` e `risco_semaforo` deve ficar `N/A`.
+3. Sprint com total < 93 exige plano corretivo na sprint seguinte.
+4. Gates `S4/S8/S12` exigem evidencias anexas de cobertura e coerencia.
+5. `acao_corretiva` deve registar mitigacao quando `core_dual_percent < 70%`.
+
+## Regras de semaforo
+- `Verde`: desvio absoluto <= 2 unidades e sem bloqueio critico.
+- `Amarelo`: desvio entre 3 e 4 unidades ou bloqueio >48h em BK `P1/P2`.
+- `Vermelho`: desvio >= 5 unidades, bloqueio em BK `P0` ou quebra de rastreabilidade.
 
 ## Changelog
-- `{TODAY}`: contrato oficial de scorecard normalizado e alinhado com pesos 25/20/25/20/10.
+- `{TODAY}`: scorecard migrado para schema canónico único entre as PAPs.
 """
     (plan_root / "sprints" / "SCORECARD-SPRINTS.md").write_text(content, encoding="utf-8")
 
@@ -986,7 +1421,7 @@ Estabelecer baseline oficial de validacao para os gates S4, S8 e S12.
 | gate | data_planeada | escopo_macro | criterios_minimos | estado |
 | --- | --- | --- | --- | --- |
 | S4 | 2026-05-10 | MF0-MF1 | Cobertura RF sem orfaos + 100% guias com header canónico | PENDING |
-| S8 | 2026-06-07 | MF0-MF4 | Coerencia matriz/backlog/guias + score >= 93/100 | PENDING |
+| S8 | 2026-06-07 | MF0-MF4 | Coerencia matriz/backlog/guias + score >=97/100 | PENDING |
 | S12 | 2026-07-05 | MF0-MF8 | Auditoria automatica PASS + pacote final de defesa | PENDING |
 
 ## Evidencias obrigatorias por gate
@@ -998,6 +1433,143 @@ Estabelecer baseline oficial de validacao para os gates S4, S8 e S12.
 - `{TODAY}`: baseline de gates definido com campos nao ambiguos para execucao futura.
 """
     (plan_root / "sprints" / "GATES-S4-S8-S12.md").write_text(content, encoding="utf-8")
+
+
+def write_operacao_deploy_rollback(plan_root: Path) -> None:
+    content = f"""# OPERACAO-DEPLOY-ROLLBACK
+
+## Header
+- `doc_id`: `OPERACAO-DEPLOY-ROLLBACK`
+- `path`: `docs/planificacao/sprints/OPERACAO-DEPLOY-ROLLBACK.md`
+- `area`: `project`
+- `owner`: `Nuno`
+- `status`: `ativo`
+- `last_updated`: `{TODAY}`
+
+## Objetivo
+Definir protocolo operacional minimo para deploy e rollback no contexto PAP, com evidencias verificaveis para gates `S4`, `S8` e `S12`.
+
+## Deploy (baseline)
+1. Confirmar BKs da sprint em estado elegivel para release e sem bloqueios `P0`.
+2. Executar validacao documental e tecnica (`validate-planificacao` + checks de regressao).
+3. Publicar versao com changelog curto e identificador de release.
+4. Validar smoke funcional dos fluxos centrais da StudyFlow.
+
+## Rollback
+1. Acionar rollback se houver falha critica em fluxo `P0` ou quebra de rastreabilidade.
+2. Repor versao estavel anterior e confirmar integridade de dados.
+3. Reexecutar smoke dos fluxos centrais e registar impacto.
+4. Abrir acao corretiva no scorecard da sprint.
+
+## Verificacao pos-deploy
+- Smoke obrigatorio para autenticacao, estudo assistido e colaboracao/turma.
+- Confirmar logs sem erro critico e tempos dentro do alvo documental.
+- Validar alinhamento dos artefactos de sprint/gate apos release.
+
+## Incidentes
+- Severidade `Alta`: indisponibilidade de fluxo core da app.
+- Severidade `Media`: regressao parcial com workaround.
+- Severidade `Baixa`: falha cosmetica sem impacto funcional core.
+- Todo incidente deve registar causa, mitigacao e acao preventiva.
+
+## Evidencias
+- Identificador de release e timestamp.
+- Resultado dos checks pre e pos deploy.
+- Registo de rollback (quando aplicavel).
+- Referencia no scorecard e no gate da sprint.
+
+## Changelog
+- `{TODAY}`: artefacto criado para cumprir contrato canónico de operacao/deploy/rollback.
+"""
+    (plan_root / "sprints" / "OPERACAO-DEPLOY-ROLLBACK.md").write_text(content, encoding="utf-8")
+
+
+def write_core_dual_contract(plan_root: Path) -> None:
+    content = f"""# CORE-DUAL-CONTRATO
+
+## Header
+- `doc_id`: `CORE-DUAL-CONTRATO`
+- `path`: `docs/planificacao/CORE-DUAL-CONTRATO.md`
+- `area`: `project`
+- `owner`: `Nuno`
+- `status`: `ativo`
+- `last_updated`: `{TODAY}`
+
+## Definicao oficial
+A StudyFlow opera em core dual:
+1. `Aprendizagem inteligente` (explicacoes, personalizacao, tutor IA e progresso academico).
+2. `Operacao pedagogica` (turmas, projetos, avaliacao, colaboracao e rotina de estudo).
+
+## Regras canónicas
+- Regra de equilibrio: por sprint, `>=70%` do esforco deve estar em `CORE-IA`, `CORE-COM` ou `CORE-HIBRIDO`.
+- Regra de entrada BK (GO/NO-GO): BK novo so entra no MVP se reforcar aprendizagem inteligente, operacao pedagogica, ou ambos.
+- Regra anti-desvio: BK sem contribuicao direta para os eixos core deve ser classificado como `SUPORTE`.
+- Regra de evidencias: BK `CORE-*` exige evidencia tecnica e evidencia de impacto academico.
+- Regra de viabilidade: quando necessario, o solver pode reclassificar `SUPORTE -> CORE-HIBRIDO` de forma minima e criterial.
+
+## Classes e significado
+- `CORE-IA`: entrega direta no eixo de aprendizagem inteligente.
+- `CORE-COM`: entrega direta no eixo de operacao pedagogica.
+- `CORE-HIBRIDO`: entrega com impacto simultaneo nos dois eixos.
+- `SUPORTE`: habilitador transversal de operacao, qualidade ou governanca.
+
+## KPIs minimos de acompanhamento
+- `CORE-IA`: `taxa_resposta_util`, `tempo_resposta_p95`.
+- `CORE-COM`: `adesao_turma_semana`, `taxa_tarefas_concluidas`.
+- `CORE-HIBRIDO`: `tempo_estudo_semana`, `taxa_retencao_30d`.
+- `SUPORTE`: `taxa_incidentes_criticos`, `taxa_conformidade_gates`.
+
+## Fonte de verdade
+- Classificacao por BK: `docs/planificacao/backlogs/ANEXO-CORE-DUAL-BK.md`.
+- Planeamento de sprint: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
+- Governanca de gate: `docs/planificacao/sprints/GATES-S4-S8-S12.md`.
+
+## Changelog
+- `{TODAY}`: contrato criado para institucionalizar o core dual e controlar desvio de conceito.
+"""
+    (plan_root / "CORE-DUAL-CONTRATO.md").write_text(content, encoding="utf-8")
+
+
+def write_core_dual_annex(plan_root: Path, rows: list[dict[str, str]]) -> None:
+    table_rows: list[list[str]] = []
+    for row in rows:
+        classe, eixo, kpi1, kpi2, justificacao = classify_core_dual(row)
+        table_rows.append([row["bk_id"], classe, eixo, kpi1, kpi2, justificacao])
+
+    content = f"""# ANEXO-CORE-DUAL-BK
+
+## Header
+- `doc_id`: `ANEXO-CORE-DUAL-BK`
+- `path`: `docs/planificacao/backlogs/ANEXO-CORE-DUAL-BK.md`
+- `area`: `project`
+- `owner`: `Nuno`
+- `status`: `ativo`
+- `last_updated`: `{TODAY}`
+
+## Objetivo
+Classificar cada BK no contrato de core dual da StudyFlow e ligar cada item a KPI primario/secundario auditavel.
+
+## Rubrica deterministica
+- `CORE-IA`: impacto direto em explicacoes, personalizacao e tutor IA.
+- `CORE-COM`: impacto direto em operacao pedagogica de turma/projeto/avaliacao.
+- `CORE-HIBRIDO`: impacto simultaneo real nos dois eixos.
+- `SUPORTE`: qualidade/operacao/governanca sem impacto funcional core direto.
+- Reclassificacao minima (quando aplicada) segue output do solver deterministico em `scripts/solver_reassignments.json`.
+
+## Schema
+- Colunas oficiais: `bk_id | classe_core_dual | eixo_primario | kpi_primario | kpi_secundario | justificacao_classe`.
+- Classes permitidas: `CORE-IA`, `CORE-COM`, `CORE-HIBRIDO`, `SUPORTE`.
+
+## Mapeamento BK -> Core Dual
+{fmt_md_table(
+    ['bk_id', 'classe_core_dual', 'eixo_primario', 'kpi_primario', 'kpi_secundario', 'justificacao_classe'],
+    table_rows,
+)}
+
+## Changelog
+- `{TODAY}`: anexo atualizado com rubrica deterministica e coluna `justificacao_classe`.
+"""
+    (plan_root / "backlogs" / "ANEXO-CORE-DUAL-BK.md").write_text(content, encoding="utf-8")
 
 
 def write_matrix(plan_root: Path, rows: list[dict[str, str]]) -> None:
@@ -1016,7 +1588,7 @@ def write_matrix(plan_root: Path, rows: list[dict[str, str]]) -> None:
                 r["dependencias"],
                 r["rf_rnf"],
                 r["fase_documental"],
-                sprint_window(r["macro"]),
+                assigned_sprint(r),
                 core_or_reforco(r["prioridade"]),
                 r["proximo_bk"],
                 guide_path(r),
@@ -1099,7 +1671,7 @@ def write_backlog(plan_root: Path, rows: list[dict[str, str]]) -> None:
                 r["dependencias"],
                 r["rf_rnf"],
                 r["fase_documental"],
-                sprint_window(r["macro"]),
+                assigned_sprint(r),
                 core_or_reforco(r["prioridade"]),
                 r["proximo_bk"],
                 f"[guia]({guide_rel(r)})",
@@ -1169,7 +1741,7 @@ def write_backlog(plan_root: Path, rows: list[dict[str, str]]) -> None:
                         r["esforco"],
                         r["dependencias"],
                         r["rf_rnf"],
-                        sprint_window(r["macro"]),
+                        assigned_sprint(r),
                         core_or_reforco(r["prioridade"]),
                         r["proximo_bk"],
                     ]
@@ -1287,6 +1859,7 @@ def write_guias_docs(plan_root: Path, rows: list[dict[str, str]]) -> None:
         "- O `rf_rnf` do header deve estar refletido nos `Passos`, `Validacao` e `Cenarios negativos recomendados`.",
         "- O `Snippet tecnico aplicavel` deve pertencer ao dominio funcional do BK (nao sao aceites snippets genéricos).",
         "- `Evidence` deve incluir prova do caminho principal e prova de falha controlada.",
+        "- Politica de negativos: `P0=>3`, `P1=>2`, `P2=>1`.",
         "",
         "## Indice completo",
     ]
@@ -1334,7 +1907,9 @@ def write_guias_docs(plan_root: Path, rows: list[dict[str, str]]) -> None:
 ## Bloco operacional
 ### Entrada
 ### Passos
+### Cenarios negativos recomendados
 ### Validacao
+### Matriz minima de testes por prioridade
 ### Handoff
 
 ## Snippet tecnico aplicavel
@@ -1344,6 +1919,7 @@ def write_guias_docs(plan_root: Path, rows: list[dict[str, str]]) -> None:
 
 ## Criterios de aceite
 ## Evidence para PR/defesa
+## Proximo BK recomendado
 ## Changelog
 """
     (guides_root / "_TEMPLATE-BK.md").write_text(template, encoding="utf-8")
@@ -1369,7 +1945,7 @@ def write_guias_docs(plan_root: Path, rows: list[dict[str, str]]) -> None:
         macro_rows = [r for r in rows if r["macro"] == macro]
         if not macro_rows:
             continue
-        roadmap.append(f"- `{macro}` ({sprint_window(macro)}): " + ", ".join(r["bk_id"] for r in macro_rows))
+        roadmap.append(f"- `{macro}` ({macro_window_from_rows(rows, macro)}): " + ", ".join(r["bk_id"] for r in macro_rows))
 
     roadmap.extend(["", "## Changelog", f"- `{TODAY}`: roadmap alinhado ao horizonte S01..S12.", ""])
     (guides_root / "ROADMAP-BKS-RESTANTES.md").write_text("\n".join(roadmap), encoding="utf-8")
@@ -1413,7 +1989,7 @@ def write_relatorio_placeholder(plan_root: Path) -> None:
 Relatorio gerado automaticamente pelo pipeline de validacao (`scripts/validate-planificacao.sh`).
 
 ## Meta oficial
-- Objetivo documental: `>=93/100`.
+- Objetivo documental: `>=97/100`.
 - Resultado atual: consultar secao de score no relatorio mais recente.
 
 ## Evidencia de auditoria
@@ -1431,18 +2007,24 @@ def main() -> None:
 
     raw_rows = parse_global_rows_from_backlog(plan_root / "backlogs" / "BACKLOG-MVP.md")
     rows = normalize_rows(raw_rows)
+    constraints = load_constraints_contract(plan_root)
+    solver_payload = run_solver_and_load(plan_root)
+    rows = apply_solver_assignments(rows, solver_payload)
 
     write_readme(plan_root)
     write_plano_implementacao(plan_root, rows)
-    write_distribuicao(plan_root, rows)
-    write_plano_sprints(plan_root)
-    write_scorecard(plan_root)
+    write_distribuicao(plan_root, rows, constraints)
+    write_plano_sprints(plan_root, rows, constraints)
+    write_scorecard(plan_root, rows)
     write_guiao_docente(plan_root)
     write_relatorio_gates(plan_root)
+    write_operacao_deploy_rollback(plan_root)
+    write_core_dual_contract(plan_root)
 
     write_matrix(plan_root, rows)
     write_backlog(plan_root, rows)
     write_mf_views(plan_root, rows)
+    write_core_dual_annex(plan_root, rows)
     write_guias_docs(plan_root, rows)
 
     write_relatorio_placeholder(plan_root)

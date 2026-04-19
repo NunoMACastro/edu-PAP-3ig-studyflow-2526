@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Criterio de pronto pedagogico por macro
 - 100% BK com guia canónico completo e snippet tecnico aplicavel.
@@ -271,4 +271,4 @@ BK-MF8-01, BK-MF8-02, BK-MF8-03, BK-MF8-04, BK-MF8-05, BK-MF8-06, BK-MF8-07, BK-
 - Sem dependencias invalidas para a macro seguinte.
 
 ## Changelog
-- `2026-04-17`: MF views sincronizadas com naming slug e contrato canónico de pronto pedagogico.
+- `2026-04-19`: MF views sincronizadas com naming slug e contrato canónico de pronto pedagogico.

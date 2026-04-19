@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-17`
+- `last_updated`: `2026-04-19`
 
 ## Objetivo
 Formalizar ownership canónico dos BK da StudyFlow para evitar drift entre matriz, backlog, sprints e guias.
@@ -17,12 +17,12 @@ Formalizar ownership canónico dos BK da StudyFlow para evitar drift entre matri
 - Gate semanal valida distribuicao de carga e bloqueios >48h.
 
 ## Distribuicao consolidada
-| owner | total_bk | esforco_unidades | responsabilidade |
-| --- | --- | --- | --- |
-| Daniel | 11 | 13 | Execucao tecnica e garantia de evidencia por BK |
-| Guilherme | 31 | 47 | Execucao tecnica e garantia de evidencia por BK |
-| Kaua | 23 | 33 | Execucao tecnica e garantia de evidencia por BK |
-| Natalia | 36 | 60 | Execucao tecnica e garantia de evidencia por BK |
+| owner | total_bk | esforco_unidades | P0 | P1 | P2 | capacidade_u_semana | responsabilidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Natalia | 36 | 61 | 25 | 10 | 1 | 6 | Execucao tecnica e garantia de evidencia por BK |
+| Guilherme | 30 | 43 | 13 | 13 | 4 | 4.5 | Execucao tecnica e garantia de evidencia por BK |
+| Kaua | 22 | 31 | 9 | 12 | 1 | 3.5 | Execucao tecnica e garantia de evidencia por BK |
+| Daniel | 13 | 18 | 5 | 6 | 2 | 2.5 | Execucao tecnica e garantia de evidencia por BK |
 
 ## Changelog
-- `2026-04-17`: distribuicao normalizada com base na matriz canonica e unidades de esforco S/M/L.
+- `2026-04-19`: distribuicao normalizada com capacidade diferenciada e rastreio `P0/P1/P2` por owner.
