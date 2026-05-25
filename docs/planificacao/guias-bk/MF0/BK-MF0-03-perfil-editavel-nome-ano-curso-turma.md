@@ -16,105 +16,276 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF0-04`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-03-perfil-editavel-nome-ano-curso-turma.md`
-- `last_updated`: `2026-04-19`
+- `last_updated`: `2026-05-24`
 
-## Contexto do BK
-- Entrega alvo: `Perfil editável (nome, ano, curso, turma).` com rastreabilidade direta para `RF03`.
-- Foco da macro `MF0`: Fundacoes de plataforma.
-- Dominio semântico aplicado: `learning_foundation`.
+## O que vamos fazer neste BK
 
-## Bloco pedagogico
-### Objetivo
-Construir o fluxo base de aluno (identidade, perfil e estudo individual) com comportamento previsivel.
+Neste BK vamos permitir que o aluno autenticado consulte e edite o seu perfil com `nome`, `ano`, `curso` e `turma`. O perfil fica ligado ao `User` criado no registo e acedido através da sessão segura criada no login.
 
-### Pre-requisitos
-- Ler o requisito de origem em `docs/RF.md` ou `docs/RNF.md`.
-- Rever `MATRIZ-CANONICA-BK.md`, `BACKLOG-MVP.md` e `PLANO-SPRINTS.md`.
-- Confirmar dependencias: `BK-MF0-02`.
+O campo `turma` deve ser opcional nesta fase, porque o RF04 exige que o aluno possa estudar sem turma. Isto é uma decisão importante de continuidade: não se deve bloquear a entrada do aluno na app por ainda não estar inscrito numa turma.
 
-### Erros comuns
-- Nao validar duplicados de conta/perfil.
-- Misturar regras de aluno sem turma com turma inscrita.
-- Fechar BK sem validar negativos obrigatórios.
+Como ainda não existe código, os caminhos indicados são uma proposta técnica compatível com a stack recomendada. O mockup só cobre autenticação, por isso os ecrãs de perfil devem usar placeholders simples e linguagem em português de Portugal.
 
-### Check de compreensao
-- [ ] Sei explicar como `RF03` se traduz em comportamento implementável.
-- [ ] Sei indicar o principal risco técnico deste BK e como o mitigar.
-- [ ] Sei demonstrar evidência objetiva de sucesso e falha controlada.
+## Porque é que isto é importante
 
-### Tempo estimado
-- `Core`: `45-75 min`
-- `Reforco`: `n/a`
+- Dá contexto pessoal mínimo aos BKs seguintes.
+- Prepara o estudo sem turma ao tornar `turma` opcional.
+- Cria a primeira rota protegida reutilizando `SessionGuard`.
+- Ensina a diferença entre identidade de conta e dados editáveis de perfil.
+- Reduz risco de manipulação ao impedir que o aluno edite `role`, `id` ou dados de sessão.
 
-## Bloco operacional
-### Entrada
-- BK: `BK-MF0-03`
-- Requisito: `RF03`
-- Dependencias: `BK-MF0-02`
-- Artefactos obrigatorios: `MATRIZ-CANONICA-BK.md`, `BACKLOG-MVP.md`, `MF-VIEWS.md`, `PLANO-SPRINTS.md`
+## O que entra (scope)
 
-### Passos
-1. Confirmar no backlog e na matriz o escopo de `BK-MF0-03` e do requisito `RF03`.
-2. Validar pre-condicoes técnicas e dependencias declaradas: `BK-MF0-02`.
-3. Modelar contratos de dados e estados para `fluxo de conta/perfil em estado consistente`.
-4. Implementar o caminho principal de `fluxo de conta/perfil em estado consistente`.
-5. Aplicar controlos para `regras de sessão/papel e transições de estado`.
-6. Preparar evidencia operacional: `mapa de estados (novo, ativo, bloqueado)`.
-7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar cenarios negativos obrigatorios (minimo 2) e validar erro controlado.
+- Estado esperado antes do BK: login funcional ou contrato de sessão definido no BK-MF0-02.
+- Estado esperado depois do BK: aluno autenticado consegue ver e atualizar o próprio perfil.
+- Ficheiros a criar/editar:
+  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/students/student-profile.controller.ts`
+  - `apps/api/src/modules/students/student-profile.service.ts`
+  - `apps/api/src/modules/students/dto/update-student-profile.dto.ts`
+  - `apps/web/src/pages/student/ProfilePage.tsx`
+  - `apps/web/src/hooks/useSession.ts`
+- Ficheiros a rever: `docs/RF.md`, `docs/RNF.md`, `BK-MF0-02`.
+- Dependências de BK anteriores: `BK-MF0-02`, para obter o utilizador autenticado.
+- Impacto na arquitetura: cria domínio `students` separado de `auth`.
+- Impacto em frontend: cria formulário protegido de perfil.
+- Impacto em backend: cria endpoints derivados `GET /api/students/me/profile` e `PATCH /api/students/me/profile`.
+- Impacto em dados: cria `StudentProfile` ligado a `User`.
+- Impacto em segurança: aluno só edita o próprio perfil.
+- Impacto em testes: requer teste de rota protegida e validação de campos.
+- Handoff: BK-MF0-04 deve usar `profile.turma` como opcional.
 
-### Cenarios negativos recomendados
-- entrada obrigatória em falta
-- estado inválido de negócio
+## O que não entra (scope-out)
 
-### Validacao
-- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
-- [ ] Negativos: minimo `2` cenarios com resultado controlado.
-- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
-- [ ] Fluxo do requisito cumpre contrato de entrada/saída.
-- [ ] Persistência e leitura dos dados mantêm consistência.
+- Criar turmas reais ou inscrição em turma, que ficam para MF1.
+- Permitir editar email/password, porque pertence a auth/account settings futuros.
+- Permitir editar role ou permissões.
+- Criar dados académicos avançados, métricas ou preferências de IA.
 
-### Matriz minima de testes por prioridade
-- `P0`: unit + integration + e2e + 3 negativos.
-- `P1`: unit/integration + 2 negativos.
-- `P2`: teste focal + 1 negativo.
+## Como saber que isto ficou bem
 
-### Handoff
-- Proximo BK recomendado: `BK-MF0-04`
-- Registar bloqueios, decisão técnica e risco residual.
-- Escalar no scorecard se bloqueio >48h.
+- Aluno autenticado vê o próprio perfil.
+- Atualização válida guarda `nome`, `ano`, `curso` e `turma` opcional.
+- Pedido sem sessão devolve `401`.
+- Tentativa de alterar `role` ou `userId` é ignorada ou rejeitada.
+- Interface mostra estado de erro e sucesso sem perder dados do formulário.
 
-## Snippet tecnico aplicavel
-**Handler de registo e sessão**
-- BK vinculado: `BK-MF0-03`.
+## Metadados do BK (CANONICO/DERIVADO):
 
-```ts
-type Credenciais = { email: string; password: string };
+- Prioridade: `P1` (CANONICO)
+- Estado: `TODO` (CANONICO)
+- Esforco: `S` (CANONICO)
+- macro: `MF0` (CANONICO)
+- Owner: `Guilherme` (CANONICO)
+- Apoio: `Natalia` (CANONICO)
+- Dependencias (BK IDs): `BK-MF0-02` (CANONICO)
+- Pre-condicoes: sessão segura ou contrato de sessão preparado (DERIVADO)
+- Ref. Plano: `Fase 1`, `S01`, `Core` (CANONICO)
+- Flow ID: `FLOW-MF0-STUDENT-PROFILE`
+- Fonte de verdade: `docs/RF.md`, `RF03` (CANONICO)
+- Fonte de verdade: `docs/planificacao/backlogs/BACKLOG-MVP.md`, `BK-MF0-03` (CANONICO)
+- Fonte de verdade: `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md` e `docs/planificacao/backlogs/MF-VIEWS.md` (CANONICO)
+- Descricao: Perfil editável do aluno com turma opcional (CANONICO/DERIVADO)
+- `rf_rnf`: `RF03` (CANONICO)
 
-export async function registarAluno(input: Credenciais) {
-  if (!input.email.includes('@')) throw new Error('Email invalido');
-  if (input.password.length < 12) throw new Error('Password fraca');
-  return { bkId: 'BK-MF0-03', req: 'RF03', estado: 'REGISTADO' };
-}
-```
+## O que vamos fazer neste BK (DERIVADO):
 
-Garante validação mínima de identidade no arranque do fluxo de conta.
-- Requisitos alvo deste BK: `RF03`.
+- Criar modelo `StudentProfile`.
+- Criar DTO de atualização.
+- Criar endpoints protegidos de leitura e atualização.
+- Criar formulário de perfil no frontend.
+- Garantir que `turma` é opcional.
+- Bloquear edição de campos sensíveis.
+- Preparar contrato para estudo individual sem turma.
 
-## Criterios de aceite
-- Fluxo principal implementado no scope definido.
-- Cenarios negativos concluidos: minimo `2` com resultado controlado.
-- Evidencia de testes por camada conforme prioridade (`P1`).
-- Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
-- Evidence pronta para revisão técnica e defesa PAP.
+## Pre-leitura mínima (10-15 min) (DERIVADO):
 
-## Evidence para PR/defesa
-- `pr`: link de PR/commit com resumo funcional do BK.
-- `proof`: output/screenshot/log/teste que comprova o caminho principal.
-- `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
+- `docs/RF.md`: RF03 e RF04.
+- `docs/RNF.md`: RNF06, RNF25, RNF26, RNF42.
+- `BK-MF0-02`: sessão, cookie e `SessionGuard`.
+- `BACKLOG-MVP.md`: linha `BK-MF0-03`.
+- `MF-VIEWS.md`: sequência da MF0.
+- Mockup: apenas para padrão visual geral de autenticação, sem ecrã de perfil.
 
-## Proximo BK recomendado
-`BK-MF0-04`
+## Glossário (rápido) (DERIVADO):
+
+- **Perfil**: dados editáveis do aluno, diferentes da conta de autenticação.
+- **Rota protegida**: endpoint que exige sessão válida.
+- **`request.user`**: utilizador autenticado anexado pelo guard.
+- **Campo opcional**: dado que pode ficar vazio sem bloquear o fluxo.
+- **DTO de update**: contrato dos campos que podem ser alterados.
+- **Mass assignment**: risco de aceitar campos que o utilizador não devia editar.
+- **Estado local**: dados temporários do formulário no React.
+
+## Conceitos teóricos essenciais (DERIVADO):
+
+**Conta vs perfil.** A conta identifica o utilizador para login. O perfil descreve o aluno dentro da app. Separar estes conceitos evita que alterações simples ao perfil mexam em credenciais ou permissões.
+
+**Rota protegida.** Este BK reutiliza `SessionGuard`: sem sessão, a API devolve `401`; com sessão válida, usa `request.user.id` para ler ou atualizar apenas o perfil do próprio aluno.
+
+**Mass assignment.** Se o backend aceitar qualquer campo enviado pelo frontend, um atacante pode tentar alterar `role` ou `userId`. Por isso, o DTO deve aceitar só `name`, `year`, `course` e `className`.
+
+**Validação no backend e frontend.** O frontend ajuda o aluno a corrigir erros rapidamente, mas a segurança está no backend. O backend valida mesmo quando a UI já validou.
+
+## Guia de execução (passo-a-passo) (DERIVADO):
+
+0. **Objetivo (~15 min): confirmar dependência de sessão**
+   - Descrição detalhada do objetivo: garantir que o perfil só é acedido por aluno autenticado.
+   - Justificação: dados pessoais não podem ser públicos.
+   - Como fazer (0.1): rever contrato `GET /api/auth/me`.
+   - Como fazer (0.2): decidir que todos os endpoints deste BK usam `SessionGuard`.
+   - Ficheiro a rever: `BK-MF0-02`.
+   - Ficheiro alvo: `apps/api/src/modules/students/student-profile.controller.ts`.
+   - Snippet de referência: `@UseGuards(SessionGuard)`.
+   - O que verificar: não existe endpoint público para perfil.
+
+1. **Objetivo (~30 min): modelar StudentProfile**
+   - Descrição detalhada do objetivo: criar tabela ligada a `User`.
+   - Justificação: mantém conta e perfil separados.
+   - Como fazer (1.1): adicionar relação `User -> StudentProfile`.
+   - Como fazer (1.2): tornar `className` opcional.
+   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
+   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Snippet de referência:
+     ```prisma
+     model StudentProfile {
+       id        String  @id @default(uuid())
+       userId    String  @unique
+       name      String
+       year      String?
+       course    String?
+       className String?
+     }
+     ```
+   - O que verificar: `className` não é obrigatório.
+
+2. **Objetivo (~25 min): criar DTO de atualização**
+   - Descrição detalhada do objetivo: definir apenas campos editáveis.
+   - Justificação: evita mass assignment.
+   - Como fazer (2.1): criar `UpdateStudentProfileDto`.
+   - Como fazer (2.2): rejeitar campos extra, conforme validação escolhida no scaffold.
+   - Ficheiro a rever: `docs/RF.md`.
+   - Ficheiro alvo: `apps/api/src/modules/students/dto/update-student-profile.dto.ts`.
+   - Snippet de referência:
+     ```ts
+     export type UpdateStudentProfileDto = {
+       name?: string;
+       year?: string;
+       course?: string;
+       className?: string | null;
+     };
+     ```
+   - O que verificar: `role`, `email` e `userId` ficam fora do DTO.
+
+3. **Objetivo (~35 min): implementar service de perfil**
+   - Descrição detalhada do objetivo: ler e atualizar perfil usando `userId` da sessão.
+   - Justificação: o aluno nunca deve escolher o `userId` alvo.
+   - Como fazer (3.1): criar `getMyProfile(userId)`.
+   - Como fazer (3.2): criar `updateMyProfile(userId, input)`.
+   - Ficheiro a rever: `apps/api/src/modules/auth/session.service.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/students/student-profile.service.ts`.
+   - Snippet de referência:
+     ```ts
+     export async function updateMyProfile(userId: string, input: UpdateStudentProfileDto) {
+       return profileRepository.updateByUserId(userId, input);
+     }
+     ```
+   - O que verificar: o service não recebe `targetUserId` do body.
+
+4. **Objetivo (~30 min): expor endpoints protegidos**
+   - Descrição detalhada do objetivo: criar leitura e atualização do perfil.
+   - Justificação: o frontend precisa de carregar e guardar os dados.
+   - Como fazer (4.1): criar `GET /api/students/me/profile`.
+   - Como fazer (4.2): criar `PATCH /api/students/me/profile`.
+   - Ficheiro a rever: `MATRIZ-CANONICA-BK.md`.
+   - Ficheiro alvo: `apps/api/src/modules/students/student-profile.controller.ts`.
+   - Snippet de referência:
+     ```ts
+     // PATCH /api/students/me/profile
+     // body: { name, year, course, className }
+     ```
+   - O que verificar: sem sessão devolve `401`.
+
+5. **Objetivo (~40 min): criar página de perfil**
+   - Descrição detalhada do objetivo: criar formulário claro para editar dados.
+   - Justificação: RF03 é funcionalidade visível para o aluno.
+   - Como fazer (5.1): criar `ProfilePage`.
+   - Como fazer (5.2): incluir estados loading, error, empty e success.
+   - Ficheiro a rever: `docs/RNF.md`.
+   - Ficheiro alvo: `apps/web/src/pages/student/ProfilePage.tsx`.
+   - Snippet de referência:
+     ```tsx
+     <input name="name" aria-label="Nome" />
+     <input name="className" aria-label="Turma (opcional)" />
+     ```
+   - O que verificar: `turma` aparece como opcional.
+
+6. **Objetivo (~35 min): validar, testar e entregar handoff**
+   - Descrição detalhada do objetivo: provar leitura, edição e falhas controladas.
+   - Justificação: BK-MF0-04 precisa deste contrato.
+   - Como fazer (6.1): testar update válido.
+   - Como fazer (6.2): testar sem sessão e tentativa de alterar `role`.
+   - Ficheiro a rever: `PLANO-SPRINTS.md`.
+   - Ficheiro alvo: `apps/api/src/modules/students/student-profile.spec.ts`.
+   - Snippet de referência:
+     ```ts
+     expect(response.body.role).toBeUndefined();
+     ```
+   - O que verificar: evidence inclui perfil com `className: null`.
+
+## Checklist de validação (DERIVADO):
+
+- Smoke:
+  - Aluno autenticado edita nome e curso.
+  - Aluno guarda perfil sem turma.
+- Negativos:
+  - passo 6; input/ação: pedido sem cookie; resultado esperado: `401`; risco que cobre: exposição de dados pessoais.
+  - passo 6; input/ação: body com `role: "ADMIN"`; resultado esperado: campo rejeitado/ignorado; risco que cobre: escalada de privilégios.
+- Técnico:
+  - `StudentProfile.userId` é único.
+  - Controller não recebe `userId` pelo body.
+- Regressão das fases anteriores:
+  - Login do BK-MF0-02 continua funcional.
+- UI/mockup:
+  - Sem mockup específico para perfil; usar layout simples e consistente.
+- Segurança:
+  - Dados de outro utilizador não podem ser lidos por ID manual.
+
+## Critérios de aceite:
+
+- Outputs:
+  - Modelo `StudentProfile`.
+  - Endpoints `GET/PATCH /api/students/me/profile`.
+  - Página `ProfilePage`.
+- Verificações:
+  - Update válido responde `200`.
+  - Pedido sem sessão responde `401`.
+- Qualidade:
+  - Campos sensíveis não são editáveis.
+  - `turma` é opcional.
+- Continuidade:
+  - BK-MF0-04 usa este perfil para permitir estudo sem turma.
+- Evidência:
+  - PR inclui payload válido, negativo sem sessão e negativo de mass assignment.
+
+## Evidence (para o PR/defesa):
+
+- `pr`: `A preencher no fecho do BK`
+- `proof`: `A preencher apos validacao`
+- `neg`: `A preencher apos testes negativos`
+- `files`: `apps/api/src/modules/students/*`, `apps/web/src/pages/student/ProfilePage.tsx`
+- `commands`: `npm test`, `npm run lint`
+- `screenshots`: `A preencher com ecrã de perfil`
+- `notes`: `Turma deve permanecer opcional para suportar RF04`
+
+## TODOs
+
+- TODO: confirmar nomes finais dos campos `year`, `course` e `className` no scaffold.
+- TODO: decidir se `ano` deve ser texto livre ou lista controlada.
+- FOLLOW-UP: BK-MF0-04 deve validar comportamento com `className` vazio.
+- Assunção a validar com o orientador: turma é texto opcional até existir módulo de turmas.
+- Decisão dependente de mockup: não existe ecrã de perfil no mockup atual.
+- Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
 
 ## Changelog
-- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-05-24`: guia refinado para perfil protegido, turma opcional e continuidade com estudo individual.

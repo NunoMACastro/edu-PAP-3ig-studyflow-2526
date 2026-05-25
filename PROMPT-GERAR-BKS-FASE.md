@@ -20,7 +20,7 @@ Vamos detalhar os BKs de uma fase/macro de um projeto PAP. Estes BKs vao ser usa
 - FASE_ALVO: "MF0"
   - Aceita "F0", "F1", "F2", etc. ou "MF0", "MF1", "MF2", etc.
   - Se receberes "F1", normaliza internamente para "MF1".
-- MODO: "Criar"
+- MODO: "Refinar"
   - Valores recomendados:
     - "criar": criar guias detalhados quando ainda nao existem.
     - "refinar": substituir guias genericos por guias detalhados mantendo metadados.
