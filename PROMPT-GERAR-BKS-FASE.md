@@ -183,11 +183,11 @@ Obrigatorio:
 
 Exemplos:
 
-- Se o BK usa Express, explica o que e Express e para que serve no backend.
+- Se o BK usa NestJS, explica o papel de module, controller e service.
 - Se usa middleware, explica o fluxo request -> middleware -> controller -> response.
 - Se usa cookies HttpOnly, explica porque sao mais seguros do que localStorage para sessao.
 - Se usa React components, explica a diferenca entre componente, props e estado.
-- Se usa uma migration/schema/model, explica o papel disso na persistencia.
+- Se usa um schema/modelo Mongoose, explica o papel disso na persistencia em MongoDB.
 - Se usa um service, explica a separacao entre controller e regra de negocio.
 - Se usa validacao, explica porque validar no backend mesmo quando o frontend ja valida.
 - Se usa mocks/stubs, explica a diferenca entre simulacao pedagogica e integracao real.
@@ -282,13 +282,12 @@ Regras:
 
 Exemplos de topicos possiveis:
 
-- Express
-- Router
+- NestJS module
 - Controller
 - Service
 - Middleware
 - Middleware de erro
-- Schema/modelo de dados
+- Schema/modelo Mongoose
 - Validacao backend
 - Cookies HttpOnly
 - CSRF
@@ -416,7 +415,7 @@ Listar:
 
 Segue estas regras por defeito, salvo se os documentos do projeto disserem outra coisa:
 
-- Preferir Node.js, JavaScript moderno e ES Modules quando a stack nao estiver fechada.
+- Preferir a stack canónica quando estiver definida: React/TypeScript/Tailwind, Node.js LTS com NestJS, MongoDB/Mongoose, Redis e OpenAI API.
 - Preferir async/await.
 - Separar responsabilidades:
   - routes/router;
@@ -629,7 +628,7 @@ Nao alteres escopo funcional sem pedir confirmacao.
 PROJECT_ROOT: "orelle"
 FASE_ALVO: "F1"
 MODO: "refinar"
-STACK_DECIDIDA: "Node.js + Express + React, JavaScript ES Modules"
+STACK_DECIDIDA: "React + TypeScript + Tailwind; Node.js LTS + NestJS; MongoDB + Mongoose; Redis; OpenAI API"
 MOCKUP_PATH: "docs/mockups/orelle/"
 APP_STATE: "sem_codigo"
 OUTPUT_MODE: "editar_ficheiros"

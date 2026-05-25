@@ -12,11 +12,11 @@
 - `dependencias`: `BK-MF0-07`
 - `rf_rnf`: `RF09`
 - `fase_documental`: `Fase 1`
-- `sprint`: `S03`
+- `sprint`: `S02`
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF0-10`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-09-associar-estilo-tom-das-aulas-voz-da-ia.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
@@ -39,7 +39,7 @@ Como ainda não há mockup para esta configuração, a UI deve ser discreta e pe
 - Estado esperado antes do BK: área de estudo criada.
 - Estado esperado depois do BK: área tem preferências de tom/estilo editáveis.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`
   - `apps/api/src/modules/study-areas/study-area-voice.controller.ts`
   - `apps/api/src/modules/study-areas/study-area-voice.service.ts`
   - `apps/api/src/modules/study-areas/dto/update-study-area-voice.dto.ts`
@@ -50,7 +50,7 @@ Como ainda não há mockup para esta configuração, a UI deve ser discreta e pe
 - Impacto na arquitetura: adiciona configuração pedagógica ao domínio `study-areas`.
 - Impacto em frontend: formulário de preferências.
 - Impacto em backend: endpoint derivado `PATCH /api/study-areas/:id/voice`.
-- Impacto em dados: campos de estilo/tom na área ou tabela associada.
+- Impacto em dados: campos de estilo/tom no documento da área ou numa coleção associada.
 - Impacto em segurança: sanitizar texto livre para evitar prompt injection simples.
 - Impacto em testes: validar opções permitidas, texto excessivo e área alheia.
 - Handoff: BK-MF0-10 usa estas preferências para compor o perfil IA.
@@ -81,7 +81,7 @@ Como ainda não há mockup para esta configuração, a UI deve ser discreta e pe
 - Apoio: `Natalia` (CANONICO)
 - Dependencias (BK IDs): `BK-MF0-07` (CANONICO)
 - Pre-condicoes: área de estudo pertencente ao aluno (DERIVADO)
-- Ref. Plano: `Fase 1`, `S03`, `Core` (CANONICO)
+- Ref. Plano: `Fase 1`, `S02`, `Core` (CANONICO)
 - Flow ID: `FLOW-MF0-STUDY-AREA-VOICE`
 - Fonte de verdade: `docs/RF.md`, `RF09` (CANONICO)
 - Fonte de verdade: `docs/planificacao/backlogs/BACKLOG-MVP.md`, `BK-MF0-09` (CANONICO)
@@ -144,13 +144,18 @@ Como ainda não há mockup para esta configuração, a UI deve ser discreta e pe
    - Justificação: BK-MF0-10 precisa de ler estes dados.
    - Como fazer (1.1): adicionar campos `voiceTone`, `voiceDetailLevel`, `voiceNotes`.
    - Como fazer (1.2): manter valores opcionais e seguros.
-   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro a rever: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     voiceTone        String?
-     voiceDetailLevel String?
-     voiceNotes       String?
+     ```ts
+     @Prop({ enum: ['simple', 'rigorous', 'step_by_step', 'examples_first'] })
+     voiceTone?: string;
+
+     @Prop({ enum: ['short', 'normal', 'detailed'], default: 'normal' })
+     voiceDetailLevel?: string;
+
+     @Prop({ trim: true, maxlength: 500 })
+     voiceNotes?: string;
      ```
    - O que verificar: não há dados biométricos/áudio.
 
@@ -269,7 +274,7 @@ Como ainda não há mockup para esta configuração, a UI deve ser discreta e pe
 ## TODOs
 
 - TODO: confirmar lista final de presets com orientador.
-- TODO: confirmar drift secundário: `CONTRATO-CAMPOS-BK.md` indica `S02`, mas backlog/matriz/guia existente indicam `S03`; mantido `S03`.
+- FOLLOW-UP: manter sincronizados `BACKLOG-MVP.md`, `MATRIZ-CANONICA-BK.md`, `CONTRATO-CAMPOS-BK.md`, `ANEXO-BK-SPRINT-OWNER.md` e este guia se houver novo replaneamento de sprint.
 - FOLLOW-UP: BK-MF0-10 deve consumir estas preferências.
 - Assunção a validar com o orientador: texto livre deve ser curto e controlado.
 - Decisão dependente de mockup: ecrã de voz ainda não existe.
@@ -277,3 +282,5 @@ Como ainda não há mockup para esta configuração, a UI deve ser discreta e pe
 
 ## Changelog
 - `2026-05-24`: guia refinado para voz pedagógica por área, com presets, segurança e handoff para perfil IA.
+- `2026-05-25`: sprint normalizado de `S03` para `S02`, porque `PLANO-SPRINTS.md` define `S02` como MF0 e `S03` como MF1; `CONTRATO-CAMPOS-BK.md` e `ANEXO-BK-SPRINT-OWNER.md` ja estavam em `S02`.
+- `2026-05-25`: persistência ajustada para campos Mongoose no schema `StudyArea`.

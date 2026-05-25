@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF0-06`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-05-o-aluno-pode-criar-rotinas-e-objetivos-de-estudo.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
@@ -39,7 +39,8 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 - Estado esperado antes do BK: aluno autenticado com perfil e acesso ao modo individual.
 - Estado esperado depois do BK: aluno cria, lista, edita estado e remove rotinas/objetivos pessoais.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/study/schemas/study-routine.schema.ts`
+  - `apps/api/src/modules/study/schemas/study-goal.schema.ts`
   - `apps/api/src/modules/study/routines.controller.ts`
   - `apps/api/src/modules/study/routines.service.ts`
   - `apps/api/src/modules/study/dto/create-routine.dto.ts`
@@ -138,7 +139,7 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
    - Como fazer (0.2): confirmar que endpoints usam `SessionGuard`.
    - Ficheiro a rever: `docs/RF.md`.
    - Ficheiro alvo: `apps/api/src/modules/study/routines.controller.ts`.
-   - Snippet de referência: `where: { userId: request.user.id }`.
+   - Snippet de referência: `{ userId: request.user.id }`.
    - O que verificar: não há `classId` obrigatório.
 
 1. **Objetivo (~30 min): criar modelos de dados**
@@ -146,18 +147,34 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
    - Justificação: dados precisam sobreviver ao refresh da página.
    - Como fazer (1.1): criar `StudyRoutine`.
    - Como fazer (1.2): criar `StudyGoal`.
-   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro a rever: `apps/api/src/modules/auth/schemas/user.schema.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/study/schemas/study-routine.schema.ts` e `apps/api/src/modules/study/schemas/study-goal.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     model StudyRoutine {
-       id              String @id @default(uuid())
-       userId          String
-       title           String
-       frequency       String
-       targetMinutes   Int
-       active          Boolean @default(true)
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument, Types } from 'mongoose';
+
+     export type StudyRoutineDocument = HydratedDocument<StudyRoutine>;
+
+     @Schema({ timestamps: true, collection: 'study_routines' })
+     export class StudyRoutine {
+       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+       userId!: Types.ObjectId;
+
+       @Prop({ required: true, trim: true })
+       title!: string;
+
+       @Prop({ required: true, enum: ['daily', 'weekly'] })
+       frequency!: string;
+
+       @Prop({ required: true, min: 1 })
+       targetMinutes!: number;
+
+       @Prop({ default: true })
+       active!: boolean;
      }
+
+     export const StudyRoutineSchema = SchemaFactory.createForClass(StudyRoutine);
      ```
    - O que verificar: ambos têm `userId`.
 
@@ -188,7 +205,7 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
    - Snippet de referência:
      ```ts
      export async function createRoutine(userId: string, input: CreateRoutineDto) {
-       return routineRepository.create({ ...input, userId });
+       return this.routineModel.create({ ...input, userId });
      }
      ```
    - O que verificar: `userId` vem da sessão.
@@ -254,7 +271,7 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 ## Critérios de aceite:
 
 - Outputs:
-  - Modelos de rotina e objetivo.
+  - Schemas Mongoose de rotina e objetivo.
   - API protegida.
   - Página de rotinas.
 - Verificações:
@@ -289,3 +306,4 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 
 ## Changelog
 - `2026-05-24`: guia refinado para rotinas e objetivos pessoais com CRUD, ownership e validação P1.
+- `2026-05-25`: modelos de dados atualizados para schemas MongoDB/Mongoose.

@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF0-07`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-06-o-aluno-pode-consultar-historico-de-estudo.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
@@ -39,7 +39,7 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
 - Estado esperado antes do BK: aluno autenticado e perfil disponível; rotinas podem ou não existir.
 - Estado esperado depois do BK: aluno vê lista cronológica dos seus eventos de estudo.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/study/schemas/study-event.schema.ts`
   - `apps/api/src/modules/study/history.controller.ts`
   - `apps/api/src/modules/study/history.service.ts`
   - `apps/api/src/modules/study/dto/study-event.dto.ts`
@@ -119,7 +119,7 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
 
 ## Conceitos teóricos essenciais (DERIVADO):
 
-**Event log funcional.** O histórico pode ser modelado como eventos. Cada evento tem tipo, data, descrição e dono. Isto é mais flexível do que criar uma tabela diferente para cada tipo de atividade.
+**Event log funcional.** O histórico pode ser modelado como eventos. Cada evento tem tipo, data, descrição e dono. Isto é mais flexível do que criar uma coleção diferente para cada tipo de atividade.
 
 **Histórico vs auditoria.** Este histórico é para o aluno consultar a sua atividade. Auditoria administrativa completa é outro requisito e deve ter regras mais rigorosas, logs e permissões próprias.
 
@@ -144,17 +144,32 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
    - Justificação: histórico precisa de persistência.
    - Como fazer (1.1): criar `StudyEvent`.
    - Como fazer (1.2): incluir `metadata` opcional para detalhes controlados.
-   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro a rever: `apps/api/src/modules/auth/schemas/user.schema.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/study/schemas/study-event.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     model StudyEvent {
-       id        String   @id @default(uuid())
-       userId    String
-       type      String
-       title     String
-       createdAt DateTime @default(now())
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument, Types } from 'mongoose';
+
+     export type StudyEventDocument = HydratedDocument<StudyEvent>;
+
+     @Schema({ timestamps: true, collection: 'study_events' })
+     export class StudyEvent {
+       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+       userId!: Types.ObjectId;
+
+       @Prop({ required: true, trim: true })
+       type!: string;
+
+       @Prop({ required: true, trim: true })
+       title!: string;
+
+       @Prop({ type: Object })
+       metadata?: Record<string, unknown>;
      }
+
+     export const StudyEventSchema = SchemaFactory.createForClass(StudyEvent);
+     StudyEventSchema.index({ userId: 1, createdAt: -1 });
      ```
    - O que verificar: existe índice por `userId` e `createdAt` quando suportado.
 
@@ -168,7 +183,7 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
    - Snippet de referência:
      ```ts
      export async function listMyHistory(userId: string) {
-       return eventsRepository.findMany({ where: { userId }, orderBy: { createdAt: "desc" } });
+       return this.studyEventModel.find({ userId }).sort({ createdAt: -1 }).lean();
      }
      ```
    - O que verificar: service não aceita `targetUserId` do cliente.
@@ -246,7 +261,7 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
 ## Critérios de aceite:
 
 - Outputs:
-  - Modelo `StudyEvent`.
+  - Schema Mongoose `StudyEvent`.
   - Endpoint `GET /api/study/history`.
   - Página de histórico.
 - Verificações:
@@ -281,3 +296,4 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
 
 ## Changelog
 - `2026-05-24`: guia refinado para histórico individual com eventos, privacidade e continuidade com materiais/IA.
+- `2026-05-25`: histórico atualizado para coleção MongoDB e schema Mongoose.

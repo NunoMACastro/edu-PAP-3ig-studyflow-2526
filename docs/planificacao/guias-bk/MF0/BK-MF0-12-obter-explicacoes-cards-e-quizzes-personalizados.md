@@ -16,13 +16,15 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF1-01`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-12-obter-explicacoes-cards-e-quizzes-personalizados.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
 Neste BK vamos criar ferramentas de estudo geradas por IA a partir dos materiais e resumos da Área de Estudo: explicações, cards e quizzes personalizados. Tal como no BK-MF0-11, a geração deve ser baseada em fontes disponíveis e não pode inventar matéria.
 
 O requisito RF12 fala em personalização, mas a adaptação profunda ao ritmo/dificuldades do aluno só entra no BK-MF1-01/RF13. Nesta fase, “personalizado” significa respeitar a área de estudo, os materiais, o tom configurado e o histórico básico disponível, sem criar perfis psicológicos ou métricas não definidas.
+
+Decisão explícita de escopo MF0: a IA só pode usar fontes já disponíveis e processáveis no sistema. PDF/DOCX sem texto extraído, sem estado processável ou sem indexação completa devem bloquear a geração com mensagem clara. RAG, embeddings, chunking semântico, OCR e indexação completa pertencem a fases posteriores e não devem ser prometidos por este BK.
 
 O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adaptação ao ritmo e dificuldades, por isso este BK deve guardar resultados e feedback mínimo para reutilização futura.
 
@@ -39,7 +41,7 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 - Estado esperado antes do BK: resumo/fonte processável criado no BK-MF0-11.
 - Estado esperado depois do BK: aluno gera explicação, cards e quiz com fontes.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/ai/schemas/ai-artifact.schema.ts`
   - `apps/api/src/modules/ai/study-tools.controller.ts`
   - `apps/api/src/modules/ai/study-tools.service.ts`
   - `apps/api/src/modules/ai/prompts/study-tools.prompt.ts`
@@ -65,12 +67,16 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 - Testes oficiais de professor, que pertencem a RF28.
 - Aprovação docente de conteúdos IA, que pertence a RF29.
 - Exportação PDF/MD.
+- RAG, embeddings, OCR, chunking semântico ou pipeline completo de indexação.
+- Geração a partir de PDF/DOCX sem texto extraído/processável.
 - Conhecimento externo ou web search.
 
 ## Como saber que isto ficou bem
 
 - Explicação, cards e quiz são gerados apenas com fontes da área.
 - Quiz tem perguntas de escolha múltipla com 1 resposta correta e 3 distratores.
+- PDF/DOCX sem texto extraído ou indexação completa não origina explicações, cards nem quizzes.
+- O guia deixa explícito que RAG/indexação completa pertence a fases posteriores.
 - Artefactos guardam fontes.
 - UI mostra loading, erro sem fontes e resultado.
 - Área alheia ou fonte ausente não gera conteúdo.
@@ -101,6 +107,7 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 - Validar estrutura do quiz depois de gerar.
 - Criar UI para cada tipo de ferramenta.
 - Guardar artefactos e fontes.
+- Bloquear PDF/DOCX sem texto extraído ou indexação completa, sem fallback para resposta genérica.
 - Preparar feedback/histórico para MF1.
 
 ## Pre-leitura mínima (10-15 min) (DERIVADO):
@@ -111,6 +118,7 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 - BK-MF0-11: resumo e fontes.
 - BK-MF0-10: perfil IA.
 - BK-MF0-06: histórico.
+- `docs/planificacao/sprints/PLANO-SPRINTS.md`: confirmar que RAG/indexação completa não pertence ao contrato MF0.
 
 ## Glossário (rápido) (DERIVADO):
 
@@ -120,6 +128,9 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 - **Distrator**: opção errada mas plausível num MCQ.
 - **MCQ**: pergunta de escolha múltipla.
 - **Fonte**: material que justifica o conteúdo gerado.
+- **Fonte processável**: material que a app consegue ler como texto no MF0.
+- **Texto extraído**: conteúdo textual já disponível a partir de um ficheiro; sem isto, PDF/DOCX bloqueia geração.
+- **RAG**: consulta a uma base documental indexada antes da resposta IA; fica fora do MF0.
 - **Validador de output**: código que confirma se a resposta da IA tem formato aceitável.
 - **Feedback**: resposta do aluno a uma ferramenta, útil para adaptação futura.
 
@@ -132,6 +143,8 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 **Personalização inicial.** Nesta fase a personalização usa área, tom e fontes. A adaptação ao ritmo/dificuldades fica para o próximo BK para não inventar métricas ainda inexistentes.
 
 **Separação entre recomendação e avaliação oficial.** Quizzes deste BK são ferramentas de estudo, não testes oficiais de professor. Essa distinção evita confusão com RF28/RF29.
+
+**Limite MF0 para fontes.** Um ficheiro carregado mas ainda sem texto extraído ou indexação completa não é fonte suficiente para IA. O comportamento correto é bloquear e explicar ao aluno que o material ainda não está pronto para gerar conteúdo de estudo. RAG e indexação completa ficam para fases posteriores.
 
 ## Guia de execução (passo-a-passo) (DERIVADO):
 
@@ -154,9 +167,9 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
    - Como fazer (1.1): confirmar que `AiArtifact.type` aceita novos tipos.
    - Como fazer (1.2): guardar `sourcesJson` em todos os artefactos.
    - Ficheiro a rever: BK-MF0-11.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro alvo: `apps/api/src/modules/ai/schemas/ai-artifact.schema.ts`.
    - Snippet de referência: `type: "QUIZ"`.
-   - O que verificar: não criar tabela redundante sem necessidade.
+   - O que verificar: não criar coleção redundante sem necessidade.
 
 2. **Objetivo (~40 min): criar prompts por tipo**
    - Descrição detalhada do objetivo: gerar instruções específicas.
@@ -182,7 +195,8 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
      ```ts
      if (!sources.length) throw new Error("NO_PROCESSABLE_SOURCES");
      ```
-   - O que verificar: materiais pendentes não geram tools.
+   - O que verificar: materiais pendentes, PDF/DOCX sem texto extraído ou fontes sem indexação completa não geram tools.
+   - Mensagem esperada: `Este material ainda não tem texto processável para gerar conteúdo de estudo.`
 
 4. **Objetivo (~45 min): implementar service de ferramentas**
    - Descrição detalhada do objetivo: gerar, validar e guardar artefactos.
@@ -267,6 +281,7 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
   - Gerar quiz com fonte.
 - Negativos:
   - passo 9; input/ação: área sem fontes processáveis; resultado esperado: `409` ou `422`; risco que cobre: conteúdo inventado.
+  - passo 9; input/ação: PDF/DOCX sem texto extraído ou sem indexação completa; resultado esperado: mensagem clara e sem chamada ao provider IA; risco que cobre: promessa implícita de RAG no MF0.
   - passo 9; input/ação: provider devolve quiz com 2 respostas corretas; resultado esperado: artefacto rejeitado; risco que cobre: avaliação incorreta.
   - passo 9; input/ação: área de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
 - Técnico:
@@ -287,6 +302,7 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
   - Endpoint de study tools.
   - UI de explicações, cards e quizzes.
   - Validador de quiz.
+  - Exclusão explícita de RAG/indexação completa no MF0.
 - Verificações:
   - Cada tipo gera artefacto com fontes.
   - Quiz tem 1 correta e 3 distratores por pergunta.
@@ -295,6 +311,7 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
   - Prompts separados por tipo.
   - Provider isolado.
   - Personalização limitada ao contexto existente.
+  - PDF/DOCX não processável não faz fallback para conteúdo genérico.
 - Continuidade:
   - BK-MF1-01 consegue reutilizar histórico/feedback mínimo.
   - MF1 não precisa reescrever materiais, perfil IA ou artefactos.
@@ -316,6 +333,7 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 - TODO: confirmar quantidade inicial de cards e perguntas por quiz.
 - TODO: decidir como guardar respostas do aluno sem criar métricas avançadas prematuras.
 - TODO (BLOCKER): geração factual continua dependente de fontes processáveis.
+- TODO (BLOCKER): definir em fase posterior o contrato de RAG/indexação completa; não implementar nem prometer este comportamento no MF0.
 - FOLLOW-UP: BK-MF1-01 deve usar feedback e histórico para adaptar explicações.
 - Assunção a validar com o orientador: quizzes deste BK são estudo, não avaliação oficial.
 - Decisão dependente de mockup: ecrã de study tools ainda não existe.
@@ -323,3 +341,5 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 
 ## Changelog
 - `2026-05-24`: guia refinado para explicações, cards e quizzes com fontes, validador e handoff para MF1.
+- `2026-05-25`: escopo IA MF0 reforçado: apenas fontes processáveis; PDF/DOCX sem texto extraído bloqueia; RAG/indexação completa fica para fases posteriores.
+- `2026-05-25`: reutilização de `AiArtifact` alinhada com schema MongoDB/Mongoose.

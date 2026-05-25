@@ -765,16 +765,26 @@ export function validarFormulario(state: FormState) {{
         ),
         "performance_scalability": (
             "Consulta de latência por janela",
-            "sql",
-            f"""-- BK: {bk_id} / {req}
-SELECT DATE_TRUNC('minute', created_at) AS janela,
-       AVG(latencia_ms) AS lat_media,
-       PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latencia_ms) AS p95
-FROM metricas_latency
-WHERE contexto = :contexto
-GROUP BY 1
-ORDER BY 1 DESC
-LIMIT 60;
+            "ts",
+            f"""// BK: {bk_id} / {req}
+const porJanela = await metricasLatencyModel.aggregate([
+  {{ $match: {{ contexto }} }},
+  {{
+    $group: {{
+      _id: {{ $dateTrunc: {{ date: '$createdAt', unit: 'minute' }} }},
+      latMedia: {{ $avg: '$latenciaMs' }},
+      latenciasMs: {{ $push: '$latenciaMs' }},
+    }},
+  }},
+  {{ $sort: {{ _id: -1 }} }},
+  {{ $limit: 60 }},
+]);
+
+const resultado = porJanela.map((janela) => ({{
+  janela: janela._id,
+  latMedia: janela.latMedia,
+  p95: calcularPercentil(janela.latenciasMs, 95),
+}});
 """,
             "Base para validar SLA do caminho crítico com p95 mensurável.",
         ),

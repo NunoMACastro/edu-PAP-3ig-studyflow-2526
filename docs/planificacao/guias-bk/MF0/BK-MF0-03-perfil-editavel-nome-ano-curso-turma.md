@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF0-04`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-03-perfil-editavel-nome-ano-curso-turma.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
@@ -39,7 +39,7 @@ Como ainda não existe código, os caminhos indicados são uma proposta técnica
 - Estado esperado antes do BK: login funcional ou contrato de sessão definido no BK-MF0-02.
 - Estado esperado depois do BK: aluno autenticado consegue ver e atualizar o próprio perfil.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/students/schemas/student-profile.schema.ts`
   - `apps/api/src/modules/students/student-profile.controller.ts`
   - `apps/api/src/modules/students/student-profile.service.ts`
   - `apps/api/src/modules/students/dto/update-student-profile.dto.ts`
@@ -140,22 +140,38 @@ Como ainda não existe código, os caminhos indicados são uma proposta técnica
    - O que verificar: não existe endpoint público para perfil.
 
 1. **Objetivo (~30 min): modelar StudentProfile**
-   - Descrição detalhada do objetivo: criar tabela ligada a `User`.
+   - Descrição detalhada do objetivo: criar documento de perfil ligado a `User`.
    - Justificação: mantém conta e perfil separados.
-   - Como fazer (1.1): adicionar relação `User -> StudentProfile`.
+   - Como fazer (1.1): adicionar referência `userId -> User`.
    - Como fazer (1.2): tornar `className` opcional.
-   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro a rever: `apps/api/src/modules/auth/schemas/user.schema.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/students/schemas/student-profile.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     model StudentProfile {
-       id        String  @id @default(uuid())
-       userId    String  @unique
-       name      String
-       year      String?
-       course    String?
-       className String?
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument, Types } from 'mongoose';
+
+     export type StudentProfileDocument = HydratedDocument<StudentProfile>;
+
+     @Schema({ timestamps: true, collection: 'student_profiles' })
+     export class StudentProfile {
+       @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true, index: true })
+       userId!: Types.ObjectId;
+
+       @Prop({ required: true, trim: true })
+       name!: string;
+
+       @Prop({ trim: true })
+       year?: string;
+
+       @Prop({ trim: true })
+       course?: string;
+
+       @Prop({ trim: true })
+       className?: string;
      }
+
+     export const StudentProfileSchema = SchemaFactory.createForClass(StudentProfile);
      ```
    - O que verificar: `className` não é obrigatório.
 
@@ -254,7 +270,7 @@ Como ainda não existe código, os caminhos indicados são uma proposta técnica
 ## Critérios de aceite:
 
 - Outputs:
-  - Modelo `StudentProfile`.
+  - Schema Mongoose `StudentProfile`.
   - Endpoints `GET/PATCH /api/students/me/profile`.
   - Página `ProfilePage`.
 - Verificações:
@@ -289,3 +305,4 @@ Como ainda não existe código, os caminhos indicados são uma proposta técnica
 
 ## Changelog
 - `2026-05-24`: guia refinado para perfil protegido, turma opcional e continuidade com estudo individual.
+- `2026-05-25`: persistência atualizada para MongoDB/Mongoose com referência `userId`.

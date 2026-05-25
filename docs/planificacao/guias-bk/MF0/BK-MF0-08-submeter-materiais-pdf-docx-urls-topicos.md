@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-09`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-08-submeter-materiais-pdf-docx-urls-topicos.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
@@ -39,7 +39,7 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 - Estado esperado antes do BK: área de estudo criada no BK-MF0-07.
 - Estado esperado depois do BK: aluno submete material válido e vê o estado do material na área.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/materials/schemas/material.schema.ts`
   - `apps/api/src/modules/materials/materials.controller.ts`
   - `apps/api/src/modules/materials/materials.service.ts`
   - `apps/api/src/modules/materials/dto/create-material.dto.ts`
@@ -146,19 +146,38 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
    - Descrição detalhada do objetivo: guardar metadados do material.
    - Justificação: IA futura precisa de saber origem, tipo e estado.
    - Como fazer (1.1): criar campos `studyAreaId`, `userId`, `type`, `title`, `status`.
-   - Como fazer (1.2): incluir campos opcionais `url`, `storageKey`, `mimeType`, `sizeBytes`.
-   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Como fazer (1.2): incluir campos opcionais `url`, `storageKey`, `mimeType`, `sizeBytes`, `contentText`.
+   - Ficheiro a rever: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/materials/schemas/material.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     model Material {
-       id          String @id @default(uuid())
-       userId      String
-       studyAreaId String
-       type        String
-       title       String
-       status      String @default("PENDING_PROCESSING")
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument, Types } from 'mongoose';
+
+     export type MaterialDocument = HydratedDocument<Material>;
+
+     @Schema({ timestamps: true, collection: 'materials' })
+     export class Material {
+       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+       userId!: Types.ObjectId;
+
+       @Prop({ type: Types.ObjectId, ref: 'StudyArea', required: true, index: true })
+       studyAreaId!: Types.ObjectId;
+
+       @Prop({ required: true, enum: ['PDF', 'DOCX', 'URL', 'TOPIC'] })
+       type!: string;
+
+       @Prop({ required: true, trim: true })
+       title!: string;
+
+       @Prop({ required: true, enum: ['PENDING_PROCESSING', 'READY', 'FAILED'], default: 'PENDING_PROCESSING' })
+       status!: string;
+
+       @Prop()
+       contentText?: string;
      }
+
+     export const MaterialSchema = SchemaFactory.createForClass(Material);
      ```
    - O que verificar: material está ligado à área e ao aluno.
 
@@ -275,7 +294,7 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 ## Critérios de aceite:
 
 - Outputs:
-  - Modelo `Material`.
+  - Schema Mongoose `Material`.
   - Endpoints de submissão/listagem.
   - UI de submissão.
 - Verificações:
@@ -313,3 +332,4 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 
 ## Changelog
 - `2026-05-24`: guia refinado para submissão segura de materiais, com validação, ownership e handoff para IA.
+- `2026-05-25`: material atualizado para coleção MongoDB/Mongoose e referências `ObjectId`.

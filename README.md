@@ -63,8 +63,9 @@ A proposta de valor é oferecer uma experiência única que respeita contexto pe
 Fontes funcionais canónicas: [docs/RF.md](docs/RF.md), [docs/planificacao/backlogs/BACKLOG-MVP.md](docs/planificacao/backlogs/BACKLOG-MVP.md).
 
 ## 5. Arquitetura/Stack Recomendada (Alto Nível)
-- frontend modular para perfis de aluno, professor e administração;
-- backend por domínios (identidade, materiais, IA, turma, notificações);
+- frontend modular em React/TypeScript/Tailwind para perfis de aluno, professor e administração;
+- backend Node.js LTS com NestJS, organizado por domínios (identidade, materiais, IA, turma, notificações);
+- persistência principal em MongoDB via Mongoose ODM, com Redis para cache e sessões;
 - pipeline de indexação e recuperação documental para respostas fundamentadas;
 - camada de guardrails para políticas por contexto;
 - observabilidade de uso, desempenho e segurança.

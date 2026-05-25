@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-08`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-07-criar-areas-de-estudo-auto-disciplina-independente.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
@@ -39,7 +39,7 @@ O mockup não tem ecrã de áreas. A UI deve ser simples e extensível: lista de
 - Estado esperado antes do BK: aluno autenticado com perfil.
 - Estado esperado depois do BK: aluno cria, lista, edita e arquiva áreas de estudo próprias.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`
   - `apps/api/src/modules/study-areas/study-areas.controller.ts`
   - `apps/api/src/modules/study-areas/study-areas.service.ts`
   - `apps/api/src/modules/study-areas/dto/create-study-area.dto.ts`
@@ -137,8 +137,8 @@ O mockup não tem ecrã de áreas. A UI deve ser simples e extensível: lista de
    - Como fazer (0.1): rever RF07 e RF19-RF21.
    - Como fazer (0.2): documentar que `StudyArea` usa `userId`, não `classId`.
    - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
-   - Snippet de referência: `userId String`.
+   - Ficheiro alvo: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
+   - Snippet de referência: `@Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })`.
    - O que verificar: não há dependência de turmas.
 
 1. **Objetivo (~30 min): criar modelo StudyArea**
@@ -146,17 +146,34 @@ O mockup não tem ecrã de áreas. A UI deve ser simples e extensível: lista de
    - Justificação: materiais e IA precisam de `studyAreaId`.
    - Como fazer (1.1): criar campos `name`, `description`, `color`, `archived`.
    - Como fazer (1.2): criar índice por `userId`.
-   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro a rever: `apps/api/src/modules/auth/schemas/user.schema.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     model StudyArea {
-       id          String  @id @default(uuid())
-       userId      String
-       name        String
-       description String?
-       archived    Boolean @default(false)
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument, Types } from 'mongoose';
+
+     export type StudyAreaDocument = HydratedDocument<StudyArea>;
+
+     @Schema({ timestamps: true, collection: 'study_areas' })
+     export class StudyArea {
+       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+       userId!: Types.ObjectId;
+
+       @Prop({ required: true, trim: true })
+       name!: string;
+
+       @Prop({ trim: true })
+       description?: string;
+
+       @Prop({ trim: true })
+       color?: string;
+
+       @Prop({ default: false })
+       archived!: boolean;
      }
+
+     export const StudyAreaSchema = SchemaFactory.createForClass(StudyArea);
      ```
    - O que verificar: área tem dono obrigatório.
 
@@ -185,7 +202,7 @@ O mockup não tem ecrã de áreas. A UI deve ser simples e extensível: lista de
    - Ficheiro alvo: `apps/api/src/modules/study-areas/study-areas.service.ts`.
    - Snippet de referência:
      ```ts
-     return repository.findFirst({ where: { id: areaId, userId } });
+     return this.studyAreaModel.findOne({ _id: areaId, userId }).lean();
      ```
    - O que verificar: área de outro aluno não é encontrada.
 
@@ -270,7 +287,7 @@ O mockup não tem ecrã de áreas. A UI deve ser simples e extensível: lista de
 ## Critérios de aceite:
 
 - Outputs:
-  - Modelo `StudyArea`.
+  - Schema Mongoose `StudyArea`.
   - API de áreas protegida.
   - Lista e detalhe no frontend.
 - Verificações:
@@ -306,3 +323,4 @@ O mockup não tem ecrã de áreas. A UI deve ser simples e extensível: lista de
 
 ## Changelog
 - `2026-05-24`: guia refinado para áreas privadas, ownership e handoff para materiais/IA.
+- `2026-05-25`: área de estudo atualizada para schema MongoDB/Mongoose com referência `userId`.

@@ -16,13 +16,15 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-12`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-11-obter-resumos-ia-baseados-nos-materiais-enviados.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
 Neste BK vamos criar o primeiro fluxo de IA visível: gerar um resumo para uma Área de Estudo com base nos materiais enviados pelo aluno. O resumo deve depender de fontes da própria área e nunca deve inventar conteúdo quando o material ainda não está processado.
 
-Como a indexação automática completa aparece mais tarde em RF31/RF32, este BK deve ser honesto tecnicamente. A geração só pode usar materiais que já tenham texto disponível ou conteúdo manual do tipo `TOPIC`. PDF/DOCX em estado `PENDING_PROCESSING` devem bloquear a geração com mensagem clara, em vez de produzir resumo fictício.
+Como a indexação automática completa aparece mais tarde em RF31/RF32, este BK deve ser honesto tecnicamente. A geração só pode usar fontes já disponíveis e processáveis no sistema, como materiais que já tenham texto extraído ou conteúdo manual do tipo `TOPIC`. PDF/DOCX em estado `PENDING_PROCESSING`, sem texto extraído ou sem indexação completa devem bloquear a geração com mensagem clara, em vez de produzir resumo fictício.
+
+Decisão explícita de escopo MF0: este BK não implementa RAG, embeddings, chunking semântico, OCR nem pipeline completo de indexação. Esses temas pertencem a fases posteriores; no MF0, se o material não estiver processável, a resposta correta é bloquear a geração e explicar o motivo ao aluno.
 
 O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da área. A “voz” do BK-MF0-09, quando existir, pode influenciar o estilo do resumo, mas não pode substituir as fontes.
 
@@ -39,7 +41,7 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 - Estado esperado antes do BK: materiais submetidos e perfil IA criado.
 - Estado esperado depois do BK: aluno gera ou tenta gerar resumo com estado controlado.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/ai/schemas/ai-artifact.schema.ts`
   - `apps/api/src/modules/ai/summaries.controller.ts`
   - `apps/api/src/modules/ai/summaries.service.ts`
   - `apps/api/src/modules/ai/providers/ai-provider.ts`
@@ -60,6 +62,8 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 ## O que não entra (scope-out)
 
 - Indexação automática completa de PDF/DOCX.
+- RAG, embeddings, chunking semântico, OCR ou pipeline completo de indexação.
+- Resumos factuais de PDF/DOCX sem texto extraído/processável.
 - Conhecimento externo sem permissão.
 - Aprovação docente de conteúdos IA.
 - Quotas, custos e seleção avançada de modelo.
@@ -69,6 +73,8 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 
 - Resumo válido referencia materiais usados.
 - Se não houver texto fonte, a API bloqueia com erro pedagógico claro.
+- PDF/DOCX sem texto extraído ou indexação completa não gera resposta IA.
+- O guia deixa explícito que RAG/indexação completa pertence a fases posteriores.
 - Área alheia não pode ser resumida.
 - Resposta da IA fica guardada como artefacto da área.
 - UI mostra fontes e não apresenta resumo falso.
@@ -98,6 +104,7 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 - Criar prompt de resumo com fontes obrigatórias.
 - Criar endpoint de geração de resumo.
 - Bloquear geração sem material processado.
+- Bloquear PDF/DOCX sem texto extraído ou indexação completa, sem fallback para resposta genérica.
 - Criar UI de geração e visualização.
 - Guardar resumo e fontes.
 
@@ -108,6 +115,7 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 - BK-MF0-08: materiais.
 - BK-MF0-10: perfil IA.
 - Critérios de aceitação dos RF: resumos devem indicar página/secção quando disponível.
+- `docs/planificacao/sprints/PLANO-SPRINTS.md`: confirmar que RAG/indexação completa não pertence ao contrato MF0.
 
 ## Glossário (rápido) (DERIVADO):
 
@@ -119,6 +127,8 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 - **Fallback**: comportamento quando a IA não pode responder.
 - **Citação**: referência à origem do conteúdo.
 - **Material processado**: material com texto utilizável pela IA.
+- **Texto extraído**: representação textual já obtida a partir de um ficheiro; sem isto, PDF/DOCX deve bloquear geração no MF0.
+- **RAG**: padrão em que a IA consulta uma base documental indexada antes de responder; fica fora do MF0.
 
 ## Conceitos teóricos essenciais (DERIVADO):
 
@@ -130,6 +140,8 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 
 **Fallback honesto.** Quando faltam fontes, a resposta correta é bloquear e explicar o que falta, não criar conteúdo genérico.
 
+**Limite MF0 para PDF/DOCX.** Um ficheiro carregado não é automaticamente uma fonte utilizável. Se ainda não existe texto extraído ou indexação completa, a app deve responder com uma mensagem como "Este material ainda não tem texto processável para gerar resumo." RAG e indexação completa devem ficar documentados como trabalho futuro, não como promessa deste BK.
+
 ## Guia de execução (passo-a-passo) (DERIVADO):
 
 0. **Objetivo (~20 min): confirmar pré-condição de fontes**
@@ -140,25 +152,42 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
    - Ficheiro a rever: `docs/RF.md`.
    - Ficheiro alvo: `apps/api/src/modules/ai/summaries.service.ts`.
    - Snippet de referência: `if (sources.length === 0) throw new Error("NO_PROCESSABLE_SOURCES");`
-   - O que verificar: materiais pendentes bloqueiam geração.
+   - O que verificar: materiais pendentes, PDF/DOCX sem texto extraído ou fontes sem indexação completa bloqueiam geração.
+   - Mensagem esperada: `Este material ainda não tem texto processável para gerar resumo.`
 
 1. **Objetivo (~35 min): criar modelo de artefacto IA**
    - Descrição detalhada do objetivo: guardar resumos e fontes usadas.
    - Justificação: aluno pode consultar depois e defender evidência.
    - Como fazer (1.1): criar `AiArtifact` com `type`, `studyAreaId`, `content`, `sources`.
    - Como fazer (1.2): associar ao `userId`.
-   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro a rever: `apps/api/src/modules/ai/schemas/ai-area-profile.schema.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/ai/schemas/ai-artifact.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     model AiArtifact {
-       id          String @id @default(uuid())
-       userId      String
-       studyAreaId String
-       type        String
-       contentJson Json
-       sourcesJson Json
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+
+     export type AiArtifactDocument = HydratedDocument<AiArtifact>;
+
+     @Schema({ timestamps: true, collection: 'ai_artifacts' })
+     export class AiArtifact {
+       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+       userId!: Types.ObjectId;
+
+       @Prop({ type: Types.ObjectId, ref: 'StudyArea', required: true, index: true })
+       studyAreaId!: Types.ObjectId;
+
+       @Prop({ required: true, enum: ['SUMMARY', 'EXPLANATION', 'FLASHCARDS', 'QUIZ'] })
+       type!: string;
+
+       @Prop({ type: MongooseSchema.Types.Mixed, required: true })
+       contentJson!: Record<string, unknown>;
+
+       @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
+       sourcesJson!: Array<Record<string, unknown>>;
      }
+
+     export const AiArtifactSchema = SchemaFactory.createForClass(AiArtifact);
      ```
    - O que verificar: fontes ficam guardadas.
 
@@ -259,6 +288,7 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
   - Consultar resumo guardado.
 - Negativos:
   - passo 8; input/ação: área sem fontes processáveis; resultado esperado: `409` ou `422`; risco que cobre: resumo inventado.
+  - passo 8; input/ação: PDF/DOCX sem texto extraído ou sem indexação completa; resultado esperado: mensagem clara e sem chamada ao provider IA; risco que cobre: promessa implícita de RAG no MF0.
   - passo 8; input/ação: área de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
   - passo 8; input/ação: provider IA indisponível; resultado esperado: `503` controlado; risco que cobre: falha externa.
 - Técnico:
@@ -275,14 +305,16 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 ## Critérios de aceite:
 
 - Outputs:
-  - Modelo `AiArtifact`.
+  - Schema Mongoose `AiArtifact`.
   - Endpoint de resumos.
   - UI de geração/consulta.
+  - Exclusão explícita de RAG/indexação completa no MF0.
 - Verificações:
   - Resumo válido responde `201`.
   - Sem fontes responde erro controlado.
 - Qualidade:
   - IA só usa fontes da área.
+  - PDF/DOCX não processável não faz fallback para resumo genérico.
   - Erros externos tratados explicitamente.
 - Continuidade:
   - BK-MF0-12 reutiliza artefacto/fonte.
@@ -303,6 +335,7 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 
 - TODO: confirmar provider IA e modelo antes de produção.
 - TODO (BLOCKER): resumo factual de PDF/DOCX depende de texto extraído/indexado; se ainda não existir, bloquear.
+- TODO (BLOCKER): definir em fase posterior o contrato de RAG/indexação completa; não implementar nem prometer este comportamento no MF0.
 - FOLLOW-UP: BK-MF0-12 deve reutilizar fontes do resumo.
 - Assunção a validar com o orientador: tópicos manuais podem servir como fonte inicial controlada.
 - Decisão dependente de mockup: ecrã de resumos ainda não existe.
@@ -310,3 +343,5 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 
 ## Changelog
 - `2026-05-24`: guia refinado para resumos IA com fontes obrigatórias, fallback honesto e provider isolado.
+- `2026-05-25`: escopo IA MF0 reforçado: apenas fontes processáveis; PDF/DOCX sem texto extraído bloqueia; RAG/indexação completa fica para fases posteriores.
+- `2026-05-25`: artefactos IA atualizados para coleção MongoDB/Mongoose.

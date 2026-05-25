@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-11`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-10-criar-perfil-ia-da-area-de-estudo.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
@@ -39,7 +39,7 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 - Estado esperado antes do BK: área e materiais submetidos.
 - Estado esperado depois do BK: área tem `AiAreaProfile` reutilizável.
 - Ficheiros a criar/editar:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/ai/schemas/ai-area-profile.schema.ts`
   - `apps/api/src/modules/ai/ai-area-profile.controller.ts`
   - `apps/api/src/modules/ai/ai-area-profile.service.ts`
   - `apps/api/src/modules/ai/dto/ai-area-profile.dto.ts`
@@ -142,18 +142,36 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 1. **Objetivo (~35 min): criar modelo AiAreaProfile**
    - Descrição detalhada do objetivo: persistir perfil por área.
    - Justificação: BK-MF0-11 precisa de perfil estável.
-   - Como fazer (1.1): criar relação única com `studyAreaId`.
+   - Como fazer (1.1): criar referência única por `studyAreaId`.
    - Como fazer (1.2): guardar estado, materiais incluídos e preferências.
-   - Ficheiro a rever: `apps/api/prisma/schema.prisma`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro a rever: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
+   - Ficheiro alvo: `apps/api/src/modules/ai/schemas/ai-area-profile.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     model AiAreaProfile {
-       id          String @id @default(uuid())
-       studyAreaId String @unique
-       status      String
-       sourceCount Int    @default(0)
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument, Types } from 'mongoose';
+
+     export type AiAreaProfileDocument = HydratedDocument<AiAreaProfile>;
+
+     @Schema({ timestamps: true, collection: 'ai_area_profiles' })
+     export class AiAreaProfile {
+       @Prop({ type: Types.ObjectId, ref: 'StudyArea', required: true, unique: true, index: true })
+       studyAreaId!: Types.ObjectId;
+
+       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+       userId!: Types.ObjectId;
+
+       @Prop({ required: true, enum: ['MISSING_MATERIALS', 'READY_FOR_GENERATION'] })
+       status!: string;
+
+       @Prop({ default: 0, min: 0 })
+       sourceCount!: number;
+
+       @Prop({ type: [{ type: Types.ObjectId, ref: 'Material' }], default: [] })
+       materialIds!: Types.ObjectId[];
      }
+
+     export const AiAreaProfileSchema = SchemaFactory.createForClass(AiAreaProfile);
      ```
    - O que verificar: não há mais de um perfil ativo por área.
 
@@ -269,7 +287,7 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 ## Critérios de aceite:
 
 - Outputs:
-  - Modelo `AiAreaProfile`.
+  - Schema Mongoose `AiAreaProfile`.
   - Endpoint de criação/atualização.
   - Painel de estado no frontend.
 - Verificações:
@@ -304,3 +322,4 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 
 ## Changelog
 - `2026-05-24`: guia refinado para perfil IA por área, sem geração real e com contratos para resumos.
+- `2026-05-25`: perfil IA atualizado para MongoDB/Mongoose com `studyAreaId` único.

@@ -141,12 +141,12 @@
 
 -   Node.js LTS
 -   NestJS
--   Prisma ORM
+-   Mongoose ODM
 -   Autenticação por cookies
 
 ### Base de Dados
 
--   PostgreSQL
+-   MongoDB
 -   Redis para cache e sessões
 
 ### IA

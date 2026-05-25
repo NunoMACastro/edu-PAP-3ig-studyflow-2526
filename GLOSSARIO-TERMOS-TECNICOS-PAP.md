@@ -209,6 +209,36 @@ Objetivo: explicar termos tecnicos da documentacao e da planificacao sem linguag
 - O que e: conjunto de tecnologias do projeto.
 - Exemplo: frontend + backend + BD + IA.
 
+### MongoDB
+
+- O que e: base de dados NoSQL orientada a documentos.
+- Exemplo: guardar utilizadores, materiais e artefactos IA em colecoes.
+
+### Mongoose
+
+- O que e: ODM para usar MongoDB em Node.js com schemas, validacao e modelos.
+- Exemplo: definir `UserSchema` e usar `UserModel` no backend NestJS.
+
+### ODM
+
+- O que e: camada que liga objetos do codigo a documentos da base de dados.
+- Exemplo: Mongoose cria modelos para ler e gravar documentos MongoDB.
+
+### Colecao
+
+- O que e: conjunto de documentos MongoDB do mesmo tipo funcional.
+- Exemplo: colecao `users`.
+
+### Documento
+
+- O que e: registo individual guardado em MongoDB, normalmente em formato semelhante a JSON.
+- Exemplo: documento de um aluno com `_id`, `email` e `passwordHash`.
+
+### ObjectId
+
+- O que e: identificador usado pelo MongoDB para documentos.
+- Exemplo: `userId` referencia o `_id` do utilizador.
+
 ### Frontend
 
 - O que e: parte visual usada pelo utilizador.

@@ -16,13 +16,15 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-02`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-01-registo-do-aluno-email-password-ou-sso-escolar.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
 Neste BK vamos construir a primeira entrada real do StudyFlow: o registo de aluno. O resultado esperado é que um aluno consiga criar uma conta usando email e password, ficando preparado para iniciar sessão no BK seguinte. O RF01 também menciona SSO escolar, mas nenhum documento define fornecedor, protocolo, campos institucionais ou credenciais de integração. Por isso, nesta fase o SSO fica como contrato preparado e `TODO (BLOCKER)`, sem implementação real inventada.
 
-Como ainda não existe código da app no repositório, este guia define a estrutura técnica que deve ser criada quando a equipa iniciar a implementação. A stack inferida dos RNF é React/TypeScript/Tailwind no frontend e Node.js LTS com NestJS, Prisma e PostgreSQL no backend. Redis e SSO ficam preparados, mas não são obrigatórios neste BK.
+Como ainda não existe código da app no repositório, este guia define a estrutura técnica que deve ser criada quando a equipa iniciar a implementação. A stack canónica dos RNF é React/TypeScript/Tailwind no frontend e Node.js LTS com NestJS, MongoDB e Mongoose no backend. Redis e SSO ficam preparados, mas não são obrigatórios neste BK.
+
+Convenção de persistência para a MF0: os documentos persistidos em MongoDB usam `_id/ObjectId`, mas a API pode devolver `id` como string. Relações entre documentos devem ser guardadas como referências `ObjectId`, por exemplo `userId` e `studyAreaId`. Campos únicos e índices pertencem aos schemas Mongoose; não se deve criar migrations SQL nesta PAP.
 
 O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo claro, formulário central, campos de email/password, botão `Entrar` e ligação `Registar`. Para este BK, o mockup orienta o fluxo entre login e registo, mas não obriga a desenho final pixel-perfect.
 
@@ -39,7 +41,7 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 - Estado esperado antes do BK: não existe modelo de utilizador, endpoint de registo nem página de registo.
 - Estado esperado depois do BK: existe registo de aluno por email/password, password guardada como hash, email único e resposta sem dados sensíveis.
 - Ficheiros a criar, assumindo scaffold ainda inexistente:
-  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/auth/schemas/user.schema.ts`
   - `apps/api/src/modules/auth/auth.module.ts`
   - `apps/api/src/modules/auth/auth.controller.ts`
   - `apps/api/src/modules/auth/auth.service.ts`
@@ -126,7 +128,8 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 - **Endpoint**: URL da API que recebe um pedido, por exemplo `POST /api/auth/register`.
 - **Controller**: camada que recebe o pedido HTTP e devolve resposta.
 - **Service**: camada onde fica a lógica principal da funcionalidade.
-- **Prisma schema**: ficheiro que descreve modelos de dados e relações.
+- **Mongoose schema**: classe/ficheiro que descreve documentos MongoDB, validações e índices.
+- **ObjectId**: identificador do MongoDB usado em `_id` e em referências entre documentos.
 - **SSO escolar**: autenticação via fornecedor institucional, ainda não definido no projeto.
 - **Validação backend**: verificação feita no servidor, obrigatória mesmo que o frontend valide.
 
@@ -159,20 +162,33 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 1. **Objetivo (~35 min): criar modelo mínimo de utilizador**
    - Descrição detalhada do objetivo: adicionar o modelo `User` com campos mínimos para autenticação local.
    - Justificação: todos os BKs seguintes precisam de uma identidade estável.
-   - Como fazer (1.1): criar `User` em `apps/api/prisma/schema.prisma`.
+   - Como fazer (1.1): criar `UserSchema` em `apps/api/src/modules/auth/schemas/user.schema.ts`.
    - Como fazer (1.2): marcar `email` como único e guardar `passwordHash`, nunca `password`.
    - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
+   - Ficheiro alvo: `apps/api/src/modules/auth/schemas/user.schema.ts`.
    - Snippet de referência:
-     ```prisma
-     model User {
-       id           String   @id @default(uuid())
-       email        String   @unique
-       passwordHash String
-       role         String   @default("STUDENT")
-       createdAt    DateTime @default(now())
-       updatedAt    DateTime @updatedAt
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument } from 'mongoose';
+
+     export type UserDocument = HydratedDocument<User>;
+
+     @Schema({ timestamps: true, collection: 'users' })
+     export class User {
+       @Prop({ required: true, unique: true, lowercase: true, trim: true })
+       email!: string;
+
+       @Prop({ required: true })
+       passwordHash!: string;
+
+       @Prop({ required: true, enum: ['STUDENT', 'TEACHER', 'ADMIN'], default: 'STUDENT' })
+       role!: string;
+
+       @Prop({ required: true, default: 'local' })
+       authProvider!: string;
      }
+
+     export const UserSchema = SchemaFactory.createForClass(User);
      ```
    - O que verificar: não existe campo `password` persistido.
 
@@ -313,7 +329,7 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 ## Critérios de aceite:
 
 - Outputs:
-  - Modelo `User` criado.
+  - Schema Mongoose `User` criado.
   - Endpoint `POST /api/auth/register` criado.
   - Página de registo criada.
 - Verificações:
@@ -334,7 +350,7 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 - `pr`: `A preencher no fecho do BK`
 - `proof`: `A preencher apos validacao`
 - `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/prisma/schema.prisma`, `apps/api/src/modules/auth/*`, `apps/web/src/pages/auth/RegisterPage.tsx`
+- `files`: `apps/api/src/modules/auth/schemas/user.schema.ts`, `apps/api/src/modules/auth/*`, `apps/web/src/pages/auth/RegisterPage.tsx`
 - `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
 - `screenshots`: `A preencher com ecrã de registo`
 - `notes`: `SSO escolar bloqueado até decisão de fornecedor/protocolo`
@@ -351,3 +367,4 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 
 ## Changelog
 - `2026-05-24`: guia refinado para execução concreta, com contratos técnicos, passos P0 e validações negativas.
+- `2026-05-25`: persistência atualizada para MongoDB/Mongoose, substituindo a stack de dados anterior.

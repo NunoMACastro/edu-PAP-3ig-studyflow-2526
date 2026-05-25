@@ -16,13 +16,13 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-05`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-04-o-aluno-pode-estudar-sem-turma.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-05-25`
 
 ## O que vamos fazer neste BK
 
 Neste BK vamos garantir que o StudyFlow funciona para um aluno que ainda não pertence a nenhuma turma. A app deve permitir entrada no espaço individual, consulta do painel base e acesso às funcionalidades pessoais que serão construídas nos BKs seguintes.
 
-O contrato técnico principal é simples: `className` ou `turmaId` não pode ser obrigatório para usar o modo individual. Se a implementação futura criar turmas reais, esse dado deve ser uma relação opcional, não uma pré-condição para estudar.
+O contrato técnico principal é simples: `className` ou `turmaId` não pode ser obrigatório para usar o modo individual. Se a implementação futura criar turmas reais, esse dado deve ser uma referência opcional por `ObjectId`, não uma pré-condição para estudar.
 
 Como não há mockup para o dashboard do aluno, este BK deve criar uma interface funcional e simples, sem inventar identidade visual final. O mockup de login só orienta consistência de marca e navegação.
 
@@ -135,8 +135,8 @@ Como não há mockup para o dashboard do aluno, este BK deve criar uma interface
    - Como fazer (0.1): rever RF04 e BK-MF0-03.
    - Como fazer (0.2): garantir que `className` ou `turmaId` é opcional.
    - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/prisma/schema.prisma`.
-   - Snippet de referência: `className String?`.
+   - Ficheiro alvo: `apps/api/src/modules/students/schemas/student-profile.schema.ts`.
+   - Snippet de referência: `@Prop({ trim: true }) className?: string;`.
    - O que verificar: nenhuma constraint obriga turma.
 
 1. **Objetivo (~30 min): criar contrato SoloStudyState**
@@ -169,7 +169,7 @@ Como não há mockup para o dashboard do aluno, este BK deve criar uma interface
      ```ts
      return { studentName: profile.name, hasClass: Boolean(profile.className) };
      ```
-   - O que verificar: não há consulta obrigatória a tabela de turmas.
+   - O que verificar: não há consulta obrigatória à coleção de turmas.
 
 3. **Objetivo (~30 min): expor endpoint protegido**
    - Descrição detalhada do objetivo: criar `GET /api/study/solo`.
@@ -218,8 +218,8 @@ Como não há mockup para o dashboard do aluno, este BK deve criar uma interface
    - Como fazer (6.2): garantir que o endpoint só usa `userId`.
    - Ficheiro a rever: `apps/api/src/modules/study/solo-study.service.ts`.
    - Ficheiro alvo: `apps/api/src/modules/study/solo-study.service.ts`.
-   - Snippet de referência: `where: { userId }`.
-   - O que verificar: não existe `where: { classId }` obrigatório.
+   - Snippet de referência: `{ userId: request.user.id }`.
+   - O que verificar: não existe filtro obrigatório por `classId`.
 
 7. **Objetivo (~40 min): testar casos principais e negativos**
    - Descrição detalhada do objetivo: validar aluno com e sem turma.
@@ -302,3 +302,4 @@ Como não há mockup para o dashboard do aluno, este BK deve criar uma interface
 
 ## Changelog
 - `2026-05-24`: guia refinado para modo individual sem turma, com endpoint, dashboard e negativos P0.
+- `2026-05-25`: linguagem de persistência ajustada para MongoDB/Mongoose e referências opcionais.
