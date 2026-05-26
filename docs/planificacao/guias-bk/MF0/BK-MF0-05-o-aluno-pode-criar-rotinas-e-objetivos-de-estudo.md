@@ -176,6 +176,32 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 
      export const StudyRoutineSchema = SchemaFactory.createForClass(StudyRoutine);
      ```
+     ```ts
+     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+     import { HydratedDocument, Types } from 'mongoose';
+
+     export type StudyGoalDocument = HydratedDocument<StudyGoal>;
+
+     @Schema({ timestamps: true, collection: 'study_goals' })
+     export class StudyGoal {
+       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+       userId!: Types.ObjectId;
+
+       @Prop({ required: true, trim: true })
+       title!: string;
+
+       @Prop({ required: true, min: 1 })
+       targetValue!: number;
+
+       @Prop({ required: true, enum: ['minutes', 'sessions', 'materials'] })
+       metric!: string;
+
+       @Prop({ default: false })
+       completed!: boolean;
+     }
+
+     export const StudyGoalSchema = SchemaFactory.createForClass(StudyGoal);
+     ```
    - O que verificar: ambos têm `userId`.
 
 2. **Objetivo (~25 min): criar DTOs e validações**
@@ -307,3 +333,4 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 ## Changelog
 - `2026-05-24`: guia refinado para rotinas e objetivos pessoais com CRUD, ownership e validação P1.
 - `2026-05-25`: modelos de dados atualizados para schemas MongoDB/Mongoose.
+- `2026-05-25`: adicionado snippet mínimo de `StudyGoalSchema` para tornar o passo de modelos totalmente executável.

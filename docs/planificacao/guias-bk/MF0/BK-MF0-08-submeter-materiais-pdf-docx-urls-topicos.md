@@ -22,7 +22,9 @@
 
 Neste BK vamos permitir que o aluno submeta materiais numa Área de Estudo: ficheiros PDF, DOCX, URLs e tópicos escritos manualmente. O objetivo é criar a base factual que depois alimenta o perfil de IA, resumos e quizzes.
 
-Este BK não implementa indexação automática completa. RF31 e RNF11 tratam indexação posterior e assíncrona. Aqui o foco é submissão segura, validação, armazenamento do registo e estado inicial do material, por exemplo `PENDING_PROCESSING`.
+Este BK não implementa indexação automática completa. RF31 e RNF11 tratam indexação posterior e assíncrona. Aqui o foco é submissão segura, validação, armazenamento do registo e estado inicial do material. PDF, DOCX e URLs começam em `PENDING_PROCESSING`; tópicos manuais com `contentText` válido podem começar em `READY`.
+
+Na MF0, `contentText` só deve ser preenchido para materiais de texto manual/tópico. PDF, DOCX e URLs ficam registados como materiais submetidos, mas não como fontes textuais processáveis para IA até existir extração/indexação posterior.
 
 Como uploads e URLs são superfícies de risco, este BK deve ser conservador: validar tipo, tamanho, URL e ownership da área. O mockup não mostra uploads, por isso a UI deve ter placeholders claros e estados de progresso sem simular IA.
 
@@ -71,7 +73,7 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 - URL válida cria registo `Material` sem fazer scraping avançado.
 - Tópico manual cria registo textual.
 - Ficheiro inválido, demasiado grande ou área alheia são rejeitados.
-- UI mostra estado `Pendente de processamento` ou equivalente.
+- UI mostra `Pendente de processamento` para ficheiros/URLs e `Pronto` ou equivalente para tópicos manuais.
 
 ## Metadados do BK (CANONICO/DERIVADO):
 
@@ -119,14 +121,17 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 - **Estado de processamento**: fase do material, por exemplo pendente ou pronto.
 - **Sandbox**: ambiente isolado para processar ficheiros, reforçado em BK futuro.
 - **Indexação**: preparação do conteúdo para pesquisa/IA, fora deste BK.
+- **Fonte processável**: material cujo texto já pode ser usado pela IA; na MF0, apenas tópicos/texto manual entram nesta categoria.
 
 ## Conceitos teóricos essenciais (DERIVADO):
 
 **Upload seguro.** Nunca se deve confiar apenas no nome do ficheiro. O backend valida MIME, extensão, tamanho e ownership. Ficheiros perigosos devem ser rejeitados antes de qualquer processamento.
 
-**Estado assíncrono.** O upload cria o material, mas a indexação pode demorar. Por isso, o material deve ter estados como `PENDING_PROCESSING`, `READY` e `FAILED`. Este BK cria o estado inicial.
+**Estado assíncrono.** O upload cria o material, mas a indexação pode demorar. Por isso, o material deve ter estados como `PENDING_PROCESSING`, `READY` e `FAILED`. Este BK cria o estado inicial adequado ao tipo de material. Na MF0, PDF, DOCX e URLs não ficam automaticamente `READY`; ficam pendentes até uma fase posterior extrair e validar conteúdo. Um tópico manual pode ficar `READY` porque o texto já foi fornecido diretamente.
 
 **URL como material.** Uma URL não deve ser automaticamente confiável. Nesta fase, guardar a URL validada é suficiente. Scraping, extração e sandbox ficam para BKs de indexação.
+
+**Texto manual como exceção controlada.** Um tópico escrito pelo aluno pode guardar `contentText` porque o conteúdo já foi fornecido diretamente. Isto não deve ser confundido com extração automática de texto a partir de PDF, DOCX ou URL.
 
 **Separação por área.** Todo material pertence a uma `StudyArea`. Isso permite que a IA futura responda com base no contexto certo.
 
@@ -174,12 +179,25 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
        status!: string;
 
        @Prop()
+       url?: string;
+
+       @Prop()
+       storageKey?: string;
+
+       @Prop()
+       mimeType?: string;
+
+       @Prop({ min: 0 })
+       sizeBytes?: number;
+
+       // Na MF0, usar apenas para TOPIC/texto manual. PDF/DOCX/URL ficam pendentes de extração.
+       @Prop()
        contentText?: string;
      }
 
      export const MaterialSchema = SchemaFactory.createForClass(Material);
      ```
-   - O que verificar: material está ligado à área e ao aluno.
+   - O que verificar: material está ligado à área e ao aluno; o service define `READY` apenas quando `type === "TOPIC"` e existe `contentText` válido.
 
 2. **Objetivo (~35 min): validar área e ownership**
    - Descrição detalhada do objetivo: garantir que o aluno só adiciona materiais às suas áreas.
@@ -230,7 +248,8 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
    - Ficheiro alvo: `apps/api/src/modules/materials/materials.controller.ts`.
    - Snippet de referência:
      ```ts
-     // 201: { id, type, title, status: "PENDING_PROCESSING" }
+     // 201 ficheiro/URL: { id, type, title, status: "PENDING_PROCESSING" }
+     // 201 tópico manual: { id, type, title, status: "READY" }
      ```
    - O que verificar: resposta não expõe caminho absoluto do servidor.
 
@@ -248,13 +267,13 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
    - O que verificar: UI mostra erro antes/depois da submissão inválida.
 
 7. **Objetivo (~35 min): integrar histórico e estado**
-   - Descrição detalhada do objetivo: registar evento e mostrar estado pendente.
+   - Descrição detalhada do objetivo: registar evento e mostrar estado adequado ao tipo.
    - Justificação: prepara BK-MF0-06 e BKs de IA.
    - Como fazer (7.1): após criação, gravar `MATERIAL_SUBMITTED`.
-   - Como fazer (7.2): mostrar `Pendente de processamento`.
+   - Como fazer (7.2): mostrar `Pendente de processamento` para ficheiros/URLs e `Pronto` para tópicos manuais.
    - Ficheiro a rever: `apps/api/src/modules/study/history.service.ts`.
    - Ficheiro alvo: `apps/api/src/modules/materials/materials.service.ts`.
-   - Snippet de referência: `status: "PENDING_PROCESSING"`.
+   - Snippet de referência: `status: type === "TOPIC" ? "READY" : "PENDING_PROCESSING"`.
    - O que verificar: falha de histórico não duplica material.
 
 8. **Objetivo (~45 min): testar negativos e handoff para IA**
@@ -266,9 +285,9 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
    - Ficheiro alvo: `apps/api/src/modules/materials/materials.e2e-spec.ts`.
    - Snippet de referência:
      ```ts
-     expect(response.body.status).toBe("PENDING_PROCESSING");
+     expect(response.body.status).toBe("PENDING_PROCESSING"); // ficheiro/URL
      ```
-   - O que verificar: próximos BKs têm `materialId` válido.
+   - O que verificar: próximos BKs têm `materialId` válido, mas não assumem que PDF/DOCX/URL já têm texto processável.
 
 ## Checklist de validação (DERIVADO):
 
@@ -281,7 +300,9 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
   - passo 8; input/ação: ficheiro acima do limite; resultado esperado: `413` ou `400`; risco que cobre: abuso de armazenamento.
   - passo 8; input/ação: `studyAreaId` de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
 - Técnico:
-  - Estado inicial é `PENDING_PROCESSING`.
+  - Estado inicial de PDF/DOCX/URL é `PENDING_PROCESSING`.
+  - Estado inicial de tópico manual com texto válido é `READY`.
+  - `contentText` só é preenchido para tópico/texto manual na MF0.
   - Paths absolutos de storage não são expostos.
 - Regressão das fases anteriores:
   - Área de estudo continua privada.
@@ -325,7 +346,7 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 - TODO: definir limite máximo oficial de upload para MVP.
 - TODO: escolher storage local/dev ou storage externo quando houver infraestrutura.
 - TODO (BLOCKER): processamento seguro/sandbox completo depende de RNF18 em fase posterior.
-- FOLLOW-UP: BK-MF0-10 deve usar materiais com estado adequado.
+- FOLLOW-UP: BK-MF0-10 deve separar materiais submetidos de fontes processáveis.
 - Assunção a validar com o orientador: guardar URL sem scraping avançado é suficiente nesta fase.
 - Decisão dependente de mockup: ecrã de materiais ainda não existe.
 - Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
@@ -333,3 +354,5 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 ## Changelog
 - `2026-05-24`: guia refinado para submissão segura de materiais, com validação, ownership e handoff para IA.
 - `2026-05-25`: material atualizado para coleção MongoDB/Mongoose e referências `ObjectId`.
+- `2026-05-25`: clarificado que `contentText` na MF0 só se aplica a tópicos/texto manual; PDF/DOCX/URL ficam pendentes de processamento.
+- `2026-05-25`: clarificado que tópicos manuais válidos podem ficar `READY`, enquanto ficheiros/URLs ficam `PENDING_PROCESSING`.

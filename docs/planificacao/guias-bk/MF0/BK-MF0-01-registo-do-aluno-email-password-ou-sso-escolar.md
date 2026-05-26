@@ -152,6 +152,7 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 0. **Objetivo (~20 min): confirmar contrato e criar branch de trabalho**
    - Descrição detalhada do objetivo: confirmar que o BK implementa apenas RF01 e que não inclui login, perfil ou SSO real.
    - Justificação: evita scope creep logo no primeiro BK da plataforma.
+   - Como fazer (0.0): criar a estrutura inicial do projeto com duas áreas principais: `apps/api` para o backend/API e `apps/web` para o frontend. Esta separação ajuda a manter claro o que corre no servidor e o que pertence à interface do utilizador.
    - Como fazer (0.1): rever `RF01`, `RNF15`, `RNF17` e a linha `BK-MF0-01` no backlog.
    - Como fazer (0.2): criar uma nota técnica no PR com a decisão: `SSO escolar fica TODO (BLOCKER)`.
    - Ficheiro a rever: `docs/RF.md`.
@@ -357,7 +358,7 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 
 ## TODOs
 
-- TODO: confirmar se a equipa vai usar NestJS completo ou uma variante pedagógica mais simples antes do scaffold.
+- TODO: confirmar convenção concreta de scaffold NestJS modular antes de implementar, mantendo NestJS + Mongoose como stack canónica.
 - TODO: definir biblioteca de hashing no `package.json` quando a app existir.
 - TODO (BLOCKER): definir fornecedor SSO escolar, protocolo, campos e ambiente de testes.
 - FOLLOW-UP: no BK-MF0-02, criar sessão segura para a conta registada.

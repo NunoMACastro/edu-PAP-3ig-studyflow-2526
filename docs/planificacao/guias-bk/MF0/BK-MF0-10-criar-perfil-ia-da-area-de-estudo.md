@@ -22,9 +22,9 @@
 
 Neste BK vamos criar o perfil IA de uma Área de Estudo. O perfil IA é um contrato interno que junta a área, os materiais submetidos, o tom configurado e regras mínimas para futuras respostas. Ainda não é uma chamada real ao modelo, é a preparação estruturada do contexto.
 
-O perfil IA deve ser criado apenas para uma área que pertença ao aluno e que tenha materiais submetidos ou, no mínimo, um estado claro de ausência de materiais. Isto prepara o BK-MF0-11, onde os resumos devem ser baseados nos materiais enviados.
+O perfil IA deve ser criado apenas para uma área que pertença ao aluno e que tenha materiais submetidos ou, no mínimo, um estado claro de ausência de materiais. O perfil deve distinguir materiais submetidos de fontes processáveis: PDF, DOCX e URLs em `PENDING_PROCESSING` contam como materiais submetidos, mas ainda não autorizam geração de resumos. Isto prepara o BK-MF0-11, onde os resumos devem ser baseados apenas em conteúdo processável.
 
-Este BK deve evitar promessas de IA que ainda não existem. Se não houver provider de IA configurado, o perfil fica `READY_FOR_GENERATION` ou `MISSING_MATERIALS`, mas não inventa respostas.
+Este BK deve evitar promessas de IA que ainda não existem. Se não houver provider de IA configurado, o perfil fica num estado operacional como `MISSING_MATERIALS`, `PENDING_PROCESSING` ou `READY_FOR_GENERATION`, mas não inventa respostas.
 
 ## Porque é que isto é importante
 
@@ -36,7 +36,7 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 
 ## O que entra (scope)
 
-- Estado esperado antes do BK: área e materiais submetidos.
+- Estado esperado antes do BK: área criada e, opcionalmente, materiais submetidos.
 - Estado esperado depois do BK: área tem `AiAreaProfile` reutilizável.
 - Ficheiros a criar/editar:
   - `apps/api/src/modules/ai/schemas/ai-area-profile.schema.ts`
@@ -80,7 +80,7 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 - Owner: `Daniel` (CANONICO)
 - Apoio: `Guilherme` (CANONICO)
 - Dependencias (BK IDs): `BK-MF0-08` (CANONICO)
-- Pre-condicoes: área com materiais submetidos ou estado sem materiais tratado (DERIVADO)
+- Pre-condicoes: área válida, com materiais submetidos ou com ausência de materiais tratada explicitamente (DERIVADO)
 - Ref. Plano: `Fase 1`, `S01`, `Reforco` (CANONICO)
 - Flow ID: `FLOW-MF0-AI-AREA-PROFILE`
 - Fonte de verdade: `docs/RF.md`, `RF10` (CANONICO)
@@ -112,6 +112,7 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 - **Perfil IA**: configuração e contexto que a IA usará numa área.
 - **Contexto**: materiais e preferências disponíveis para responder.
 - **Fonte**: material usado como base factual.
+- **Fonte processável**: material cujo texto já está disponível para IA; na MF0, tópicos/texto manual podem entrar aqui, mas PDF/DOCX/URL pendentes não entram.
 - **Estado do perfil**: pronto, sem materiais, erro ou pendente.
 - **Guardrail**: regra que limita respostas da IA.
 - **Alucinação**: resposta factual inventada pela IA.
@@ -125,7 +126,7 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 
 **Isolamento por área.** O perfil só pode incluir materiais cujo `studyAreaId` pertence ao aluno. Misturar áreas pode gerar respostas erradas e violar privacidade.
 
-**Estados explícitos.** Se faltarem materiais, o perfil deve dizer isso. Estados claros evitam UI confusa e ajudam o próximo BK a decidir se pode gerar resumo.
+**Estados explícitos.** Se faltarem materiais, o perfil deve dizer isso. Se houver apenas materiais pendentes de processamento, o perfil também deve dizer isso. Estados claros evitam UI confusa e ajudam o próximo BK a decidir se pode gerar resumo.
 
 ## Guia de execução (passo-a-passo) (DERIVADO):
 
@@ -161,11 +162,14 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
        @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
        userId!: Types.ObjectId;
 
-       @Prop({ required: true, enum: ['MISSING_MATERIALS', 'READY_FOR_GENERATION'] })
+       @Prop({ required: true, enum: ['MISSING_MATERIALS', 'PENDING_PROCESSING', 'READY_FOR_GENERATION'] })
        status!: string;
 
        @Prop({ default: 0, min: 0 })
        sourceCount!: number;
+
+       @Prop({ default: 0, min: 0 })
+       processableSourceCount!: number;
 
        @Prop({ type: [{ type: Types.ObjectId, ref: 'Material' }], default: [] })
        materialIds!: Types.ObjectId[];
@@ -179,28 +183,35 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
    - Descrição detalhada do objetivo: ler área, materiais e voz.
    - Justificação: contexto deve ser consistente.
    - Como fazer (2.1): validar ownership da área.
-   - Como fazer (2.2): contar materiais em estado permitido.
+   - Como fazer (2.2): contar materiais submetidos e fontes processáveis separadamente.
    - Ficheiro a rever: BK-MF0-08.
    - Ficheiro alvo: `apps/api/src/modules/ai/ai-area-profile.service.ts`.
    - Snippet de referência:
      ```ts
      const materials = await materialsService.listByArea(userId, studyAreaId);
-     const status = materials.length === 0 ? "MISSING_MATERIALS" : "READY_FOR_GENERATION";
+     const processableMaterials = materials.filter((material) => material.status === "READY");
+     const status =
+       materials.length === 0
+         ? "MISSING_MATERIALS"
+         : processableMaterials.length === 0
+           ? "PENDING_PROCESSING"
+           : "READY_FOR_GENERATION";
      ```
-   - O que verificar: materiais de outras áreas não entram.
+   - O que verificar: materiais de outras áreas não entram; materiais pendentes não desbloqueiam geração.
 
 3. **Objetivo (~30 min): definir contrato do perfil**
    - Descrição detalhada do objetivo: criar DTO de resposta.
    - Justificação: frontend e BK-MF0-11 precisam do mesmo formato.
-   - Como fazer (3.1): incluir `status`, `sourceCount`, `voiceTone`, `updatedAt`.
+   - Como fazer (3.1): incluir `status`, `sourceCount`, `processableSourceCount`, `voiceTone`, `updatedAt`.
    - Como fazer (3.2): não incluir conteúdo sensível ou paths internos.
    - Ficheiro a rever: `docs/RNF.md`.
    - Ficheiro alvo: `apps/api/src/modules/ai/dto/ai-area-profile.dto.ts`.
    - Snippet de referência:
      ```ts
      export type AiAreaProfileDto = {
-       status: "READY_FOR_GENERATION" | "MISSING_MATERIALS";
+       status: "READY_FOR_GENERATION" | "PENDING_PROCESSING" | "MISSING_MATERIALS";
        sourceCount: number;
+       processableSourceCount: number;
        voiceTone?: string;
      };
      ```
@@ -223,12 +234,13 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
    - Descrição detalhada do objetivo: mostrar se a área está pronta para resumos.
    - Justificação: feedback imediato reduz confusão.
    - Como fazer (5.1): criar `AiAreaProfilePanel`.
-   - Como fazer (5.2): mostrar `Adicionar materiais` quando `MISSING_MATERIALS`.
+   - Como fazer (5.2): mostrar `Adicionar materiais` quando `MISSING_MATERIALS` e `A aguardar processamento` quando `PENDING_PROCESSING`.
    - Ficheiro a rever: BK-MF0-07.
    - Ficheiro alvo: `apps/web/src/components/ai/AiAreaProfilePanel.tsx`.
    - Snippet de referência:
      ```tsx
      {profile.status === "MISSING_MATERIALS" && <p>Adiciona materiais para ativar resumos.</p>}
+     {profile.status === "PENDING_PROCESSING" && <p>Aguarda o processamento dos materiais.</p>}
      ```
    - O que verificar: UI não mostra resumo falso.
 
@@ -258,7 +270,7 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 8. **Objetivo (~20 min): preparar handoff para resumos**
    - Descrição detalhada do objetivo: deixar contrato claro para BK-MF0-11.
    - Justificação: resumo precisa de perfil e materiais.
-   - Como fazer (8.1): documentar estados aceites para gerar resumo.
+   - Como fazer (8.1): documentar que apenas `READY_FOR_GENERATION` permite gerar resumo.
    - Como fazer (8.2): anexar resposta JSON do perfil.
    - Ficheiro a rever: `MF-VIEWS.md`.
    - Ficheiro alvo: evidence do PR.
@@ -268,10 +280,13 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 ## Checklist de validação (DERIVADO):
 
 - Smoke:
-  - Criar perfil para área com materiais.
+  - Criar perfil para área com fonte processável.
   - Ver painel com estado pronto.
+  - Criar perfil para área apenas com materiais pendentes.
+  - Ver painel com estado a aguardar processamento.
 - Negativos:
   - passo 7; input/ação: área sem materiais; resultado esperado: estado `MISSING_MATERIALS`; risco que cobre: IA sem fontes.
+  - passo 7; input/ação: área apenas com PDF/DOCX/URL `PENDING_PROCESSING`; resultado esperado: estado `PENDING_PROCESSING`; risco que cobre: geração antes da extração.
   - passo 7; input/ação: área de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
   - passo 7; input/ação: criar perfil duas vezes; resultado esperado: sem duplicação; risco que cobre: inconsistência de contexto.
 - Técnico:
@@ -291,7 +306,8 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
   - Endpoint de criação/atualização.
   - Painel de estado no frontend.
 - Verificações:
-  - Área com materiais fica `READY_FOR_GENERATION`.
+  - Área com fontes processáveis fica `READY_FOR_GENERATION`.
+  - Área apenas com materiais pendentes fica `PENDING_PROCESSING`.
   - Área sem materiais fica `MISSING_MATERIALS`.
 - Qualidade:
   - Perfil separado de geração real.
@@ -313,13 +329,14 @@ Este BK deve evitar promessas de IA que ainda não existem. Se não houver provi
 
 ## TODOs
 
-- TODO: confirmar estados finais do perfil IA.
-- TODO: decidir se materiais `PENDING_PROCESSING` podem contar como fontes.
+- TODO: confirmar nomes finais dos estados do perfil IA, mantendo a semântica `MISSING_MATERIALS`/`PENDING_PROCESSING`/`READY_FOR_GENERATION`.
 - FOLLOW-UP: BK-MF0-11 deve bloquear geração quando `MISSING_MATERIALS`.
-- Assunção a validar com o orientador: perfil IA pode ser criado antes de indexação completa, mas deve sinalizar estado.
+- FOLLOW-UP: BK-MF0-11 deve bloquear geração quando `PENDING_PROCESSING`.
+- Assunção a validar com o orientador: perfil IA pode ser criado antes de indexação completa, mas só fica pronto para geração com fontes processáveis.
 - Decisão dependente de mockup: painel IA ainda não existe.
 - Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
 
 ## Changelog
 - `2026-05-24`: guia refinado para perfil IA por área, sem geração real e com contratos para resumos.
 - `2026-05-25`: perfil IA atualizado para MongoDB/Mongoose com `studyAreaId` único.
+- `2026-05-25`: clarificada a diferença entre materiais submetidos e fontes processáveis para impedir geração IA com materiais pendentes.

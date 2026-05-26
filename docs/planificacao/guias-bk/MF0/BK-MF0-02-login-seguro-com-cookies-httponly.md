@@ -317,7 +317,7 @@ O mockup existente cobre diretamente este BK: ecrã central com marca `StudyFlow
 
 ## TODOs
 
-- TODO: confirmar armazenamento de sessões, por exemplo DB no MVP ou Redis quando a infraestrutura existir.
+- TODO: confirmar provisionamento de Redis para sessões na infraestrutura; em desenvolvimento, qualquer fallback deve ficar explícito e não substituir Redis como decisão canónica.
 - TODO: definir duração oficial da sessão com orientador.
 - TODO (BLOCKER): SSO escolar continua bloqueado até existir fornecedor/protocolo.
 - FOLLOW-UP: BK-MF0-03 deve usar `SessionGuard`.
@@ -327,3 +327,4 @@ O mockup existente cobre diretamente este BK: ecrã central com marca `StudyFlow
 
 ## Changelog
 - `2026-05-24`: guia refinado para execução concreta, com sessão HttpOnly, guard reutilizável e validações negativas.
+- `2026-05-25`: alinhado TODO de sessões com Redis como decisão canónica da stack.
