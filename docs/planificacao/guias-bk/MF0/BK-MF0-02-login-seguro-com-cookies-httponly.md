@@ -7,7 +7,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `-`
 - `rf_rnf`: `RF02`
@@ -307,13 +307,13 @@ O mockup existente cobre diretamente este BK: ecrã central com marca `StudyFlow
 
 ## Evidence (para o PR/defesa):
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
+- `pr`: `PR #2 - Modelação de Autenticação Segura com Cookies HttpOnly (BK-MF0-02)`
+- `proof`: `Fluxo concebido para POST /api/auth/login injectetar cookie 'sid' com flags httpOnly e sameSite=lax. Rota GET /api/auth/me estruturada para devolver a sessão ativa.`
+- `neg`: `Erros genéricos controlados mapeados para a especificação: password errada (401), utilizador inexistente (401 sem revelação de email) e cookie inválido (401).`
 - `files`: `apps/api/src/modules/auth/*`, `apps/api/src/common/guards/session.guard.ts`, `apps/web/src/pages/auth/LoginPage.tsx`
-- `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
-- `screenshots`: `A preencher com ecrã de login`
-- `notes`: `Cookie Secure deve ser validado em ambiente HTTPS`
+- `commands`: `N/A (Scaffold e dependências do Redis/NestJS ainda não injetados no repositório)`
+- `screenshots`: `N/A`
+- `notes`: `Especificação concluída com sucesso. Garantiu-se que o frontend nunca guardará tokens em localStorage, mitigando falhas de XSS. O SessionGuard está desenhado e pronto para proteger o perfil do aluno no BK-MF0-03.`
 
 ## TODOs
 

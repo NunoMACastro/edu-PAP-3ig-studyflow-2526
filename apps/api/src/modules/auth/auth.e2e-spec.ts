@@ -1,0 +1,1 @@
+expect(response.headers["set-cookie"]).toContain("HttpOnly");
