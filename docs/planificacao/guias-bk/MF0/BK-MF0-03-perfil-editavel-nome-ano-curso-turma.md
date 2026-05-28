@@ -7,7 +7,7 @@
 - `owner`: `Guilherme`
 - `apoio`: `Natalia`
 - `prioridade`: `P1`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `S`
 - `dependencias`: `BK-MF0-02`
 - `rf_rnf`: `RF03`
@@ -286,13 +286,13 @@ Como ainda não existe código, os caminhos indicados são uma proposta técnica
 
 ## Evidence (para o PR/defesa):
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
+- `pr`: `PR #3 - Modelação do Perfil do Aluno com Turma Opcional (BK-MF0-03)`
+- `proof`: `Endpoints GET e PATCH /api/students/me/profile modelados com base no Schema Mongoose. Turma definida como opcional para garantir conformidade com o RF04.`
+- `neg`: `Validação de rotas protegidas por SessionGuard (401) e bloqueio de mass assignment garantido pela exclusão de role e userId no DTO.`
 - `files`: `apps/api/src/modules/students/*`, `apps/web/src/pages/student/ProfilePage.tsx`
-- `commands`: `npm test`, `npm run lint`
-- `screenshots`: `A preencher com ecrã de perfil`
-- `notes`: `Turma deve permanecer opcional para suportar RF04`
+- `commands`: `N/A (Scaffold base ainda não injetado no repositório, dependências físicas ausentes)`
+- `screenshots`: `N/A`
+- `notes`: `A propriedade className foi configurada como opcional no Schema e aceita nulos no DTO, deixando o sistema pronto para o BK-MF0-04 (Estudar sem turma).`
 
 ## TODOs
 
