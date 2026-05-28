@@ -7,7 +7,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `-`
 - `rf_rnf`: `RF01`
@@ -348,13 +348,13 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 
 ## Evidence (para o PR/defesa):
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/auth/schemas/user.schema.ts`, `apps/api/src/modules/auth/*`, `apps/web/src/pages/auth/RegisterPage.tsx`
-- `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
-- `screenshots`: `A preencher com ecrã de registo`
-- `notes`: `SSO escolar bloqueado até decisão de fornecedor/protocolo`
+- `pr`: `PR #1 - Implementação do Registo de Aluno (BK-MF0-01)`
+- `proof`: `POST /api/auth/register a responder 201 Created. Utilizador guardado no MongoDB com email em lowercase e role: 'STUDENT'.`
+- `neg`: `Testes negativos validados com sucesso: Email inválido (400), Password curta (400) e Email duplicado (409 Conflict).`
+- `files`: `apps/api/src/modules/auth/schemas/user.schema.ts`, `apps/api/src/modules/auth/auth.module.ts`, `apps/api/src/modules/auth/auth.controller.ts`, `apps/api/src/modules/auth/auth.service.ts`, `apps/api/src/modules/auth/dto/register-student.dto.ts`, `apps/api/src/modules/users/users.service.ts`, `apps/web/src/pages/auth/RegisterPage.tsx`, `apps/web/src/lib/apiClient.ts`
+- `commands`: `npm test (testes unitários do service passam a 100%)`
+- `screenshots`: `Anexado print do ecrã RegisterPage.tsx no browser e logs do terminal.`
+- `notes`: `SSO escolar ficou definido como TODO (BLOCKER) no código e na arquitetura. O fluxo está totalmente preparado para o BK-MF0-02 (Login) utilizando as credenciais criadas aqui.`
 
 ## TODOs
 
