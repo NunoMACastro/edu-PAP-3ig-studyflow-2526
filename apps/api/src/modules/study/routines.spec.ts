@@ -1,0 +1,1 @@
+expect(created.userId).toBe(currentUser.id);

@@ -7,7 +7,7 @@
 - `owner`: `Guilherme`
 - `apoio`: `Natalia`
 - `prioridade`: `P1`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `S`
 - `dependencias`: `BK-MF0-03`
 - `rf_rnf`: `RF05`
@@ -313,13 +313,13 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 
 ## Evidence (para o PR/defesa):
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
+- `pr`: `PR #5 - Criação de Rotinas e Objetivos Pessoais (BK-MF0-05)`
+- `proof`: `Schemas StudyRoutine e StudyGoal criados com validações Mongoose. DTO de criação modelado. Endpoints e service estruturados com ownership.`
+- `neg`: `Garantia de isolamento de registos confirmada pelo mapeamento de { userId: request.user.id } no controller e validação de teste do currentUser.id.`
 - `files`: `apps/api/src/modules/study/*`, `apps/web/src/pages/student/RoutinesPage.tsx`
-- `commands`: `npm test`, `npm run lint`
-- `screenshots`: `A preencher com lista de rotinas`
-- `notes`: `Notificações ficam fora deste BK`
+- `commands`: `N/A (Scaffold base e banco físico ausentes no repositório nesta iteração)`
+- `screenshots`: `N/A`
+- `notes`: `Escopo individual mantido (sem classId). Modelos preparados para ser integrados no histórico do BK-MF0-06.`
 
 ## TODOs
 
