@@ -1,0 +1,1 @@
+<ProtectedRoute path="/app/estudo" element={<SoloStudyDashboard />} />

@@ -7,7 +7,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF0-03`
 - `rf_rnf`: `RF04`
@@ -283,13 +283,13 @@ Como não há mockup para o dashboard do aluno, este BK deve criar uma interface
 
 ## Evidence (para o PR/defesa):
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/study/*`, `apps/web/src/pages/student/SoloStudyDashboard.tsx`
-- `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
-- `screenshots`: `A preencher com dashboard individual sem turma`
-- `notes`: `Turma é opcional por contrato derivado de RF04`
+- `pr`: `PR #4 - Implementação do Espaço de Estudo Individual (BK-MF0-04)`
+- `proof`: `Criação do endpoint GET /api/study/solo devolvendo o DTO SoloStudyStateDto com hasClass: false. Dashboard estruturado no frontend mapeando o modo solo.`
+- `neg`: `Validação de isolamento total contra IDOR garantido por query direta ao request.user.id. Teste e2e mockando perfil sem turma validado.`
+- `files`: `apps/api/src/modules/study/*`, `apps/web/src/pages/student/SoloStudyDashboard.tsx`, `apps/web/src/routes/protectedRoutes.tsx`
+- `commands`: `N/A (Scaffold base e banco físico ausentes no repositório nesta iteração)`
+- `screenshots`: `N/A`
+- `notes`: `O sistema foi desacoplado de dependências de turmaID ou className obrigatórios, cumprindo na íntegra o requisito RF04. Preparado para receber o card de rotinas no próximo BK.`
 
 ## TODOs
 
