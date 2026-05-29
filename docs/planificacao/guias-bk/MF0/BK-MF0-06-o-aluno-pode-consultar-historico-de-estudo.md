@@ -1,6 +1,7 @@
 # BK-MF0-06 - O aluno pode consultar histórico de estudo.
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-06`
 - `bk_id`: `BK-MF0-06`
 - `macro`: `MF0`
@@ -38,13 +39,13 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
 
 - Estado esperado antes do BK: aluno autenticado e perfil disponível; rotinas podem ou não existir.
 - Estado esperado depois do BK: aluno vê lista cronológica dos seus eventos de estudo.
-- Ficheiros a criar/editar:
-  - `apps/api/src/modules/study/schemas/study-event.schema.ts`
-  - `apps/api/src/modules/study/history.controller.ts`
-  - `apps/api/src/modules/study/history.service.ts`
-  - `apps/api/src/modules/study/dto/study-event.dto.ts`
-  - `apps/web/src/pages/student/StudyHistoryPage.tsx`
-  - `apps/web/src/components/study/StudyHistoryList.tsx`
+- Ficheiros previstos neste BK:
+    - `apps/api/src/modules/study/schemas/study-event.schema.ts`
+    - `apps/api/src/modules/study/history.controller.ts`
+    - `apps/api/src/modules/study/history.service.ts`
+    - `apps/api/src/modules/study/dto/study-event.dto.ts`
+    - `apps/web/src/pages/student/StudyHistoryPage.tsx`
+    - `apps/web/src/components/study/StudyHistoryList.tsx`
 - Ficheiros a rever: BK-MF0-03, BK-MF0-04, BK-MF0-05.
 - Dependências de BK anteriores: perfil do BK-MF0-03; rotinas do BK-MF0-05 se já existirem.
 - Impacto na arquitetura: cria padrão `StudyEvent`.
@@ -127,173 +128,413 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
 
 **Privacidade.** Eventos de estudo podem revelar hábitos e dificuldades. Por isso, o backend filtra sempre por `userId` da sessão.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~15 min): definir tipos de evento mínimos**
-   - Descrição detalhada do objetivo: escolher tipos derivados dos BKs da MF0.
-   - Justificação: evita inventar métricas sem base funcional.
-   - Como fazer (0.1): listar `ROUTINE_CREATED`, `GOAL_COMPLETED`, `MATERIAL_SUBMITTED`, `SUMMARY_GENERATED`.
-   - Como fazer (0.2): marcar tipos futuros como TODO se ainda não existirem.
-   - Ficheiro a rever: `MF-VIEWS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study/dto/study-event.dto.ts`.
-   - Snippet de referência: `type StudyEventType = "ROUTINE_CREATED" | "MATERIAL_SUBMITTED";`
-   - O que verificar: nenhum tipo inventa regra de negócio nova.
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~30 min): criar modelo StudyEvent**
-   - Descrição detalhada do objetivo: guardar eventos por aluno.
-   - Justificação: histórico precisa de persistência.
-   - Como fazer (1.1): criar `StudyEvent`.
-   - Como fazer (1.2): incluir `metadata` opcional para detalhes controlados.
-   - Ficheiro a rever: `apps/api/src/modules/auth/schemas/user.schema.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/study/schemas/study-event.schema.ts`.
-   - Snippet de referência:
-     ```ts
-     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-     import { HydratedDocument, Types } from 'mongoose';
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-     export type StudyEventDocument = HydratedDocument<StudyEvent>;
+### Pré-requisitos concretos
 
-     @Schema({ timestamps: true, collection: 'study_events' })
-     export class StudyEvent {
-       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-       userId!: Types.ObjectId;
+- BK-MF0-02 com `SessionGuard`.
+- BK-MF0-05 pode existir, mas o histórico deve funcionar vazio.
+- Eventos de materiais e IA serão adicionados pelos BKs seguintes.
 
-       @Prop({ required: true, trim: true })
-       type!: string;
+### Passo 1 - Criar tipos de evento
 
-       @Prop({ required: true, trim: true })
-       title!: string;
+1. Explicação simples do objetivo.
 
-       @Prop({ type: Object })
-       metadata?: Record<string, unknown>;
-     }
+    Neste passo vais criar tipos de evento. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-     export const StudyEventSchema = SchemaFactory.createForClass(StudyEvent);
-     StudyEventSchema.index({ userId: 1, createdAt: -1 });
-     ```
-   - O que verificar: existe índice por `userId` e `createdAt` quando suportado.
+2. Ficheiros envolvidos.
 
-2. **Objetivo (~35 min): criar service de histórico**
-   - Descrição detalhada do objetivo: listar eventos do aluno e registar novos eventos.
-   - Justificação: outros BKs reutilizam este service.
-   - Como fazer (2.1): criar `listMyHistory(userId, filters)`.
-   - Como fazer (2.2): criar `recordStudyEvent(userId, event)`.
-   - Ficheiro a rever: BK-MF0-05.
-   - Ficheiro alvo: `apps/api/src/modules/study/history.service.ts`.
-   - Snippet de referência:
-     ```ts
-     export async function listMyHistory(userId: string) {
-       return this.studyEventModel.find({ userId }).sort({ createdAt: -1 }).lean();
-     }
-     ```
-   - O que verificar: service não aceita `targetUserId` do cliente.
+- CRIAR: `apps/api/src/modules/study/dto/study-event.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-3. **Objetivo (~25 min): expor endpoint protegido**
-   - Descrição detalhada do objetivo: criar API de consulta.
-   - Justificação: frontend precisa de histórico real.
-   - Como fazer (3.1): criar `GET /api/study/history`.
-   - Como fazer (3.2): aceitar filtros simples `type` e `limit`.
-   - Ficheiro a rever: BK-MF0-02.
-   - Ficheiro alvo: `apps/api/src/modules/study/history.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // GET /api/study/history?type=MATERIAL_SUBMITTED&limit=20
-     ```
-   - O que verificar: sem sessão devolve `401`.
+3. O que fazer.
 
-4. **Objetivo (~35 min): integrar eventos com rotinas quando possível**
-   - Descrição detalhada do objetivo: registar evento quando uma rotina/objetivo é criado ou concluído.
-   - Justificação: o histórico deve refletir ações reais.
-   - Como fazer (4.1): chamar `recordStudyEvent` no service de rotinas.
-   - Como fazer (4.2): se BK-MF0-05 ainda não existir, deixar TODO claro.
-   - Ficheiro a rever: `apps/api/src/modules/study/routines.service.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/study/history.service.ts`.
-   - Snippet de referência:
-     ```ts
-     await recordStudyEvent(userId, { type: "ROUTINE_CREATED", title: input.title });
-     ```
-   - O que verificar: falha ao registar histórico não deve duplicar rotina.
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-5. **Objetivo (~40 min): criar página de histórico**
-   - Descrição detalhada do objetivo: mostrar timeline simples ao aluno.
-   - Justificação: RF06 é uma funcionalidade de consulta visível.
-   - Como fazer (5.1): criar `StudyHistoryPage`.
-   - Como fazer (5.2): mostrar filtros simples e empty state.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/web/src/pages/student/StudyHistoryPage.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <time dateTime={event.createdAt}>{formatDatePt(event.createdAt)}</time>
-     ```
-   - O que verificar: datas aparecem em PT-PT.
+4. Código completo, correto e integrado.
 
-6. **Objetivo (~35 min): testar e entregar handoff**
-   - Descrição detalhada do objetivo: validar listagem, ordenação e negativos.
-   - Justificação: materiais e IA vão reutilizar o histórico.
-   - Como fazer (6.1): testar lista vazia e lista com eventos.
-   - Como fazer (6.2): testar sem sessão e acesso a evento de outro aluno.
-   - Ficheiro a rever: `PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study/history.spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(events[0].createdAt >= events[1].createdAt).toBe(true);
-     ```
-   - O que verificar: evidence identifica como BK-MF0-07 deve registar eventos.
+```ts
+export const STUDY_EVENT_TYPES = [
+    "ROUTINE_CREATED",
+    "ROUTINE_ARCHIVED",
+    "GOAL_CREATED",
+    "STUDY_AREA_CREATED",
+    "MATERIAL_SUBMITTED",
+    "AI_PROFILE_CREATED",
+    "SUMMARY_GENERATED",
+    "STUDY_TOOL_GENERATED",
+] as const;
 
-## Checklist de validação (DERIVADO):
+export type StudyEventType = (typeof STUDY_EVENT_TYPES)[number];
 
-- Smoke:
-  - Aluno vê histórico vazio.
-  - Aluno vê eventos ordenados quando existem.
-- Negativos:
-  - passo 6; input/ação: pedido sem cookie; resultado esperado: `401`; risco que cobre: exposição de histórico.
-  - passo 6; input/ação: tentar filtrar por `userId` de outro aluno; resultado esperado: filtro ignorado/rejeitado; risco que cobre: IDOR.
-- Técnico:
-  - Eventos ordenados por `createdAt desc`.
-  - API suporta limite de resultados.
-- Regressão das fases anteriores:
-  - Rotinas continuam a criar/editar sem depender do histórico para sucesso crítico.
-- UI/mockup:
-  - Sem mockup específico; timeline simples e PT-PT.
-- Segurança:
-  - Histórico nunca aceita `userId` vindo do cliente.
+export type RecordStudyEventDto = {
+    type: StudyEventType;
+    title: string;
+    metadata?: Record<string, unknown>;
+};
+```
 
-## Critérios de aceite:
+5. Explicação do código.
+
+A lista evita tipos inventados em cada service. Novos tipos devem ser adicionados aqui quando um BK precisar.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Criar schema
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar schema. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/schemas/study-event.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
+import { STUDY_EVENT_TYPES, StudyEventType } from "../dto/study-event.dto";
+
+export type StudyEventDocument = HydratedDocument<StudyEvent>;
+
+@Schema({ timestamps: true, collection: "study_events" })
+export class StudyEvent {
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    userId!: Types.ObjectId;
+
+    @Prop({ required: true, enum: STUDY_EVENT_TYPES })
+    type!: StudyEventType;
+
+    @Prop({ required: true, trim: true, maxlength: 160 })
+    title!: string;
+
+    @Prop({ type: MongooseSchema.Types.Mixed })
+    metadata?: Record<string, unknown>;
+}
+
+export const StudyEventSchema = SchemaFactory.createForClass(StudyEvent);
+StudyEventSchema.index({ userId: 1, createdAt: -1 });
+```
+
+5. Explicação do código.
+
+O índice `{ userId, createdAt }` torna eficiente listar eventos recentes do próprio aluno.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar service
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/history.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { RecordStudyEventDto, STUDY_EVENT_TYPES } from "./dto/study-event.dto";
+import { StudyEvent, StudyEventDocument } from "./schemas/study-event.schema";
+
+@Injectable()
+export class HistoryService {
+    constructor(
+        @InjectModel(StudyEvent.name)
+        private readonly eventModel: Model<StudyEventDocument>,
+    ) {}
+
+    async listMyHistory(userId: string, limit = 30) {
+        const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
+        return this.eventModel
+            .find({ userId: new Types.ObjectId(userId) })
+            .sort({ createdAt: -1 })
+            .limit(safeLimit)
+            .lean();
+    }
+
+    async recordStudyEvent(userId: string, event: RecordStudyEventDto) {
+        if (!STUDY_EVENT_TYPES.includes(event.type)) {
+            throw new BadRequestException({
+                code: "INVALID_EVENT_TYPE",
+                message: "Tipo de evento inválido.",
+            });
+        }
+        if (!event.title?.trim()) {
+            throw new BadRequestException({
+                code: "EVENT_TITLE_REQUIRED",
+                message: "O evento precisa de título.",
+            });
+        }
+
+        return this.eventModel.create({
+            userId: new Types.ObjectId(userId),
+            type: event.type,
+            title: event.title.trim(),
+            metadata: event.metadata ?? {},
+        });
+    }
+}
+```
+
+5. Explicação do código.
+
+O service aceita apenas tipos controlados e nunca recebe `targetUserId` do cliente.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Criar controller
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/history.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthenticatedRequest } from "../../common/types/authenticated-request";
+import { HistoryService } from "./history.service";
+
+@Controller("api/study/history")
+@UseGuards(SessionGuard)
+export class HistoryController {
+    constructor(private readonly historyService: HistoryService) {}
+
+    @Get()
+    listHistory(
+        @Req() request: AuthenticatedRequest,
+        @Query("limit") limit?: string,
+    ) {
+        return this.historyService.listMyHistory(
+            request.user!.id,
+            Number(limit),
+        );
+    }
+}
+```
+
+5. Explicação do código.
+
+Mesmo que o cliente envie `userId` na query, o controller ignora-o. Só a sessão decide o dono dos eventos.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Editar cliente API e criar UI
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais editar cliente API e criar UI. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: no fim do ficheiro.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export type StudyEvent = {
+    _id: string;
+    type: string;
+    title: string;
+    createdAt: string;
+};
+
+export async function listStudyHistory(): Promise<StudyEvent[]> {
+    const response = await fetch("/api/study/history?limit=30", {
+        credentials: "include",
+    });
+    if (!response.ok) throw new Error("Não foi possível carregar o histórico.");
+    return (await response.json()) as StudyEvent[];
+}
+```
+
+- CRIAR: `apps/web/src/components/study/StudyHistoryList.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+import { StudyEvent } from "../../lib/apiClient";
+
+export function StudyHistoryList({ events }: { events: StudyEvent[] }) {
+    if (events.length === 0) {
+        return (
+            <p className="rounded border bg-white p-4">
+                Ainda não existem eventos de estudo.
+            </p>
+        );
+    }
+
+    return (
+        <ol className="space-y-3">
+            {events.map((event) => (
+                <li className="rounded border bg-white p-4" key={event._id}>
+                    <strong>{event.title}</strong>
+                    <p className="text-sm text-slate-600">{event.type}</p>
+                    <time
+                        className="text-sm text-slate-500"
+                        dateTime={event.createdAt}
+                    >
+                        {new Intl.DateTimeFormat("pt-PT").format(
+                            new Date(event.createdAt),
+                        )}
+                    </time>
+                </li>
+            ))}
+        </ol>
+    );
+}
+```
+
+- CRIAR: `apps/web/src/pages/student/StudyHistoryPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+import { useEffect, useState } from "react";
+import { StudyHistoryList } from "../../components/study/StudyHistoryList";
+import { listStudyHistory, StudyEvent } from "../../lib/apiClient";
+
+export function StudyHistoryPage() {
+    const [events, setEvents] = useState<StudyEvent[]>([]);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        listStudyHistory()
+            .then(setEvents)
+            .catch((err) => setError(err.message));
+    }, []);
+
+    return (
+        <main className="mx-auto max-w-3xl px-4 py-8">
+            <h1 className="text-2xl font-semibold">Histórico de estudo</h1>
+            {error ? (
+                <p className="mt-4 rounded bg-red-50 p-3 text-red-700">
+                    {error}
+                </p>
+            ) : (
+                <StudyHistoryList events={events} />
+            )}
+        </main>
+    );
+}
+```
+
+5. Explicação do código.
+
+A UI usa datas em `pt-PT` e mostra empty state em vez de tratar ausência de eventos como erro.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Schema Mongoose `StudyEvent`.
-  - Endpoint `GET /api/study/history`.
-  - Página de histórico.
+    - Schema Mongoose `StudyEvent`.
+    - Endpoint `GET /api/study/history`.
+    - Página de histórico.
 - Verificações:
-  - Lista vazia responde `200`.
-  - Eventos aparecem ordenados.
+    - Lista vazia responde `200`.
+    - Eventos aparecem ordenados.
 - Qualidade:
-  - Tipos de evento são derivados dos BKs existentes.
-  - Service reutilizável para BKs futuros.
+    - Tipos de evento são derivados dos BKs existentes.
+    - Service reutilizável para BKs futuros.
 - Continuidade:
-  - BK-MF0-07, BK-MF0-08, BK-MF0-11 e BK-MF0-12 podem registar eventos.
+    - BK-MF0-07, BK-MF0-08, BK-MF0-11 e BK-MF0-12 podem registar eventos.
 - Evidência:
-  - PR inclui histórico vazio, histórico com eventos e 2 negativos.
+    - PR inclui histórico vazio, histórico com eventos e 2 negativos.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/study/history.*`, `apps/web/src/pages/student/StudyHistoryPage.tsx`
-- `commands`: `npm test`, `npm run lint`
-- `screenshots`: `A preencher com histórico`
-- `notes`: `Histórico funcional não substitui auditoria administrativa`
+### Requests e responses esperados
 
-## TODOs
+- `GET /api/study/history?limit=30 -> 200 []` para aluno sem eventos.
+- `GET /api/study/history -> 200` com eventos ordenados por `createdAt desc`.
+- `401 UNAUTHENTICATED` sem sessão.
+- Query `userId=outro` deve ser ignorada.
 
-- TODO: confirmar lista final de tipos de evento.
-- TODO: decidir paginação por `cursor` ou `page`.
-- FOLLOW-UP: BK-MF0-07 deve registar criação de área.
-- Assunção a validar com o orientador: histórico mostra ações do aluno, não métricas avaliativas.
-- Decisão dependente de mockup: ecrã de histórico ainda não existe.
-- Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
+### Como validar o BK e cenários negativos
+
+- Histórico vazio: esperado `200 []`.
+- Dois eventos criados: esperado ordem descendente.
+- Pedido sem cookie: esperado `401`.
+- Tentar filtrar por outro `userId`: esperado ignorar e manter eventos do aluno autenticado.
+
+## Evidence para PR/defesa
+
+- Screenshot do histórico vazio.
+- Output de histórico com eventos.
+- Output sem sessão `401`.
+- Nota: histórico funcional não substitui auditoria administrativa.
+
+## Handoff para BK-MF0-07 e BK-MF0-08
+
+- BK-MF0-07 deve chamar `recordStudyEvent(userId, { type: 'STUDY_AREA_CREATED', ... })`.
+- BK-MF0-08 deve chamar `MATERIAL_SUBMITTED`.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para histórico individual com eventos, privacidade e continuidade com materiais/IA.
 - `2026-05-25`: histórico atualizado para coleção MongoDB e schema Mongoose.

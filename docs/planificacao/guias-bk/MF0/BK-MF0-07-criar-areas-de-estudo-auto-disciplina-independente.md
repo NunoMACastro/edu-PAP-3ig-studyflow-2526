@@ -1,6 +1,7 @@
 # BK-MF0-07 - Criar “Áreas de Estudo” (auto-disciplina independente).
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-07`
 - `bk_id`: `BK-MF0-07`
 - `macro`: `MF0`
@@ -38,15 +39,15 @@ O mockup não tem ecrã de áreas. A UI deve ser simples e extensível: lista de
 
 - Estado esperado antes do BK: aluno autenticado com perfil.
 - Estado esperado depois do BK: aluno cria, lista, edita e arquiva áreas de estudo próprias.
-- Ficheiros a criar/editar:
-  - `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`
-  - `apps/api/src/modules/study-areas/study-areas.controller.ts`
-  - `apps/api/src/modules/study-areas/study-areas.service.ts`
-  - `apps/api/src/modules/study-areas/dto/create-study-area.dto.ts`
-  - `apps/api/src/modules/study-areas/dto/update-study-area.dto.ts`
-  - `apps/web/src/pages/student/StudyAreasPage.tsx`
-  - `apps/web/src/pages/student/StudyAreaDetailPage.tsx`
-  - `apps/web/src/components/study/StudyAreaForm.tsx`
+- Ficheiros previstos neste BK:
+    - `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`
+    - `apps/api/src/modules/study-areas/study-areas.controller.ts`
+    - `apps/api/src/modules/study-areas/study-areas.service.ts`
+    - `apps/api/src/modules/study-areas/dto/create-study-area.dto.ts`
+    - `apps/api/src/modules/study-areas/dto/update-study-area.dto.ts`
+    - `apps/web/src/pages/student/StudyAreasPage.tsx`
+    - `apps/web/src/pages/student/StudyAreaDetailPage.tsx`
+    - `apps/web/src/components/study/StudyAreaForm.tsx`
 - Ficheiros a rever: BK-MF0-03, BK-MF0-04, BK-MF0-06.
 - Dependências de BK anteriores: perfil do BK-MF0-03; dashboard do BK-MF0-04 se já implementado.
 - Impacto na arquitetura: cria domínio `study-areas`.
@@ -129,198 +130,594 @@ O mockup não tem ecrã de áreas. A UI deve ser simples e extensível: lista de
 
 **Placeholder controlado.** A página de detalhe pode mostrar zonas `Materiais` e `IA`, mas deve indicar que serão ativadas nos BKs seguintes, sem simular resultados.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~15 min): definir fronteira entre área e turma**
-   - Descrição detalhada do objetivo: garantir que área é privada e não oficial.
-   - Justificação: evita conflito com MF1.
-   - Como fazer (0.1): rever RF07 e RF19-RF21.
-   - Como fazer (0.2): documentar que `StudyArea` usa `userId`, não `classId`.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
-   - Snippet de referência: `@Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })`.
-   - O que verificar: não há dependência de turmas.
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~30 min): criar modelo StudyArea**
-   - Descrição detalhada do objetivo: persistir áreas do aluno.
-   - Justificação: materiais e IA precisam de `studyAreaId`.
-   - Como fazer (1.1): criar campos `name`, `description`, `color`, `archived`.
-   - Como fazer (1.2): criar índice por `userId`.
-   - Ficheiro a rever: `apps/api/src/modules/auth/schemas/user.schema.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
-   - Snippet de referência:
-     ```ts
-     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-     import { HydratedDocument, Types } from 'mongoose';
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-     export type StudyAreaDocument = HydratedDocument<StudyArea>;
+### Pré-requisitos concretos
 
-     @Schema({ timestamps: true, collection: 'study_areas' })
-     export class StudyArea {
-       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-       userId!: Types.ObjectId;
+- BK-MF0-02 com `SessionGuard`.
+- BK-MF0-03 com perfil autenticado.
+- BK-MF0-06 opcional para registo de evento; se não estiver implementado, a criação da área não deve falhar.
 
-       @Prop({ required: true, trim: true })
-       name!: string;
+### Passo 1 - Criar schema StudyArea
 
-       @Prop({ trim: true })
-       description?: string;
+1. Explicação simples do objetivo.
 
-       @Prop({ trim: true })
-       color?: string;
+    Neste passo vais criar schema StudyArea. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-       @Prop({ default: false })
-       archived!: boolean;
-     }
+2. Ficheiros envolvidos.
 
-     export const StudyAreaSchema = SchemaFactory.createForClass(StudyArea);
-     ```
-   - O que verificar: área tem dono obrigatório.
+- CRIAR: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-2. **Objetivo (~30 min): criar DTOs e validações**
-   - Descrição detalhada do objetivo: controlar entrada da API.
-   - Justificação: nome vazio ou demasiado longo cria má experiência.
-   - Como fazer (2.1): criar `CreateStudyAreaDto`.
-   - Como fazer (2.2): validar `name` obrigatório e `description` opcional.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/dto/create-study-area.dto.ts`.
-   - Snippet de referência:
-     ```ts
-     export type CreateStudyAreaDto = {
-       name: string;
-       description?: string;
-     };
-     ```
-   - O que verificar: `userId` não vem no DTO.
+3. O que fazer.
 
-3. **Objetivo (~40 min): implementar service com ownership**
-   - Descrição detalhada do objetivo: criar, listar e obter detalhe de áreas.
-   - Justificação: o service protege o acesso por dono.
-   - Como fazer (3.1): criar `listMyStudyAreas(userId)`.
-   - Como fazer (3.2): criar `getMyStudyArea(userId, areaId)`.
-   - Ficheiro a rever: BK-MF0-06.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/study-areas.service.ts`.
-   - Snippet de referência:
-     ```ts
-     return this.studyAreaModel.findOne({ _id: areaId, userId }).lean();
-     ```
-   - O que verificar: área de outro aluno não é encontrada.
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-4. **Objetivo (~30 min): expor endpoints**
-   - Descrição detalhada do objetivo: criar API REST protegida.
-   - Justificação: frontend e BK-MF0-08 precisam deste contrato.
-   - Como fazer (4.1): criar `GET /api/study-areas`.
-   - Como fazer (4.2): criar `POST /api/study-areas` e `GET /api/study-areas/:id`.
-   - Ficheiro a rever: `MATRIZ-CANONICA-BK.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/study-areas.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // POST /api/study-areas -> 201 { id, name, description }
-     ```
-   - O que verificar: sem sessão devolve `401`.
+4. Código completo, correto e integrado.
 
-5. **Objetivo (~40 min): criar páginas de lista e detalhe**
-   - Descrição detalhada do objetivo: permitir criar e abrir áreas.
-   - Justificação: RF07 é funcionalidade principal visível.
-   - Como fazer (5.1): criar `StudyAreasPage`.
-   - Como fazer (5.2): criar `StudyAreaDetailPage` com placeholders para materiais e IA.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/web/src/pages/student/StudyAreasPage.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <button type="submit">Criar área</button>
-     ```
-   - O que verificar: empty state orienta para criar primeira área.
+```ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Types } from "mongoose";
 
-6. **Objetivo (~25 min): ligar ao dashboard e histórico**
-   - Descrição detalhada do objetivo: adicionar atalho e evento de criação.
-   - Justificação: mantém continuidade com BK-MF0-04 e BK-MF0-06.
-   - Como fazer (6.1): atualizar contador de áreas no dashboard.
-   - Como fazer (6.2): chamar `recordStudyEvent` se disponível.
-   - Ficheiro a rever: `apps/api/src/modules/study/history.service.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/study-areas.service.ts`.
-   - Snippet de referência: `STUDY_AREA_CREATED`.
-   - O que verificar: se histórico não existir, deixar TODO sem bloquear criação.
+export type StudyAreaDocument = HydratedDocument<StudyArea>;
 
-7. **Objetivo (~40 min): testar negativos e continuidade**
-   - Descrição detalhada do objetivo: validar criação, listagem e ownership.
-   - Justificação: P0 exige 3 negativos.
-   - Como fazer (7.1): testar nome vazio, sem sessão e área de outro aluno.
-   - Como fazer (7.2): testar criação válida seguida de listagem.
-   - Ficheiro a rever: `PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/study-areas.spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(await getMyStudyArea(userA.id, areaOfUserB.id)).toBeNull();
-     ```
-   - O que verificar: negativos não devolvem `500`.
+@Schema({ timestamps: true, collection: "study_areas" })
+export class StudyArea {
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    userId!: Types.ObjectId;
 
-8. **Objetivo (~20 min): preparar handoff para materiais**
-   - Descrição detalhada do objetivo: documentar `studyAreaId` como dependência do upload.
-   - Justificação: BK-MF0-08 só deve aceitar materiais dentro de área válida.
-   - Como fazer (8.1): guardar ID de área de teste na evidence.
-   - Como fazer (8.2): indicar endpoint que o próximo BK deve usar.
-   - Ficheiro a rever: `MF-VIEWS.md`.
-   - Ficheiro alvo: evidence do PR.
-   - Snippet de referência: `POST /api/study-areas/{id}/materials`.
-   - O que verificar: handoff inclui área válida e área inválida.
+    @Prop({ required: true, trim: true, maxlength: 120 })
+    name!: string;
 
-## Checklist de validação (DERIVADO):
+    @Prop({ trim: true, maxlength: 500 })
+    description?: string;
 
-- Smoke:
-  - Criar área válida.
-  - Abrir detalhe da área criada.
-- Negativos:
-  - passo 7; input/ação: nome vazio; resultado esperado: `400`; risco que cobre: dados inválidos.
-  - passo 7; input/ação: pedido sem sessão; resultado esperado: `401`; risco que cobre: acesso público.
-  - passo 7; input/ação: abrir área de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
-- Técnico:
-  - Todas as queries filtram por `userId`.
-  - `studyAreaId` é estável para BKs seguintes.
-- Regressão das fases anteriores:
-  - Dashboard individual atualiza contador de áreas.
-- UI/mockup:
-  - Sem mockup específico; UI simples e extensível.
-- Segurança:
-  - Não aceitar `userId` no body.
+    @Prop({ trim: true, maxlength: 24 })
+    color?: string;
 
-## Critérios de aceite:
+    @Prop({ default: false })
+    archived!: boolean;
+
+    @Prop({ enum: ["simple", "rigorous", "step_by_step", "examples_first"] })
+    voiceTone?: string;
+
+    @Prop({ enum: ["short", "normal", "detailed"], default: "normal" })
+    voiceDetailLevel?: string;
+
+    @Prop({ trim: true, maxlength: 500 })
+    voiceNotes?: string;
+}
+
+export const StudyAreaSchema = SchemaFactory.createForClass(StudyArea);
+StudyAreaSchema.index({ userId: 1, name: 1 }, { unique: true });
+```
+
+5. Explicação do código.
+
+O índice impede duas áreas com o mesmo nome para o mesmo aluno. Campos de voz já ficam preparados para BK-MF0-09, sem ativar IA.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Criar DTOs
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar DTOs. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study-areas/dto/create-study-area.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export class CreateStudyAreaDto {
+    name!: string;
+    description?: string;
+    color?: string;
+}
+```
+
+- CRIAR: `apps/api/src/modules/study-areas/dto/update-study-area.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```ts
+export class UpdateStudyAreaDto {
+    name?: string;
+    description?: string;
+    color?: string;
+    archived?: boolean;
+}
+```
+
+5. Explicação do código.
+
+Os DTOs não têm `userId`, `classId` ou campos de turma.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar service com ownership
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service com ownership. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study-areas/study-areas.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { CreateStudyAreaDto } from "./dto/create-study-area.dto";
+import { UpdateStudyAreaDto } from "./dto/update-study-area.dto";
+import { StudyArea, StudyAreaDocument } from "./schemas/study-area.schema";
+
+@Injectable()
+export class StudyAreasService {
+    constructor(
+        @InjectModel(StudyArea.name)
+        private readonly areaModel: Model<StudyAreaDocument>,
+    ) {}
+
+    async listMyStudyAreas(userId: string) {
+        return this.areaModel
+            .find({ userId: new Types.ObjectId(userId), archived: false })
+            .sort({ name: 1 })
+            .lean();
+    }
+
+    async getMyStudyArea(userId: string, areaId: string) {
+        if (!Types.ObjectId.isValid(areaId)) {
+            throw new NotFoundException({
+                code: "STUDY_AREA_NOT_FOUND",
+                message: "Área de estudo não encontrada.",
+            });
+        }
+        return this.areaModel
+            .findOne({
+                _id: areaId,
+                userId: new Types.ObjectId(userId),
+                archived: false,
+            })
+            .lean();
+    }
+
+    async createStudyArea(userId: string, input: CreateStudyAreaDto) {
+        const name = input.name?.trim();
+        if (!name)
+            throw new BadRequestException({
+                code: "AREA_NAME_REQUIRED",
+                message: "Indica o nome da área.",
+            });
+
+        const duplicate = await this.areaModel.exists({
+            userId: new Types.ObjectId(userId),
+            name,
+        });
+        if (duplicate)
+            throw new ConflictException({
+                code: "AREA_NAME_DUPLICATED",
+                message: "Já tens uma área com esse nome.",
+            });
+
+        return this.areaModel.create({
+            userId: new Types.ObjectId(userId),
+            name,
+            description: input.description?.trim(),
+            color: input.color?.trim(),
+        });
+    }
+
+    async updateStudyArea(
+        userId: string,
+        areaId: string,
+        input: UpdateStudyAreaDto,
+    ) {
+        const updated = await this.areaModel
+            .findOneAndUpdate(
+                { _id: areaId, userId: new Types.ObjectId(userId) },
+                {
+                    $set: {
+                        ...input,
+                        name: input.name?.trim(),
+                        description: input.description?.trim(),
+                    },
+                },
+                { new: true, runValidators: true },
+            )
+            .lean();
+        if (!updated)
+            throw new NotFoundException({
+                code: "STUDY_AREA_NOT_FOUND",
+                message: "Área de estudo não encontrada.",
+            });
+        return updated;
+    }
+}
+```
+
+5. Explicação do código.
+
+Todas as operações filtram por `userId`. Uma área de outro aluno parece “não encontrada”, o que evita expor a existência do recurso.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Criar controller
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study-areas/study-areas.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Post,
+    Req,
+    UseGuards,
+} from "@nestjs/common";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthenticatedRequest } from "../../common/types/authenticated-request";
+import { CreateStudyAreaDto } from "./dto/create-study-area.dto";
+import { UpdateStudyAreaDto } from "./dto/update-study-area.dto";
+import { StudyAreasService } from "./study-areas.service";
+
+@Controller("api/study-areas")
+@UseGuards(SessionGuard)
+export class StudyAreasController {
+    constructor(private readonly studyAreasService: StudyAreasService) {}
+
+    @Get()
+    list(@Req() request: AuthenticatedRequest) {
+        return this.studyAreasService.listMyStudyAreas(request.user!.id);
+    }
+
+    @Post()
+    create(
+        @Req() request: AuthenticatedRequest,
+        @Body() body: CreateStudyAreaDto,
+    ) {
+        return this.studyAreasService.createStudyArea(request.user!.id, body);
+    }
+
+    @Get(":id")
+    detail(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
+        return this.studyAreasService.getMyStudyArea(request.user!.id, id);
+    }
+
+    @Patch(":id")
+    update(
+        @Req() request: AuthenticatedRequest,
+        @Param("id") id: string,
+        @Body() body: UpdateStudyAreaDto,
+    ) {
+        return this.studyAreasService.updateStudyArea(
+            request.user!.id,
+            id,
+            body,
+        );
+    }
+}
+```
+
+5. Explicação do código.
+
+O controller cria o contrato usado por materiais e perfil IA: `studyAreaId` só é válido se pertencer ao aluno autenticado.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Criar módulo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar módulo. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study-areas/study-areas.module.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { AuthModule } from "../auth/auth.module";
+import { StudyArea, StudyAreaSchema } from "./schemas/study-area.schema";
+import { StudyAreasController } from "./study-areas.controller";
+import { StudyAreasService } from "./study-areas.service";
+
+@Module({
+    imports: [
+        AuthModule,
+        MongooseModule.forFeature([
+            { name: StudyArea.name, schema: StudyAreaSchema },
+        ]),
+    ],
+    controllers: [StudyAreasController],
+    providers: [StudyAreasService],
+    exports: [StudyAreasService],
+})
+export class StudyAreasModule {}
+```
+
+5. Explicação do código.
+
+O `exports` permite ao BK-MF0-08 validar ownership da área antes de criar materiais.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 6 - Cliente API e UI mínima
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais cliente API e UI mínima. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: no fim do ficheiro.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export type StudyArea = {
+    _id: string;
+    name: string;
+    description?: string;
+    archived: boolean;
+};
+
+export async function listStudyAreas(): Promise<StudyArea[]> {
+    const response = await fetch("/api/study-areas", {
+        credentials: "include",
+    });
+    if (!response.ok) throw new Error("Não foi possível carregar áreas.");
+    return (await response.json()) as StudyArea[];
+}
+
+export async function createStudyArea(payload: {
+    name: string;
+    description?: string;
+}): Promise<StudyArea> {
+    const response = await fetch("/api/study-areas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível criar área.");
+    return data as StudyArea;
+}
+```
+
+- CRIAR: `apps/web/src/pages/student/StudyAreasPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+import { FormEvent, useEffect, useState } from "react";
+import {
+    createStudyArea,
+    listStudyAreas,
+    StudyArea,
+} from "../../lib/apiClient";
+
+export function StudyAreasPage() {
+    const [areas, setAreas] = useState<StudyArea[]>([]);
+    const [name, setName] = useState("");
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        listStudyAreas()
+            .then(setAreas)
+            .catch((err) => setError(err.message));
+    }, []);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError(null);
+        try {
+            const created = await createStudyArea({ name });
+            setAreas((current) => [...current, created]);
+            setName("");
+        } catch (err) {
+            setError(
+                err instanceof Error ? err.message : "Erro ao criar área.",
+            );
+        }
+    }
+
+    return (
+        <main className="mx-auto max-w-3xl px-4 py-8">
+            <h1 className="text-2xl font-semibold">Áreas de estudo</h1>
+            <form className="mt-6 flex gap-3" onSubmit={handleSubmit}>
+                <input
+                    className="flex-1 rounded border px-3 py-2"
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Ex.: Matemática A"
+                    required
+                    value={name}
+                />
+                <button
+                    className="rounded bg-slate-900 px-4 py-2 text-white"
+                    type="submit"
+                >
+                    Criar área
+                </button>
+            </form>
+            {error && (
+                <p className="mt-4 rounded bg-red-50 p-3 text-red-700">
+                    {error}
+                </p>
+            )}
+            <ul className="mt-6 space-y-3">
+                {areas.map((area) => (
+                    <li className="rounded border bg-white p-4" key={area._id}>
+                        {area.name}
+                    </li>
+                ))}
+            </ul>
+        </main>
+    );
+}
+```
+
+- CRIAR: `apps/web/src/pages/student/StudyAreaDetailPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+export function StudyAreaDetailPage() {
+    return (
+        <main className="mx-auto max-w-3xl px-4 py-8">
+            <h1 className="text-2xl font-semibold">Detalhe da área</h1>
+            <p className="mt-2 text-slate-600">
+                Materiais, voz da IA e perfil IA serão ativados nos próximos
+                BKs.
+            </p>
+        </main>
+    );
+}
+```
+
+5. Explicação do código.
+
+A página de detalhe é honesta: mostra placeholders, mas não simula materiais nem IA.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Schema Mongoose `StudyArea`.
-  - API de áreas protegida.
-  - Lista e detalhe no frontend.
+    - Schema Mongoose `StudyArea`.
+    - API de áreas protegida.
+    - Lista e detalhe no frontend.
 - Verificações:
-  - Criação válida responde `201`.
-  - Acesso a área alheia falha.
+    - Criação válida responde `201`.
+    - Acesso a área alheia falha.
 - Qualidade:
-  - Áreas não dependem de turmas.
-  - Código separado por domínio.
+    - Áreas não dependem de turmas.
+    - Código separado por domínio.
 - Continuidade:
-  - BK-MF0-08 usa `studyAreaId`.
-  - BK-MF0-10 cria perfil IA por área.
+    - BK-MF0-08 usa `studyAreaId`.
+    - BK-MF0-10 cria perfil IA por área.
 - Evidência:
-  - PR inclui smoke, 3 negativos e screenshot da lista.
+    - PR inclui smoke, 3 negativos e screenshot da lista.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/study-areas/*`, `apps/web/src/pages/student/StudyAreasPage.tsx`
-- `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
-- `screenshots`: `A preencher com lista/detalhe de áreas`
-- `notes`: `Áreas privadas não substituem disciplinas oficiais`
+### Requests e responses esperados
 
-## TODOs
+- `POST /api/study-areas -> 201` com `{ _id, name, userId, archived }`.
+- `GET /api/study-areas -> 200` com áreas do aluno autenticado.
+- `GET /api/study-areas/:id -> 200` se a área for do aluno.
+- `400 AREA_NAME_REQUIRED` para nome vazio.
+- `401 UNAUTHENTICATED` sem sessão.
+- `404 STUDY_AREA_NOT_FOUND` para área alheia ou id inválido.
+- `409 AREA_NAME_DUPLICATED` para nome repetido no mesmo aluno.
 
-- TODO: confirmar se `color` entra no MVP ou fica visual apenas.
-- TODO: decidir regra de nomes duplicados por aluno.
-- FOLLOW-UP: BK-MF0-08 deve validar `studyAreaId`.
-- Assunção a validar com o orientador: áreas são privadas e independentes de turma.
-- Decisão dependente de mockup: ecrã de áreas ainda não existe.
-- Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
+### Como validar o BK e cenários negativos
+
+- Criar `Matemática A`: esperado `201`.
+- Criar nome vazio: esperado `400`.
+- Repetir nome no mesmo aluno: esperado `409`.
+- Abrir área de outro aluno: esperado `404`.
+
+## Evidence para PR/defesa
+
+- Screenshot da lista de áreas.
+- Output de criação válida.
+- Output de nome duplicado `409`.
+- Output de área alheia `404`.
+
+## Handoff para BK-MF0-08
+
+- O próximo BK deve validar `studyAreaId` através de `StudyAreasService.getMyStudyArea`.
+- Materiais nunca podem ser criados numa área de outro aluno.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para áreas privadas, ownership e handoff para materiais/IA.
 - `2026-05-25`: área de estudo atualizada para schema MongoDB/Mongoose com referência `userId`.

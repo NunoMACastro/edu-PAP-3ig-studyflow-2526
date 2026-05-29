@@ -1,6 +1,7 @@
 # BK-MF0-05 - O aluno pode criar rotinas e objetivos de estudo.
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-05`
 - `bk_id`: `BK-MF0-05`
 - `macro`: `MF0`
@@ -38,16 +39,16 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 
 - Estado esperado antes do BK: aluno autenticado com perfil e acesso ao modo individual.
 - Estado esperado depois do BK: aluno cria, lista, edita estado e remove rotinas/objetivos pessoais.
-- Ficheiros a criar/editar:
-  - `apps/api/src/modules/study/schemas/study-routine.schema.ts`
-  - `apps/api/src/modules/study/schemas/study-goal.schema.ts`
-  - `apps/api/src/modules/study/routines.controller.ts`
-  - `apps/api/src/modules/study/routines.service.ts`
-  - `apps/api/src/modules/study/dto/create-routine.dto.ts`
-  - `apps/api/src/modules/study/dto/create-goal.dto.ts`
-  - `apps/web/src/pages/student/RoutinesPage.tsx`
-  - `apps/web/src/components/study/RoutineForm.tsx`
-  - `apps/web/src/components/study/GoalForm.tsx`
+- Ficheiros previstos neste BK:
+    - `apps/api/src/modules/study/schemas/study-routine.schema.ts`
+    - `apps/api/src/modules/study/schemas/study-goal.schema.ts`
+    - `apps/api/src/modules/study/routines.controller.ts`
+    - `apps/api/src/modules/study/routines.service.ts`
+    - `apps/api/src/modules/study/dto/create-routine.dto.ts`
+    - `apps/api/src/modules/study/dto/create-goal.dto.ts`
+    - `apps/web/src/pages/student/RoutinesPage.tsx`
+    - `apps/web/src/components/study/RoutineForm.tsx`
+    - `apps/web/src/components/study/GoalForm.tsx`
 - Ficheiros a rever: BK-MF0-03, BK-MF0-04, `docs/RF.md`.
 - Dependências de BK anteriores: perfil do BK-MF0-03 e dashboard individual do BK-MF0-04 quando disponível.
 - Impacto na arquitetura: expande domínio `study`.
@@ -128,209 +129,609 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 
 **Validação backend.** A UI pode impedir duração negativa, mas o backend também tem de validar. Isto evita que pedidos diretos à API criem dados impossíveis.
 
-**Soft delete vs hard delete.** Para histórico futuro, pode fazer sentido marcar uma rotina como `archived` em vez de apagar. Como RF05 não exige histórico completo aqui, isto fica como assunção técnica.
+**Soft delete vs hard delete.** Para histórico futuro, faz sentido marcar uma rotina como `archived` em vez de apagar. Esta decisão preserva histórico e evita perder dados que podem ser úteis nos BKs de acompanhamento.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~15 min): confirmar escopo pessoal**
-   - Descrição detalhada do objetivo: garantir que rotinas pertencem ao aluno, não à turma.
-   - Justificação: turmas não existem nesta fase.
-   - Como fazer (0.1): rever RF05.
-   - Como fazer (0.2): confirmar que endpoints usam `SessionGuard`.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study/routines.controller.ts`.
-   - Snippet de referência: `{ userId: request.user.id }`.
-   - O que verificar: não há `classId` obrigatório.
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~30 min): criar modelos de dados**
-   - Descrição detalhada do objetivo: persistir rotinas e objetivos.
-   - Justificação: dados precisam sobreviver ao refresh da página.
-   - Como fazer (1.1): criar `StudyRoutine`.
-   - Como fazer (1.2): criar `StudyGoal`.
-   - Ficheiro a rever: `apps/api/src/modules/auth/schemas/user.schema.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/study/schemas/study-routine.schema.ts` e `apps/api/src/modules/study/schemas/study-goal.schema.ts`.
-   - Snippet de referência:
-     ```ts
-     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-     import { HydratedDocument, Types } from 'mongoose';
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-     export type StudyRoutineDocument = HydratedDocument<StudyRoutine>;
+### Pré-requisitos concretos
 
-     @Schema({ timestamps: true, collection: 'study_routines' })
-     export class StudyRoutine {
-       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-       userId!: Types.ObjectId;
+- BK-MF0-02 com `SessionGuard`.
+- BK-MF0-04 com dashboard individual.
+- Não existem turmas neste fluxo; não usar `classId`.
 
-       @Prop({ required: true, trim: true })
-       title!: string;
+### Passo 1 - Criar schemas
 
-       @Prop({ required: true, enum: ['daily', 'weekly'] })
-       frequency!: string;
+1. Explicação simples do objetivo.
 
-       @Prop({ required: true, min: 1 })
-       targetMinutes!: number;
+    Neste passo vais criar schemas. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-       @Prop({ default: true })
-       active!: boolean;
-     }
+2. Ficheiros envolvidos.
 
-     export const StudyRoutineSchema = SchemaFactory.createForClass(StudyRoutine);
-     ```
-     ```ts
-     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-     import { HydratedDocument, Types } from 'mongoose';
+- CRIAR: `apps/api/src/modules/study/schemas/study-routine.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-     export type StudyGoalDocument = HydratedDocument<StudyGoal>;
+3. O que fazer.
 
-     @Schema({ timestamps: true, collection: 'study_goals' })
-     export class StudyGoal {
-       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-       userId!: Types.ObjectId;
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-       @Prop({ required: true, trim: true })
-       title!: string;
+4. Código completo, correto e integrado.
 
-       @Prop({ required: true, min: 1 })
-       targetValue!: number;
+```ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Types } from "mongoose";
 
-       @Prop({ required: true, enum: ['minutes', 'sessions', 'materials'] })
-       metric!: string;
+export type StudyRoutineDocument = HydratedDocument<StudyRoutine>;
 
-       @Prop({ default: false })
-       completed!: boolean;
-     }
+@Schema({ timestamps: true, collection: "study_routines" })
+export class StudyRoutine {
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    userId!: Types.ObjectId;
 
-     export const StudyGoalSchema = SchemaFactory.createForClass(StudyGoal);
-     ```
-   - O que verificar: ambos têm `userId`.
+    @Prop({ required: true, trim: true, maxlength: 120 })
+    title!: string;
 
-2. **Objetivo (~25 min): criar DTOs e validações**
-   - Descrição detalhada do objetivo: aceitar apenas campos necessários.
-   - Justificação: validação clara evita dados incoerentes.
-   - Como fazer (2.1): validar `title` obrigatório.
-   - Como fazer (2.2): validar `targetMinutes > 0`.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study/dto/create-routine.dto.ts`.
-   - Snippet de referência:
-     ```ts
-     export type CreateRoutineDto = {
-       title: string;
-       frequency: "daily" | "weekly";
-       targetMinutes: number;
-     };
-     ```
-   - O que verificar: duração zero ou negativa é inválida.
+    @Prop({ required: true, enum: ["daily", "weekly"] })
+    frequency!: "daily" | "weekly";
 
-3. **Objetivo (~35 min): implementar service**
-   - Descrição detalhada do objetivo: criar funções de listagem, criação e atualização.
-   - Justificação: regras ficam fora do controller.
-   - Como fazer (3.1): criar `listMyRoutines(userId)`.
-   - Como fazer (3.2): criar `createRoutine(userId, input)`.
-   - Ficheiro a rever: BK-MF0-04.
-   - Ficheiro alvo: `apps/api/src/modules/study/routines.service.ts`.
-   - Snippet de referência:
-     ```ts
-     export async function createRoutine(userId: string, input: CreateRoutineDto) {
-       return this.routineModel.create({ ...input, userId });
-     }
-     ```
-   - O que verificar: `userId` vem da sessão.
+    @Prop({ required: true, min: 1, max: 480 })
+    targetMinutes!: number;
 
-4. **Objetivo (~30 min): criar endpoints**
-   - Descrição detalhada do objetivo: expor API para frontend.
-   - Justificação: UI precisa de listar e guardar rotinas/objetivos.
-   - Como fazer (4.1): criar `GET` e `POST`.
-   - Como fazer (4.2): criar `PATCH` para ativar/concluir/arquivar.
-   - Ficheiro a rever: `MATRIZ-CANONICA-BK.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study/routines.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // POST /api/study/routines
-     // 201: StudyRoutine
-     ```
-   - O que verificar: sem sessão devolve `401`.
+    // Arquivar preserva histórico futuro sem apagar definitivamente.
+    @Prop({ default: true })
+    active!: boolean;
+}
 
-5. **Objetivo (~40 min): criar UI de rotinas e objetivos**
-   - Descrição detalhada do objetivo: criar formulário e lista.
-   - Justificação: funcionalidade deve ser executável pelo aluno.
-   - Como fazer (5.1): criar `RoutinesPage`.
-   - Como fazer (5.2): mostrar empty state e feedback de guardar.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/web/src/pages/student/RoutinesPage.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <button type="submit">Guardar rotina</button>
-     ```
-   - O que verificar: datas aparecem em `dd/mm/aaaa` quando existirem.
+export const StudyRoutineSchema = SchemaFactory.createForClass(StudyRoutine);
+```
 
-6. **Objetivo (~35 min): testar e preparar handoff**
-   - Descrição detalhada do objetivo: provar CRUD mínimo e negativos.
-   - Justificação: BK-MF0-06 depende destes registos para histórico.
-   - Como fazer (6.1): testar criação válida.
-   - Como fazer (6.2): testar duração inválida e acesso a rotina de outro aluno.
-   - Ficheiro a rever: `PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study/routines.spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(created.userId).toBe(currentUser.id);
-     ```
-   - O que verificar: evidence inclui IDs e resultados negativos.
+- CRIAR: `apps/api/src/modules/study/schemas/study-goal.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-## Checklist de validação (DERIVADO):
+```ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Types } from "mongoose";
 
-- Smoke:
-  - Criar rotina válida.
-  - Criar objetivo válido.
-- Negativos:
-  - passo 6; input/ação: `targetMinutes: 0`; resultado esperado: `400`; risco que cobre: dados impossíveis.
-  - passo 6; input/ação: editar rotina de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
-- Técnico:
-  - Todas as queries filtram por `userId`.
-  - Datas na UI seguem `dd/mm/aaaa`.
-- Regressão das fases anteriores:
-  - Dashboard individual continua acessível sem turma.
-- UI/mockup:
-  - Sem mockup específico; UI simples, clara e em PT-PT.
-- Segurança:
-  - Não aceitar `userId` vindo do body.
+export type StudyGoalDocument = HydratedDocument<StudyGoal>;
 
-## Critérios de aceite:
+@Schema({ timestamps: true, collection: "study_goals" })
+export class StudyGoal {
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    userId!: Types.ObjectId;
+
+    @Prop({ required: true, trim: true, maxlength: 120 })
+    title!: string;
+
+    @Prop({ required: true, min: 1 })
+    targetValue!: number;
+
+    @Prop({ required: true, enum: ["minutes", "sessions", "materials"] })
+    metric!: "minutes" | "sessions" | "materials";
+
+    @Prop({ default: false })
+    completed!: boolean;
+}
+
+export const StudyGoalSchema = SchemaFactory.createForClass(StudyGoal);
+```
+
+5. Explicação do código.
+
+Os dois schemas têm `userId`, garantindo ownership. `active` e `completed` evitam apagar dados necessários ao histórico.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Criar DTOs
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar DTOs. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/dto/create-routine.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export class CreateRoutineDto {
+    title!: string;
+    frequency!: "daily" | "weekly";
+    targetMinutes!: number;
+}
+```
+
+- CRIAR: `apps/api/src/modules/study/dto/create-goal.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```ts
+export class CreateGoalDto {
+    title!: string;
+    targetValue!: number;
+    metric!: "minutes" | "sessions" | "materials";
+}
+```
+
+5. Explicação do código.
+
+Os DTOs não têm `userId`; o dono vem sempre da sessão.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar service
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/routines.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { CreateGoalDto } from "./dto/create-goal.dto";
+import { CreateRoutineDto } from "./dto/create-routine.dto";
+import { StudyGoal, StudyGoalDocument } from "./schemas/study-goal.schema";
+import {
+    StudyRoutine,
+    StudyRoutineDocument,
+} from "./schemas/study-routine.schema";
+
+@Injectable()
+export class RoutinesService {
+    constructor(
+        @InjectModel(StudyRoutine.name)
+        private readonly routineModel: Model<StudyRoutineDocument>,
+        @InjectModel(StudyGoal.name)
+        private readonly goalModel: Model<StudyGoalDocument>,
+    ) {}
+
+    async listMyRoutines(userId: string) {
+        return this.routineModel
+            .find({ userId: new Types.ObjectId(userId), active: true })
+            .sort({ createdAt: -1 })
+            .lean();
+    }
+
+    async createRoutine(userId: string, input: CreateRoutineDto) {
+        this.assertRoutine(input);
+        return this.routineModel.create({
+            ...input,
+            title: input.title.trim(),
+            userId: new Types.ObjectId(userId),
+        });
+    }
+
+    async archiveRoutine(userId: string, routineId: string) {
+        const updated = await this.routineModel
+            .findOneAndUpdate(
+                { _id: routineId, userId: new Types.ObjectId(userId) },
+                { $set: { active: false } },
+                { new: true },
+            )
+            .lean();
+        if (!updated)
+            throw new NotFoundException({
+                code: "ROUTINE_NOT_FOUND",
+                message: "Rotina não encontrada.",
+            });
+        return updated;
+    }
+
+    async listMyGoals(userId: string) {
+        return this.goalModel
+            .find({ userId: new Types.ObjectId(userId) })
+            .sort({ createdAt: -1 })
+            .lean();
+    }
+
+    async createGoal(userId: string, input: CreateGoalDto) {
+        this.assertGoal(input);
+        return this.goalModel.create({
+            ...input,
+            title: input.title.trim(),
+            userId: new Types.ObjectId(userId),
+        });
+    }
+
+    private assertRoutine(input: CreateRoutineDto): void {
+        if (!input.title?.trim())
+            throw new BadRequestException({
+                code: "TITLE_REQUIRED",
+                message: "Indica um título.",
+            });
+        if (!["daily", "weekly"].includes(input.frequency))
+            throw new BadRequestException({
+                code: "INVALID_FREQUENCY",
+                message: "Escolhe uma frequência válida.",
+            });
+        if (!Number.isInteger(input.targetMinutes) || input.targetMinutes < 1)
+            throw new BadRequestException({
+                code: "INVALID_DURATION",
+                message: "A duração deve ser positiva.",
+            });
+    }
+
+    private assertGoal(input: CreateGoalDto): void {
+        if (!input.title?.trim())
+            throw new BadRequestException({
+                code: "TITLE_REQUIRED",
+                message: "Indica um título.",
+            });
+        if (!Number.isInteger(input.targetValue) || input.targetValue < 1)
+            throw new BadRequestException({
+                code: "INVALID_TARGET",
+                message: "O objetivo deve ser positivo.",
+            });
+        if (!["minutes", "sessions", "materials"].includes(input.metric))
+            throw new BadRequestException({
+                code: "INVALID_METRIC",
+                message: "Escolhe uma métrica válida.",
+            });
+    }
+}
+```
+
+5. Explicação do código.
+
+O service valida dados e filtra sempre por `userId`. Ao arquivar uma rotina de outro aluno, a query não encontra o documento e devolve `404`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Criar controller
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/routines.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Post,
+    Req,
+    UseGuards,
+} from "@nestjs/common";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthenticatedRequest } from "../../common/types/authenticated-request";
+import { CreateGoalDto } from "./dto/create-goal.dto";
+import { CreateRoutineDto } from "./dto/create-routine.dto";
+import { RoutinesService } from "./routines.service";
+
+@Controller("api/study")
+@UseGuards(SessionGuard)
+export class RoutinesController {
+    constructor(private readonly routinesService: RoutinesService) {}
+
+    @Get("routines")
+    listRoutines(@Req() request: AuthenticatedRequest) {
+        return this.routinesService.listMyRoutines(request.user!.id);
+    }
+
+    @Post("routines")
+    createRoutine(
+        @Req() request: AuthenticatedRequest,
+        @Body() body: CreateRoutineDto,
+    ) {
+        return this.routinesService.createRoutine(request.user!.id, body);
+    }
+
+    @Delete("routines/:id")
+    archiveRoutine(
+        @Req() request: AuthenticatedRequest,
+        @Param("id") id: string,
+    ) {
+        return this.routinesService.archiveRoutine(request.user!.id, id);
+    }
+
+    @Get("goals")
+    listGoals(@Req() request: AuthenticatedRequest) {
+        return this.routinesService.listMyGoals(request.user!.id);
+    }
+
+    @Post("goals")
+    createGoal(
+        @Req() request: AuthenticatedRequest,
+        @Body() body: CreateGoalDto,
+    ) {
+        return this.routinesService.createGoal(request.user!.id, body);
+    }
+}
+```
+
+5. Explicação do código.
+
+O controller expõe CRUD mínimo sem permitir escolher o dono dos dados.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Editar cliente API
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais editar cliente API. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: no fim do ficheiro.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export type StudyRoutine = {
+    _id: string;
+    title: string;
+    frequency: "daily" | "weekly";
+    targetMinutes: number;
+    active: boolean;
+};
+
+export async function listRoutines(): Promise<StudyRoutine[]> {
+    const response = await fetch("/api/study/routines", {
+        credentials: "include",
+    });
+    if (!response.ok) throw new Error("Não foi possível carregar rotinas.");
+    return (await response.json()) as StudyRoutine[];
+}
+
+export async function createRoutine(
+    payload: Omit<StudyRoutine, "_id" | "active">,
+): Promise<StudyRoutine> {
+    const response = await fetch("/api/study/routines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível criar rotina.");
+    return data as StudyRoutine;
+}
+```
+
+5. Explicação do código.
+
+Estas funções mantêm a UI pequena e impedem que componentes montem URLs manualmente.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 6 - Criar página de rotinas
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar página de rotinas. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/pages/student/RoutinesPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```tsx
+import { FormEvent, useEffect, useState } from "react";
+import { createRoutine, listRoutines, StudyRoutine } from "../../lib/apiClient";
+
+export function RoutinesPage() {
+    const [routines, setRoutines] = useState<StudyRoutine[]>([]);
+    const [title, setTitle] = useState("");
+    const [targetMinutes, setTargetMinutes] = useState(30);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        listRoutines()
+            .then(setRoutines)
+            .catch((err) => setError(err.message));
+    }, []);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError(null);
+        try {
+            const created = await createRoutine({
+                title,
+                frequency: "weekly",
+                targetMinutes,
+            });
+            setRoutines((current) => [created, ...current]);
+            setTitle("");
+        } catch (err) {
+            setError(
+                err instanceof Error ? err.message : "Erro ao criar rotina.",
+            );
+        }
+    }
+
+    return (
+        <main className="mx-auto max-w-3xl px-4 py-8">
+            <h1 className="text-2xl font-semibold">Rotinas e objetivos</h1>
+            <form className="mt-6 flex gap-3" onSubmit={handleSubmit}>
+                <input
+                    className="flex-1 rounded border px-3 py-2"
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="Ex.: Rever Matemática"
+                    required
+                    value={title}
+                />
+                <input
+                    className="w-28 rounded border px-3 py-2"
+                    min={1}
+                    onChange={(event) =>
+                        setTargetMinutes(Number(event.target.value))
+                    }
+                    type="number"
+                    value={targetMinutes}
+                />
+                <button
+                    className="rounded bg-slate-900 px-4 py-2 text-white"
+                    type="submit"
+                >
+                    Guardar
+                </button>
+            </form>
+            {error && (
+                <p className="mt-4 rounded bg-red-50 p-3 text-red-700">
+                    {error}
+                </p>
+            )}
+            <ul className="mt-6 space-y-3">
+                {routines.map((routine) => (
+                    <li
+                        className="rounded border bg-white p-4"
+                        key={routine._id}
+                    >
+                        <strong>{routine.title}</strong>
+                        <p>
+                            {routine.targetMinutes} min ·{" "}
+                            {routine.frequency === "weekly"
+                                ? "semanal"
+                                : "diária"}
+                        </p>
+                    </li>
+                ))}
+            </ul>
+        </main>
+    );
+}
+```
+
+5. Explicação do código.
+
+A UI cobre criação e listagem. A edição avançada pode ser adicionada sem mudar o contrato de ownership.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Schemas Mongoose de rotina e objetivo.
-  - API protegida.
-  - Página de rotinas.
+    - Schemas Mongoose de rotina e objetivo.
+    - API protegida.
+    - Página de rotinas.
 - Verificações:
-  - Criação válida responde `201`.
-  - Duração inválida responde `400`.
+    - Criação válida responde `201`.
+    - Duração inválida responde `400`.
 - Qualidade:
-  - DTOs limitam campos aceites.
-  - UI mostra loading/error/success.
+    - DTOs limitam campos aceites.
+    - UI mostra loading/error/success.
 - Continuidade:
-  - BK-MF0-06 consegue listar eventos derivados de rotinas/objetivos.
+    - BK-MF0-06 consegue listar eventos derivados de rotinas/objetivos.
 - Evidência:
-  - PR inclui smoke e 2 negativos.
+    - PR inclui smoke e 2 negativos.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/study/*`, `apps/web/src/pages/student/RoutinesPage.tsx`
-- `commands`: `npm test`, `npm run lint`
-- `screenshots`: `A preencher com lista de rotinas`
-- `notes`: `Notificações ficam fora deste BK`
+### Requests e responses esperados
 
-## TODOs
+- `POST /api/study/routines -> 201` com rotina criada.
+- `GET /api/study/routines -> 200` com lista do aluno autenticado.
+- `POST /api/study/goals -> 201` com objetivo criado.
+- `400 INVALID_DURATION` se `targetMinutes <= 0`.
+- `401 UNAUTHENTICATED` sem sessão.
+- `404 ROUTINE_NOT_FOUND` ao tentar arquivar rotina de outro aluno.
 
-- TODO: confirmar lista final de frequências permitidas.
-- TODO: decidir soft delete vs hard delete antes do histórico avançado.
-- FOLLOW-UP: BK-MF0-06 deve registar criação/conclusão no histórico.
-- Assunção a validar com o orientador: rotinas pessoais não pertencem a turmas.
-- Decisão dependente de mockup: ecrã de rotinas ainda não existe.
-- Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
+### Como validar o BK e cenários negativos
+
+- Criar rotina `{ "title": "Matemática", "frequency": "weekly", "targetMinutes": 45 }`: esperado `201`.
+- Criar rotina com `targetMinutes: 0`: esperado `400`.
+- Enviar `userId` no body: esperado ignorar; o dono continua a ser `request.user.id`.
+- Arquivar rotina de outro aluno: esperado `404`.
+
+## Evidence para PR/defesa
+
+- Output de criação de rotina e objetivo.
+- Output negativo `400 INVALID_DURATION`.
+- Output negativo de rotina alheia `404`.
+- Screenshot da lista de rotinas.
+
+## Handoff para BK-MF0-06
+
+- Ao criar/arquivar rotinas, BK-MF0-06 poderá registar eventos `ROUTINE_CREATED` e `ROUTINE_ARCHIVED`.
+- Não remover dados fisicamente facilita histórico.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para rotinas e objetivos pessoais com CRUD, ownership e validação P1.
 - `2026-05-25`: modelos de dados atualizados para schemas MongoDB/Mongoose.
-- `2026-05-25`: adicionado snippet mínimo de `StudyGoalSchema` para tornar o passo de modelos totalmente executável.
+- `2026-05-25`: adicionado código mínimo de `StudyGoalSchema` para tornar o passo de modelos totalmente executável.

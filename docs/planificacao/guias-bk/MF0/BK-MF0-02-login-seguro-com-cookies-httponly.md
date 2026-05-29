@@ -1,6 +1,7 @@
 # BK-MF0-02 - Login seguro com cookies HttpOnly.
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-02`
 - `bk_id`: `BK-MF0-02`
 - `macro`: `MF0`
@@ -39,18 +40,18 @@ O mockup existente cobre diretamente este BK: ecrã central com marca `StudyFlow
 - Estado esperado antes do BK: existe, ou fica previsto pelo BK-MF0-01, um `User` com `email` e `passwordHash`.
 - Estado esperado depois do BK: aluno consegue entrar, receber cookie HttpOnly e consultar a própria sessão.
 - Ficheiros a criar, assumindo scaffold ainda inexistente:
-  - `apps/api/src/modules/auth/dto/login.dto.ts`
-  - `apps/api/src/modules/auth/auth.controller.ts`
-  - `apps/api/src/modules/auth/auth.service.ts`
-  - `apps/api/src/modules/auth/session.service.ts`
-  - `apps/api/src/common/guards/session.guard.ts`
-  - `apps/api/src/common/middleware/csrf.middleware.ts`
-  - `apps/web/src/pages/auth/LoginPage.tsx`
-  - `apps/web/src/hooks/useSession.ts`
+    - `apps/api/src/modules/auth/dto/login.dto.ts`
+    - `apps/api/src/modules/auth/auth.controller.ts`
+    - `apps/api/src/modules/auth/auth.service.ts`
+    - `apps/api/src/modules/auth/session.service.ts`
+    - `apps/api/src/common/guards/session.guard.ts`
+    - `apps/api/src/common/middleware/csrf.middleware.ts`
+    - `apps/web/src/pages/auth/LoginPage.tsx`
+    - `apps/web/src/hooks/useSession.ts`
 - Ficheiros a rever:
-  - `docs/RF.md`
-  - `docs/RNF.md`
-  - `mockup/thumbnail.png`
+    - `docs/RF.md`
+    - `docs/RNF.md`
+    - `mockup/thumbnail.png`
 - Dependências de BK anteriores: nenhuma canónica, mas deve reutilizar o contrato de `User` definido no BK-MF0-01 se esse BK já tiver sido implementado.
 - Impacto na arquitetura: cria o contrato de sessão e o primeiro guard reutilizável.
 - Impacto em frontend: login passa a atualizar estado de utilizador autenticado.
@@ -139,192 +140,842 @@ O mockup existente cobre diretamente este BK: ecrã central com marca `StudyFlow
 
 **CSRF e SameSite.** Cookies são enviados automaticamente, por isso há risco de CSRF. `SameSite=Lax` ou `Strict` reduz esse risco. Para ações sensíveis futuras, deve existir token CSRF, mas este BK prepara o padrão inicial.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~20 min): confirmar contratos de autenticação**
-   - Descrição detalhada do objetivo: mapear RF02 para endpoints e flags de cookie.
-   - Justificação: evita implementar login inseguro com `localStorage`.
-   - Como fazer (0.1): confirmar `RF02` e `RNF16`.
-   - Como fazer (0.2): escrever no PR que cookies HttpOnly são obrigatórios.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: descrição técnica do BK.
-   - Snippet de referência: `Set-Cookie: sid=...; HttpOnly; SameSite=Lax`.
-   - O que verificar: a palavra `localStorage` não aparece como estratégia de sessão.
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~25 min): criar DTO de login**
-   - Descrição detalhada do objetivo: definir entrada de `email` e `password`.
-   - Justificação: a API deve rejeitar payloads inesperados.
-   - Como fazer (1.1): criar `LoginDto`.
-   - Como fazer (1.2): validar email e password obrigatórios.
-   - Ficheiro a rever: `apps/api/src/modules/auth/dto/register-student.dto.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/dto/login.dto.ts`.
-   - Snippet de referência:
-     ```ts
-     export type LoginDto = {
-       email: string;
-       password: string;
-     };
-     ```
-   - O que verificar: o DTO não aceita `role`, `userId` ou campos de sessão.
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-2. **Objetivo (~45 min): validar credenciais no service**
-   - Descrição detalhada do objetivo: procurar utilizador por email e comparar password com hash.
-   - Justificação: nunca se compara password em texto puro guardada na base.
-   - Como fazer (2.1): normalizar email para minúsculas.
-   - Como fazer (2.2): devolver erro genérico para email inexistente ou password errada.
-   - Ficheiro a rever: `apps/api/src/modules/auth/auth.service.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/auth.service.ts`.
-   - Snippet de referência:
-     ```ts
-     throw new Error("INVALID_CREDENTIALS");
-     ```
-   - O que verificar: a mensagem não revela se o email existe.
+### Pré-requisitos concretos
 
-3. **Objetivo (~45 min): criar sessão e cookie**
-   - Descrição detalhada do objetivo: gerar sessão e enviar cookie HttpOnly.
-   - Justificação: cumpre RF02 e reduz exposição da sessão no browser.
-   - Como fazer (3.1): criar `SessionService`.
-   - Como fazer (3.2): configurar `httpOnly`, `sameSite`, `secure` em produção e `maxAge`.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/session.service.ts`.
-   - Snippet de referência:
-     ```ts
-     response.cookie("sid", sessionId, {
-       httpOnly: true,
-       sameSite: "lax",
-       secure: process.env.NODE_ENV === "production",
-     });
-     ```
-   - O que verificar: o cookie não é acessível via `document.cookie`.
+- BK-MF0-01 implementado com `User`, `UsersService` e `AuthModule`.
+- Redis disponível através de `REDIS_URL`.
+- `cookie-parser` configurado no bootstrap NestJS.
+- Dependência Redis no backend, por exemplo `ioredis`, justificada pelo README.
+- Dependência `bcrypt` disponível, herdada do BK-MF0-01.
 
-4. **Objetivo (~35 min): criar endpoints login/logout/me**
-   - Descrição detalhada do objetivo: expor a sessão ao frontend por API.
-   - Justificação: o frontend precisa de saber quando o utilizador está autenticado.
-   - Como fazer (4.1): criar `POST /api/auth/login`.
-   - Como fazer (4.2): criar `POST /api/auth/logout` e `GET /api/auth/me`.
-   - Ficheiro a rever: `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/auth.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // GET /api/auth/me
-     // 200: { id, email, role }
-     // 401: { code: "UNAUTHENTICATED" }
-     ```
-   - O que verificar: logout invalida a sessão.
+### Passo 1 - Criar DTO de login
 
-5. **Objetivo (~40 min): criar SessionGuard**
-   - Descrição detalhada do objetivo: proteger rotas futuras com sessão válida.
-   - Justificação: BK-MF0-03 e seguintes vão precisar desta base.
-   - Como fazer (5.1): ler cookie `sid`.
-   - Como fazer (5.2): anexar `request.user` se a sessão estiver válida.
-   - Ficheiro a rever: `apps/api/src/modules/auth/session.service.ts`.
-   - Ficheiro alvo: `apps/api/src/common/guards/session.guard.ts`.
-   - Snippet de referência:
-     ```ts
-     if (!session) throw new UnauthorizedException("UNAUTHENTICATED");
-     ```
-   - O que verificar: sem cookie a rota protegida devolve `401`.
+1. Explicação do objetivo.
 
-6. **Objetivo (~45 min): ligar frontend ao login do mockup**
-   - Descrição detalhada do objetivo: implementar página `LoginPage` com feedback claro.
-   - Justificação: o mockup define o primeiro contacto do utilizador com a app.
-   - Como fazer (6.1): criar formulário com email/password.
-   - Como fazer (6.2): chamar `POST /api/auth/login` com `credentials: "include"`.
-   - Ficheiro a rever: `mockup/thumbnail.png`.
-   - Ficheiro alvo: `apps/web/src/pages/auth/LoginPage.tsx`.
-   - Snippet de referência:
-     ```ts
-     await fetch("/api/auth/login", {
-       method: "POST",
-       credentials: "include",
-       body: JSON.stringify(payload),
-     });
-     ```
-   - O que verificar: o login não tenta guardar token no browser.
+    Neste passo vais criar DTO de login. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-7. **Objetivo (~45 min): testar login e proteção**
-   - Descrição detalhada do objetivo: comprovar caminho feliz e falhas controladas.
-   - Justificação: autenticação é crítica e P0 exige negativos.
-   - Como fazer (7.1): testar login válido com conta criada.
-   - Como fazer (7.2): testar password errada, email inexistente e cookie inválido.
-   - Ficheiro a rever: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/auth.e2e-spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(response.headers["set-cookie"]).toContain("HttpOnly");
-     ```
-   - O que verificar: negativos devolvem `401` ou `400`, não `500`.
+2. Ficheiros envolvidos.
 
-8. **Objetivo (~20 min): preparar handoff para perfil**
-   - Descrição detalhada do objetivo: documentar como uma rota protegida deve usar sessão.
-   - Justificação: BK-MF0-03 depende do utilizador autenticado.
-   - Como fazer (8.1): guardar exemplo de cookie e resposta de `/me` na evidence.
-   - Como fazer (8.2): indicar que o próximo BK deve usar `SessionGuard`.
-   - Ficheiro a rever: `docs/planificacao/backlogs/MF-VIEWS.md`.
-   - Ficheiro alvo: descrição do PR ou relatório de evidence.
-   - Snippet de referência: `GET /api/auth/me -> 200`.
-   - O que verificar: existe exemplo claro para reutilização.
+- CRIAR: `apps/api/src/modules/auth/dto/login.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-## Checklist de validação (DERIVADO):
+3. O que fazer.
 
-- Smoke:
-  - Login com email/password válidos.
-  - `GET /api/auth/me` responde com utilizador autenticado.
-- Negativos:
-  - passo 7; input/ação: password errada; resultado esperado: `401 Unauthorized`; risco que cobre: autenticação indevida.
-  - passo 7; input/ação: email inexistente; resultado esperado: erro genérico `401`; risco que cobre: enumeração de contas.
-  - passo 7; input/ação: cookie `sid` inválido; resultado esperado: `401`; risco que cobre: sessão forjada.
-- Técnico:
-  - Cookie tem `HttpOnly`.
-  - Cookie tem `SameSite`.
-  - `Secure` fica ativo em produção.
-- Regressão das fases anteriores:
-  - Conta criada no BK-MF0-01 continua válida para login.
-- UI/mockup:
-  - Ecrã mantém marca `StudyFlow`, campos `Email` e `Password`, botão `Entrar` e link `Registar`.
-- Segurança:
-  - Sem tokens em `localStorage`.
-  - Sem mensagens que revelem se o email existe.
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-## Critérios de aceite:
+4. Código completo, correto e integrado.
+
+```ts
+export class LoginDto {
+    email!: string;
+    password!: string;
+}
+```
+
+5. Explicação do código.
+
+O DTO aceita apenas credenciais. O aluno nunca pode enviar `role`, `userId` ou qualquer campo de sessão.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Criar tipo de request autenticado
+
+1. Explicação do objetivo.
+
+    Neste passo vais criar tipo de request autenticado. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/common/types/authenticated-request.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Request } from "express";
+
+export type AuthenticatedUser = {
+    id: string;
+    email: string;
+    role: "STUDENT" | "TEACHER" | "ADMIN";
+};
+
+export type AuthenticatedRequest = Request & {
+    user?: AuthenticatedUser;
+};
+```
+
+5. Explicação do código.
+
+Este tipo documenta o que o `SessionGuard` acrescenta ao pedido. Os BKs seguintes vão ler `request.user.id` em vez de aceitar `userId` vindo do cliente.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar SessionService com Redis
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar SessionService com Redis. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/auth/session.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { randomBytes } from "crypto";
+import Redis from "ioredis";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+
+export const SESSION_REDIS = Symbol("SESSION_REDIS");
+export const SESSION_COOKIE_NAME = "sf_sid";
+const SESSION_TTL_SECONDS = 60 * 60 * 8;
+
+type SessionPayload = {
+    user: AuthenticatedUser;
+    createdAt: string;
+};
+
+@Injectable()
+export class SessionService {
+    constructor(@Inject(SESSION_REDIS) private readonly redis: Redis) {}
+
+    async createSession(user: AuthenticatedUser): Promise<string> {
+        // O identificador opaco não contém dados pessoais. Só aponta para dados guardados no servidor.
+        const sessionId = randomBytes(32).toString("hex");
+        const payload: SessionPayload = {
+            user,
+            createdAt: new Date().toISOString(),
+        };
+
+        await this.redis.setex(
+            this.key(sessionId),
+            SESSION_TTL_SECONDS,
+            JSON.stringify(payload),
+        );
+        return sessionId;
+    }
+
+    async getUserFromSession(
+        sessionId: string | undefined,
+    ): Promise<AuthenticatedUser> {
+        if (!sessionId) {
+            throw new UnauthorizedException({
+                code: "UNAUTHENTICATED",
+                message: "Inicia sessão para continuar.",
+            });
+        }
+
+        const raw = await this.redis.get(this.key(sessionId));
+        if (!raw) {
+            throw new UnauthorizedException({
+                code: "UNAUTHENTICATED",
+                message: "Sessão expirada ou inválida.",
+            });
+        }
+
+        const payload = JSON.parse(raw) as SessionPayload;
+        return payload.user;
+    }
+
+    async destroySession(sessionId: string | undefined): Promise<void> {
+        if (sessionId) {
+            await this.redis.del(this.key(sessionId));
+        }
+    }
+
+    getCookieOptions() {
+        return {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax" as const,
+            maxAge: SESSION_TTL_SECONDS * 1000,
+            path: "/",
+        };
+    }
+
+    private key(sessionId: string): string {
+        return `studyflow:sessions:${sessionId}`;
+    }
+}
+```
+
+5. Explicação do código.
+
+O cookie guarda apenas `sf_sid`; os dados da sessão ficam no Redis. Isto cumpre RNF16 e reduz exposição em caso de XSS.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Editar AuthService
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais editar AuthService. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/api/src/modules/auth/auth.service.ts`
+- LOCALIZAÇÃO: dentro da classe `AuthService`, depois do método `registerStudent`.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import { LoginDto } from './dto/login.dto';
+
+async login(input: LoginDto) {
+  const email = String(input.email ?? '').trim().toLowerCase();
+  const user = await this.usersService.findByEmail(email);
+
+  // A mensagem é sempre genérica para não revelar se o email existe.
+  if (!user) {
+    throw new UnauthorizedException({
+      code: 'INVALID_CREDENTIALS',
+      message: 'Email ou password inválidos.',
+    });
+  }
+
+  const passwordMatches = await bcrypt.compare(String(input.password ?? ''), user.passwordHash);
+  if (!passwordMatches) {
+    throw new UnauthorizedException({
+      code: 'INVALID_CREDENTIALS',
+      message: 'Email ou password inválidos.',
+    });
+  }
+
+  return this.usersService.toPublicUser(user);
+}
+```
+
+5. Explicação do código.
+
+Este método compara a password recebida com o hash criado no BK-MF0-01. O erro `401` é igual para email inexistente e password errada, evitando enumeração de contas.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Substituir AuthController por versão completa
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais substituir AuthController por versão completa. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/api/src/modules/auth/auth.controller.ts`
+- LOCALIZAÇÃO: substituir o ficheiro completo por esta versão.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Post,
+    Req,
+    Res,
+} from "@nestjs/common";
+import { Response } from "express";
+import { AuthenticatedRequest } from "../../common/types/authenticated-request";
+import { AuthService } from "./auth.service";
+import { LoginDto } from "./dto/login.dto";
+import { RegisterStudentDto } from "./dto/register-student.dto";
+import { SESSION_COOKIE_NAME, SessionService } from "./session.service";
+import { PublicUser } from "../users/users.service";
+
+@Controller("api/auth")
+export class AuthController {
+    constructor(
+        private readonly authService: AuthService,
+        private readonly sessionService: SessionService,
+    ) {}
+
+    @Post("register")
+    @HttpCode(HttpStatus.CREATED)
+    async register(@Body() body: RegisterStudentDto): Promise<PublicUser> {
+        return this.authService.registerStudent(body);
+    }
+
+    @Post("login")
+    @HttpCode(HttpStatus.OK)
+    async login(
+        @Body() body: LoginDto,
+        @Res({ passthrough: true }) response: Response,
+    ): Promise<PublicUser> {
+        const user = await this.authService.login(body);
+        const sessionId = await this.sessionService.createSession(user);
+
+        response.cookie(
+            SESSION_COOKIE_NAME,
+            sessionId,
+            this.sessionService.getCookieOptions(),
+        );
+        return user;
+    }
+
+    @Post("logout")
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async logout(
+        @Req() request: AuthenticatedRequest,
+        @Res({ passthrough: true }) response: Response,
+    ): Promise<void> {
+        await this.sessionService.destroySession(
+            request.cookies?.[SESSION_COOKIE_NAME],
+        );
+        response.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+    }
+
+    @Get("me")
+    async me(@Req() request: AuthenticatedRequest): Promise<PublicUser> {
+        return this.sessionService.getUserFromSession(
+            request.cookies?.[SESSION_COOKIE_NAME],
+        );
+    }
+}
+```
+
+5. Explicação do código.
+
+O login cria a sessão e define o cookie HttpOnly. O logout remove a sessão no Redis e limpa o cookie no browser. O endpoint `/me` permite ao frontend saber quem está autenticado.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 6 - Criar SessionGuard
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar SessionGuard. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/common/guards/session.guard.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import { AuthenticatedRequest } from "../types/authenticated-request";
+import {
+    SESSION_COOKIE_NAME,
+    SessionService,
+} from "../../modules/auth/session.service";
+
+@Injectable()
+export class SessionGuard implements CanActivate {
+    constructor(private readonly sessionService: SessionService) {}
+
+    async canActivate(context: ExecutionContext): Promise<boolean> {
+        const request = context
+            .switchToHttp()
+            .getRequest<AuthenticatedRequest>();
+
+        // O guard transforma cookie válido em request.user para os próximos BKs.
+        request.user = await this.sessionService.getUserFromSession(
+            request.cookies?.[SESSION_COOKIE_NAME],
+        );
+        return true;
+    }
+}
+```
+
+5. Explicação do código.
+
+Este guard será aplicado em perfil, áreas, materiais, histórico e IA. Sem cookie válido, devolve `401 Unauthorized`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 7 - Editar AuthModule
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais editar AuthModule. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/api/src/modules/auth/auth.module.ts`
+- LOCALIZAÇÃO: substituir o ficheiro completo por esta versão.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import Redis from "ioredis";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { SESSION_REDIS, SessionService } from "./session.service";
+import { User, UserSchema } from "./schemas/user.schema";
+import { UsersService } from "../users/users.service";
+
+@Module({
+    imports: [
+        MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    ],
+    controllers: [AuthController],
+    providers: [
+        AuthService,
+        UsersService,
+        SessionService,
+        SessionGuard,
+        {
+            provide: SESSION_REDIS,
+            useFactory: () =>
+                new Redis(process.env.REDIS_URL ?? "redis://localhost:6379"),
+        },
+    ],
+    exports: [AuthService, UsersService, SessionService, SessionGuard],
+})
+export class AuthModule {}
+```
+
+5. Explicação do código.
+
+O módulo torna `SessionGuard` exportável para os BKs seguintes. A URL local é apenas fallback de desenvolvimento; produção deve definir `REDIS_URL`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 8 - Editar cliente API
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais editar cliente API. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: no fim do ficheiro criado no BK-MF0-01.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export type LoginPayload = {
+    email: string;
+    password: string;
+};
+
+export async function login(payload: LoginPayload): Promise<PublicUser> {
+    const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+        throw new Error(data?.message ?? "Não foi possível iniciar sessão.");
+    }
+
+    return data as PublicUser;
+}
+
+export async function getCurrentUser(): Promise<PublicUser | null> {
+    const response = await fetch("/api/auth/me", { credentials: "include" });
+    if (response.status === 401) return null;
+    if (!response.ok) throw new Error("Não foi possível validar a sessão.");
+    return (await response.json()) as PublicUser;
+}
+
+export async function logout(): Promise<void> {
+    await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+    });
+}
+```
+
+5. Explicação do código.
+
+O ponto crítico é `credentials: 'include'`: sem isto, o browser não envia/recebe corretamente cookies em chamadas `fetch`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 9 - Criar hook de sessão
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar hook de sessão. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/hooks/useSession.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { useEffect, useState } from "react";
+import { getCurrentUser, PublicUser } from "../lib/apiClient";
+
+export function useSession() {
+    const [user, setUser] = useState<PublicUser | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        let active = true;
+
+        getCurrentUser()
+            .then((currentUser) => {
+                if (active) setUser(currentUser);
+            })
+            .finally(() => {
+                if (active) setIsLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    return { user, isLoading, isAuthenticated: Boolean(user) };
+}
+```
+
+5. Explicação do código.
+
+Este hook será reutilizado por rotas protegidas. Ele consulta `/me` e transforma `401` em sessão ausente.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 10 - Criar página de login
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar página de login. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/pages/auth/LoginPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```tsx
+import { FormEvent, useState } from "react";
+import { login } from "../../lib/apiClient";
+
+export function LoginPage() {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError(null);
+        setIsSubmitting(true);
+
+        try {
+            await login({ email, password });
+            window.location.assign("/app/estudo");
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Email ou password inválidos.",
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <main className="min-h-screen bg-slate-50 px-4 py-10">
+            <form
+                aria-label="Login StudyFlow"
+                className="mx-auto flex max-w-md flex-col gap-4 rounded-lg bg-white p-6 shadow"
+                onSubmit={handleSubmit}
+            >
+                <h1 className="text-2xl font-semibold text-slate-900">
+                    StudyFlow
+                </h1>
+
+                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                    Email
+                    <input
+                        autoComplete="email"
+                        className="rounded border border-slate-300 px-3 py-2"
+                        onChange={(event) => setEmail(event.target.value)}
+                        required
+                        type="email"
+                        value={email}
+                    />
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                    Password
+                    <input
+                        autoComplete="current-password"
+                        className="rounded border border-slate-300 px-3 py-2"
+                        onChange={(event) => setPassword(event.target.value)}
+                        required
+                        type="password"
+                        value={password}
+                    />
+                </label>
+
+                {error && (
+                    <p className="rounded bg-red-50 p-3 text-sm text-red-700">
+                        {error}
+                    </p>
+                )}
+
+                <button
+                    className="rounded bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-60"
+                    disabled={isSubmitting}
+                    type="submit"
+                >
+                    {isSubmitting ? "A entrar..." : "Entrar"}
+                </button>
+            </form>
+        </main>
+    );
+}
+```
+
+5. Explicação do código.
+
+A página nunca usa `localStorage`. A sessão fica exclusivamente no cookie HttpOnly criado pelo backend.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Endpoints `login`, `logout` e `me` criados.
-  - Cookie HttpOnly criado no login.
-  - `SessionGuard` criado.
+    - Endpoints `login`, `logout` e `me` criados.
+    - Cookie HttpOnly criado no login.
+    - `SessionGuard` criado.
 - Verificações:
-  - Login válido responde `200`.
-  - Credenciais inválidas respondem `401`.
-  - Logout invalida sessão.
+    - Login válido responde `200`.
+    - Credenciais inválidas respondem `401`.
+    - Logout invalida sessão.
 - Qualidade:
-  - Controller, service e session service separados.
-  - Erros são explícitos e genéricos para autenticação.
+    - Controller, service e session service separados.
+    - Erros são explícitos e genéricos para autenticação.
 - Continuidade:
-  - BK-MF0-03 consegue obter `request.user`.
-  - BKs futuros podem proteger rotas com o mesmo guard.
+    - BK-MF0-03 consegue obter `request.user`.
+    - BKs futuros podem proteger rotas com o mesmo guard.
 - Evidência:
-  - PR inclui cabeçalho `Set-Cookie` e testes negativos.
+    - PR inclui cabeçalho `Set-Cookie` e testes negativos.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/auth/*`, `apps/api/src/common/guards/session.guard.ts`, `apps/web/src/pages/auth/LoginPage.tsx`
-- `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
-- `screenshots`: `A preencher com ecrã de login`
-- `notes`: `Cookie Secure deve ser validado em ambiente HTTPS`
+### Requests e responses esperados
 
-## TODOs
+Login válido:
 
-- TODO: confirmar provisionamento de Redis para sessões na infraestrutura; em desenvolvimento, qualquer fallback deve ficar explícito e não substituir Redis como decisão canónica.
-- TODO: definir duração oficial da sessão com orientador.
-- TODO (BLOCKER): SSO escolar continua bloqueado até existir fornecedor/protocolo.
-- FOLLOW-UP: BK-MF0-03 deve usar `SessionGuard`.
-- Assunção a validar com o orientador: `SameSite=Lax` é suficiente no MVP, reforçando CSRF nos BKs de segurança.
-- Decisão dependente de mockup: confirmar se o ecrã de login final mantém layout central.
-- Decisão dependente de app/código ainda inexistente: confirmar paths reais após scaffold.
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "aluno@example.com",
+  "password": "password-segura"
+}
+```
+
+Resposta esperada:
+
+```http
+200 OK
+Set-Cookie: sf_sid=<valor-opaco>; HttpOnly; SameSite=Lax; Path=/
+
+{
+  "id": "665f0f1a2d2e6f001234abcd",
+  "email": "aluno@example.com",
+  "role": "STUDENT"
+}
+```
+
+Erros esperados:
+
+- `400`: payload malformado.
+- `401 INVALID_CREDENTIALS`: email inexistente ou password errada.
+- `401 UNAUTHENTICATED`: `/me` sem cookie, cookie expirado ou cookie inválido.
+
+### Como validar o BK
+
+- Fazer login com conta criada no BK-MF0-01 e confirmar `200`.
+- Confirmar no browser que existe cookie `sf_sid` com `HttpOnly` e `SameSite=Lax`.
+- Executar `GET /api/auth/me` e confirmar `200` com `id`, `email`, `role`.
+- Fazer logout e confirmar que `/me` passa a devolver `401`.
+- Confirmar que `localStorage` não contém token/sessão.
+
+### Teste mínimo de sessão
+
+Ficheiro: `apps/api/src/modules/auth/session.service.spec.ts`
+Ação: `CRIAR`
+Onde colocar: ficheiro completo.
+
+```ts
+import Redis from "ioredis";
+import { SessionService } from "./session.service";
+
+describe("SessionService", () => {
+    const redis = {
+        setex: jest.fn(),
+        get: jest.fn(),
+        del: jest.fn(),
+    } as unknown as jest.Mocked<Redis>;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it("cria sessão opaca em Redis", async () => {
+        const service = new SessionService(redis);
+        const sessionId = await service.createSession({
+            id: "u1",
+            email: "aluno@example.com",
+            role: "STUDENT",
+        });
+
+        expect(sessionId).toHaveLength(64);
+        expect(redis.setex).toHaveBeenCalledWith(
+            expect.stringContaining("studyflow:sessions:"),
+            expect.any(Number),
+            expect.stringContaining("aluno@example.com"),
+        );
+    });
+
+    it("define opções seguras para cookie", () => {
+        const service = new SessionService(redis);
+        const options = service.getCookieOptions();
+
+        expect(options.httpOnly).toBe(true);
+        expect(options.sameSite).toBe("lax");
+        expect(options.path).toBe("/");
+    });
+});
+```
+
+O teste valida o contrato de sessão sem precisar de Redis real. O e2e do projeto deve confirmar o cabeçalho `Set-Cookie` quando o scaffold de testes estiver disponível.
+
+## Evidence para PR/defesa
+
+- Print do `Set-Cookie` com `HttpOnly` e `SameSite`.
+- Output de `/api/auth/me -> 200`.
+- Output de login inválido `401 INVALID_CREDENTIALS`.
+- Screenshot do login.
+- Nota no PR: sessão guardada em Redis; frontend não usa `localStorage`.
+
+## Handoff para BK-MF0-03
+
+- Todos os endpoints privados do BK-MF0-03 devem usar `@UseGuards(SessionGuard)`.
+- O perfil deve obter o aluno por `request.user.id`, nunca por `userId` enviado pelo cliente.
+- O estado `401 UNAUTHENTICATED` é o comportamento esperado para pedidos sem sessão.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para execução concreta, com sessão HttpOnly, guard reutilizável e validações negativas.
-- `2026-05-25`: alinhado TODO de sessões com Redis como decisão canónica da stack.
+- `2026-05-25`: alinhada a gestão de sessões com Redis como decisão canónica da stack.

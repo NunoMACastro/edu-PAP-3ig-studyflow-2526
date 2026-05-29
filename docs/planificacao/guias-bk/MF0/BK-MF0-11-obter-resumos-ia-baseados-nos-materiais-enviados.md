@@ -1,6 +1,7 @@
 # BK-MF0-11 - Obter resumos IA baseados nos materiais enviados.
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-11`
 - `bk_id`: `BK-MF0-11`
 - `macro`: `MF0`
@@ -40,15 +41,15 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 
 - Estado esperado antes do BK: materiais submetidos e perfil IA criado.
 - Estado esperado depois do BK: aluno gera ou tenta gerar resumo com estado controlado.
-- Ficheiros a criar/editar:
-  - `apps/api/src/modules/ai/schemas/ai-artifact.schema.ts`
-  - `apps/api/src/modules/ai/summaries.controller.ts`
-  - `apps/api/src/modules/ai/summaries.service.ts`
-  - `apps/api/src/modules/ai/providers/ai-provider.ts`
-  - `apps/api/src/modules/ai/prompts/summary.prompt.ts`
-  - `apps/api/src/modules/ai/dto/create-summary.dto.ts`
-  - `apps/web/src/pages/student/StudyAreaSummariesPage.tsx`
-  - `apps/web/src/components/ai/SummaryPanel.tsx`
+- Ficheiros previstos neste BK:
+    - `apps/api/src/modules/ai/schemas/ai-artifact.schema.ts`
+    - `apps/api/src/modules/ai/summaries.controller.ts`
+    - `apps/api/src/modules/ai/summaries.service.ts`
+    - `apps/api/src/modules/ai/providers/ai-provider.ts`
+    - `apps/api/src/modules/ai/prompts/summary.prompt.ts`
+    - `apps/api/src/modules/ai/dto/create-summary.dto.ts`
+    - `apps/web/src/pages/student/StudyAreaSummariesPage.tsx`
+    - `apps/web/src/components/ai/SummaryPanel.tsx`
 - Ficheiros a rever: BK-MF0-08, BK-MF0-10, `docs/RF.md`, `docs/RNF.md`.
 - Dependências de BK anteriores: materiais do BK-MF0-08 e perfil IA do BK-MF0-10.
 - Impacto na arquitetura: cria provider IA isolado, sem espalhar chamadas externas pelo código.
@@ -142,206 +143,599 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 
 **Limite MF0 para PDF/DOCX.** Um ficheiro carregado não é automaticamente uma fonte utilizável. Se ainda não existe texto extraído ou indexação completa, a app deve responder com uma mensagem como "Este material ainda não tem texto processável para gerar resumo." RAG e indexação completa devem ficar documentados como trabalho futuro, não como promessa deste BK.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~20 min): confirmar pré-condição de fontes**
-   - Descrição detalhada do objetivo: decidir que materiais pendentes não podem gerar resumo factual.
-   - Justificação: evita alucinação.
-   - Como fazer (0.1): rever RF11, RF31 e RNF35.
-   - Como fazer (0.2): documentar estados aceites: `READY` ou texto manual disponível.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/ai/summaries.service.ts`.
-   - Snippet de referência: `if (sources.length === 0) throw new Error("NO_PROCESSABLE_SOURCES");`
-   - O que verificar: materiais pendentes, PDF/DOCX sem texto extraído ou fontes sem indexação completa bloqueiam geração.
-   - Mensagem esperada: `Este material ainda não tem texto processável para gerar resumo.`
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~35 min): criar modelo de artefacto IA**
-   - Descrição detalhada do objetivo: guardar resumos e fontes usadas.
-   - Justificação: aluno pode consultar depois e defender evidência.
-   - Como fazer (1.1): criar `AiArtifact` com `type`, `studyAreaId`, `content`, `sources`.
-   - Como fazer (1.2): associar ao `userId`.
-   - Ficheiro a rever: `apps/api/src/modules/ai/schemas/ai-area-profile.schema.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/ai/schemas/ai-artifact.schema.ts`.
-   - Snippet de referência:
-     ```ts
-     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-     import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-     export type AiArtifactDocument = HydratedDocument<AiArtifact>;
+### Pré-requisitos concretos
 
-     @Schema({ timestamps: true, collection: 'ai_artifacts' })
-     export class AiArtifact {
-       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-       userId!: Types.ObjectId;
+- BK-MF0-08 com materiais.
+- BK-MF0-10 com perfil IA.
+- Pelo menos um material `TOPIC` ou outro material com `status: "READY"` e `contentText`.
+- `OPENAI_API_KEY` e `OPENAI_MODEL` definidos no ambiente quando a geração real estiver ativa.
+- Sem RAG, embeddings, OCR ou indexação completa nesta MF0.
 
-       @Prop({ type: Types.ObjectId, ref: 'StudyArea', required: true, index: true })
-       studyAreaId!: Types.ObjectId;
+### Passo 1 - Criar schema AiArtifact
 
-       @Prop({ required: true, enum: ['SUMMARY', 'EXPLANATION', 'FLASHCARDS', 'QUIZ'] })
-       type!: string;
+1. Explicação simples do objetivo.
 
-       @Prop({ type: MongooseSchema.Types.Mixed, required: true })
-       contentJson!: Record<string, unknown>;
+    Neste passo vais criar schema AiArtifact. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-       @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
-       sourcesJson!: Array<Record<string, unknown>>;
-     }
+2. Ficheiros envolvidos.
 
-     export const AiArtifactSchema = SchemaFactory.createForClass(AiArtifact);
-     ```
-   - O que verificar: fontes ficam guardadas.
+- CRIAR: `apps/api/src/modules/ai/schemas/ai-artifact.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-2. **Objetivo (~35 min): criar interface de provider IA**
-   - Descrição detalhada do objetivo: separar app de fornecedor externo.
-   - Justificação: facilita testes e troca de provider.
-   - Como fazer (2.1): definir `generateSummary(input)`.
-   - Como fazer (2.2): criar stub apenas para testes, não para produção.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/ai/providers/ai-provider.ts`.
-   - Snippet de referência:
-     ```ts
-     export interface AiProvider {
-       generateSummary(input: SummaryPromptInput): Promise<SummaryResult>;
-     }
-     ```
-   - O que verificar: controller não chama provider diretamente.
+3. O que fazer.
 
-3. **Objetivo (~40 min): criar prompt de resumo com guardrails**
-   - Descrição detalhada do objetivo: orientar IA para usar apenas fontes.
-   - Justificação: reduz risco de invenção.
-   - Como fazer (3.1): montar prompt com título da área, voz e excertos.
-   - Como fazer (3.2): exigir lista de fontes usadas.
-   - Ficheiro a rever: BK-MF0-09.
-   - Ficheiro alvo: `apps/api/src/modules/ai/prompts/summary.prompt.ts`.
-   - Snippet de referência:
-     ```ts
-     return `Resume apenas as fontes fornecidas. Se faltar informação, diz que falta fonte.`;
-     ```
-   - O que verificar: prompt não permite conhecimento externo.
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-4. **Objetivo (~45 min): implementar service de resumo**
-   - Descrição detalhada do objetivo: validar área, perfil, fontes e chamar provider.
-   - Justificação: regra principal fica numa camada testável.
-   - Como fazer (4.1): obter `AiAreaProfile`.
-   - Como fazer (4.2): carregar fontes processáveis da área.
-   - Ficheiro a rever: BK-MF0-10.
-   - Ficheiro alvo: `apps/api/src/modules/ai/summaries.service.ts`.
-   - Snippet de referência:
-     ```ts
-     const result = await aiProvider.generateSummary({ sources, voiceTone: profile.voiceTone });
-     ```
-   - O que verificar: área alheia falha antes de chamar provider.
+4. Código completo, correto e integrado.
 
-5. **Objetivo (~30 min): expor endpoint**
-   - Descrição detalhada do objetivo: criar API para gerar resumo.
-   - Justificação: frontend precisa de ação explícita.
-   - Como fazer (5.1): criar `POST /api/study-areas/:id/summaries`.
-   - Como fazer (5.2): criar `GET /api/study-areas/:id/summaries`.
-   - Ficheiro a rever: `MATRIZ-CANONICA-BK.md`.
-   - Ficheiro alvo: `apps/api/src/modules/ai/summaries.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // 201: { id, type: "SUMMARY", content, sources }
-     ```
-   - O que verificar: sem sessão devolve `401`.
+```ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
 
-6. **Objetivo (~45 min): criar UI de resumos**
-   - Descrição detalhada do objetivo: permitir gerar e consultar resumo.
-   - Justificação: RF11 precisa de experiência visível.
-   - Como fazer (6.1): criar `StudyAreaSummariesPage`.
-   - Como fazer (6.2): mostrar fontes, loading, erro sem fontes e resumo.
-   - Ficheiro a rever: BK-MF0-08.
-   - Ficheiro alvo: `apps/web/src/components/ai/SummaryPanel.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <button disabled={!profileReady}>Gerar resumo</button>
-     ```
-   - O que verificar: botão bloqueia quando não há fontes.
+export type AiArtifactDocument = HydratedDocument<AiArtifact>;
+export type AiArtifactType = "SUMMARY" | "EXPLANATION" | "FLASHCARDS" | "QUIZ";
 
-7. **Objetivo (~40 min): registar histórico e erros**
-   - Descrição detalhada do objetivo: guardar evento de resumo e erros controlados.
-   - Justificação: melhora rastreabilidade para defesa.
-   - Como fazer (7.1): criar evento `SUMMARY_GENERATED`.
-   - Como fazer (7.2): mapear falhas de provider para mensagem segura.
-   - Ficheiro a rever: BK-MF0-06.
-   - Ficheiro alvo: `apps/api/src/modules/ai/summaries.service.ts`.
-   - Snippet de referência: `throw new ServiceUnavailableException("AI_PROVIDER_UNAVAILABLE")`.
-   - O que verificar: falhas externas não expõem API keys.
+@Schema({ timestamps: true, collection: "ai_artifacts" })
+export class AiArtifact {
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    userId!: Types.ObjectId;
 
-8. **Objetivo (~45 min): testar negativos e handoff para BK-MF0-12**
-   - Descrição detalhada do objetivo: validar geração e falhas.
-   - Justificação: BK-MF0-12 reutiliza fontes e artefactos.
-   - Como fazer (8.1): testar resumo com fonte processável.
-   - Como fazer (8.2): testar sem fontes, área alheia e provider indisponível.
-   - Ficheiro a rever: `PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/ai/summaries.spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(summary.sources.length).toBeGreaterThan(0);
-     ```
-   - O que verificar: evidence inclui resumo e fontes.
+    @Prop({
+        type: Types.ObjectId,
+        ref: "StudyArea",
+        required: true,
+        index: true,
+    })
+    studyAreaId!: Types.ObjectId;
 
-## Checklist de validação (DERIVADO):
+    @Prop({
+        required: true,
+        enum: ["SUMMARY", "EXPLANATION", "FLASHCARDS", "QUIZ"],
+    })
+    type!: AiArtifactType;
 
-- Smoke:
-  - Gerar resumo com fonte processável.
-  - Consultar resumo guardado.
-- Negativos:
-  - passo 8; input/ação: área sem fontes processáveis; resultado esperado: `409` ou `422`; risco que cobre: resumo inventado.
-  - passo 8; input/ação: PDF/DOCX sem texto extraído ou sem indexação completa; resultado esperado: mensagem clara e sem chamada ao provider IA; risco que cobre: promessa implícita de RAG no MF0.
-  - passo 8; input/ação: área de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
-  - passo 8; input/ação: provider IA indisponível; resultado esperado: `503` controlado; risco que cobre: falha externa.
-- Técnico:
-  - Resumo guarda fontes.
-  - Provider isolado por interface.
-- Regressão das fases anteriores:
-  - Materiais e perfil IA continuam válidos.
-- UI/mockup:
-  - Sem mockup específico; painel deve mostrar fontes e erro claro.
-- Segurança:
-  - Sem conhecimento externo sem permissão.
-  - Sem API keys em logs/respostas.
+    @Prop({ type: MongooseSchema.Types.Mixed, required: true })
+    contentJson!: Record<string, unknown>;
 
-## Critérios de aceite:
+    @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
+    sourcesJson!: Array<Record<string, unknown>>;
+}
+
+export const AiArtifactSchema = SchemaFactory.createForClass(AiArtifact);
+```
+
+5. Explicação do código.
+
+Os artefactos guardam conteúdo e fontes para defesa e consulta futura.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Criar provider IA isolado
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar provider IA isolado. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/providers/ai-provider.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import OpenAI from "openai";
+
+export type AiSource = {
+    materialId: string;
+    title: string;
+    contentText: string;
+};
+
+export type SummaryResult = {
+    title: string;
+    bullets: string[];
+    sourceMaterialIds: string[];
+};
+
+export const AI_PROVIDER = Symbol("AI_PROVIDER");
+
+export interface AiProvider {
+    generateSummary(input: { prompt: string }): Promise<SummaryResult>;
+}
+
+@Injectable()
+export class OpenAiProvider implements AiProvider {
+    private readonly client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    async generateSummary(input: { prompt: string }): Promise<SummaryResult> {
+        if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_MODEL) {
+            throw new ServiceUnavailableException({
+                code: "AI_PROVIDER_NOT_CONFIGURED",
+                message: "O serviço de IA ainda não está configurado.",
+            });
+        }
+
+        const response = await this.client.responses.create({
+            model: process.env.OPENAI_MODEL,
+            input: input.prompt,
+        });
+
+        // A Responses API expõe output_text no SDK oficial de JavaScript.
+        return JSON.parse(response.output_text ?? "{}") as SummaryResult;
+    }
+}
+```
+
+5. Explicação do código.
+
+O provider é o único ficheiro que conhece OpenAI. O service recebe apenas `SummaryResult`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar prompt de resumo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar prompt de resumo. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/prompts/summary.prompt.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { AiSource } from "../providers/ai-provider";
+
+export function buildSummaryPrompt(
+    areaName: string,
+    sources: AiSource[],
+    voiceTone?: string,
+): string {
+    const sourceText = sources
+        .map(
+            (source, index) =>
+                `Fonte ${index + 1} (${source.materialId}) - ${source.title}\n${source.contentText}`,
+        )
+        .join("\n\n");
+
+    return `
+És a IA privada do StudyFlow para a área "${areaName}".
+Resume apenas as fontes fornecidas. Se a informação não estiver nas fontes, não inventes.
+Tom pedagógico pretendido: ${voiceTone ?? "normal"}.
+
+Devolve apenas JSON válido neste formato:
+{
+  "title": "string",
+  "bullets": ["string"],
+  "sourceMaterialIds": ["string"]
+}
+
+Fontes:
+${sourceText}
+`.trim();
+}
+```
+
+5. Explicação do código.
+
+O prompt exige JSON e obriga fontes. Isto não substitui validação no service.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Criar service de resumos
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service de resumos. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/summaries.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    Inject,
+    Injectable,
+    ServiceUnavailableException,
+    UnprocessableEntityException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { MaterialsService } from "../materials/materials.service";
+import { StudyAreasService } from "../study-areas/study-areas.service";
+import { AiAreaProfileService } from "./ai-area-profile.service";
+import { buildSummaryPrompt } from "./prompts/summary.prompt";
+import { AI_PROVIDER, AiProvider, AiSource } from "./providers/ai-provider";
+import { AiArtifact, AiArtifactDocument } from "./schemas/ai-artifact.schema";
+
+@Injectable()
+export class SummariesService {
+    constructor(
+        @InjectModel(AiArtifact.name)
+        private readonly artifactModel: Model<AiArtifactDocument>,
+        @Inject(AI_PROVIDER) private readonly aiProvider: AiProvider,
+        private readonly materialsService: MaterialsService,
+        private readonly areasService: StudyAreasService,
+        private readonly profileService: AiAreaProfileService,
+    ) {}
+
+    async generateSummary(userId: string, studyAreaId: string) {
+        const area = await this.areasService.getMyStudyArea(
+            userId,
+            studyAreaId,
+        );
+        const profile = await this.profileService.prepareProfile(
+            userId,
+            studyAreaId,
+        );
+        const sources = await this.getProcessableSources(userId, studyAreaId);
+
+        if (profile.status !== "READY_FOR_GENERATION" || sources.length === 0) {
+            throw new UnprocessableEntityException({
+                code: "NO_PROCESSABLE_SOURCES",
+                message:
+                    "Este material ainda não tem texto processável para gerar resumo.",
+            });
+        }
+
+        try {
+            const result = await this.aiProvider.generateSummary({
+                prompt: buildSummaryPrompt(
+                    area.name,
+                    sources,
+                    profile.voiceTone,
+                ),
+            });
+
+            return this.artifactModel.create({
+                userId: new Types.ObjectId(userId),
+                studyAreaId: new Types.ObjectId(studyAreaId),
+                type: "SUMMARY",
+                contentJson: result,
+                sourcesJson: sources.map(({ materialId, title }) => ({
+                    materialId,
+                    title,
+                })),
+            });
+        } catch (error) {
+            if (error instanceof UnprocessableEntityException) throw error;
+            throw new ServiceUnavailableException({
+                code: "AI_PROVIDER_UNAVAILABLE",
+                message: "A IA está temporariamente indisponível.",
+            });
+        }
+    }
+
+    private async getProcessableSources(
+        userId: string,
+        studyAreaId: string,
+    ): Promise<AiSource[]> {
+        const materials = await this.materialsService.listByArea(
+            userId,
+            studyAreaId,
+        );
+        return materials
+            .filter(
+                (material) =>
+                    material.status === "READY" && material.contentText,
+            )
+            .map((material) => ({
+                materialId: material._id.toString(),
+                title: material.title,
+                contentText: material.contentText,
+            }));
+    }
+}
+```
+
+5. Explicação do código.
+
+O service bloqueia antes de chamar o provider se não houver fontes. PDF/DOCX pendentes não passam no filtro.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Criar controller
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/summaries.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthenticatedRequest } from "../../common/types/authenticated-request";
+import { SummariesService } from "./summaries.service";
+
+@Controller("api/study-areas/:id/summaries")
+@UseGuards(SessionGuard)
+export class SummariesController {
+    constructor(private readonly summariesService: SummariesService) {}
+
+    @Post()
+    generate(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
+        return this.summariesService.generateSummary(request.user!.id, id);
+    }
+}
+```
+
+5. Explicação do código.
+
+O controller é pequeno de propósito: validação de fontes e ownership fica no service.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 6 - Editar AiModule
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais editar AiModule. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/api/src/modules/ai/ai.module.ts`
+- LOCALIZAÇÃO: substituir o ficheiro pelo módulo completo, mantendo os imports equivalentes se o scaffold final ordenar caminhos de forma diferente.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { MaterialsModule } from "../materials/materials.module";
+import { StudyAreasModule } from "../study-areas/study-areas.module";
+import { AiAreaProfileController } from "./ai-area-profile.controller";
+import { AiAreaProfileService } from "./ai-area-profile.service";
+import { SummariesController } from "./summaries.controller";
+import { SummariesService } from "./summaries.service";
+import { AI_PROVIDER, OpenAiProvider } from "./providers/ai-provider";
+import {
+    AiAreaProfile,
+    AiAreaProfileSchema,
+} from "./schemas/ai-area-profile.schema";
+import { AiArtifact, AiArtifactSchema } from "./schemas/ai-artifact.schema";
+
+@Module({
+    imports: [
+        MongooseModule.forFeature([
+            { name: AiAreaProfile.name, schema: AiAreaProfileSchema },
+            { name: AiArtifact.name, schema: AiArtifactSchema },
+        ]),
+        StudyAreasModule,
+        MaterialsModule,
+    ],
+    controllers: [AiAreaProfileController, SummariesController],
+    providers: [
+        AiAreaProfileService,
+        SummariesService,
+        { provide: AI_PROVIDER, useClass: OpenAiProvider },
+    ],
+    exports: [AiAreaProfileService, SummariesService],
+})
+export class AiModule {}
+```
+
+5. Explicação do código.
+
+Este módulo liga perfil IA, artefactos, materiais e provider. O provider fica registado por token para permitir stub em testes sem trocar o service.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 7 - Cliente API e UI
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais cliente API e UI. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: no fim do ficheiro.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export async function generateSummary(studyAreaId: string) {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/summaries`, {
+        method: "POST",
+        credentials: "include",
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível gerar resumo.");
+    return data;
+}
+```
+
+- CRIAR: `apps/web/src/components/ai/SummaryPanel.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+import { useState } from "react";
+import { generateSummary } from "../../lib/apiClient";
+
+export function SummaryPanel({ studyAreaId }: { studyAreaId: string }) {
+    const [summary, setSummary] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    async function handleGenerate() {
+        setError(null);
+        try {
+            setSummary(await generateSummary(studyAreaId));
+        } catch (err) {
+            setError(
+                err instanceof Error ? err.message : "Erro ao gerar resumo.",
+            );
+        }
+    }
+
+    return (
+        <section className="rounded border bg-white p-4">
+            <button
+                className="rounded bg-slate-900 px-4 py-2 text-white"
+                onClick={handleGenerate}
+                type="button"
+            >
+                Gerar resumo
+            </button>
+            {error && (
+                <p className="mt-3 rounded bg-red-50 p-3 text-red-700">
+                    {error}
+                </p>
+            )}
+            {summary && (
+                <pre className="mt-3 overflow-auto rounded bg-slate-50 p-3 text-sm">
+                    {JSON.stringify(summary.contentJson, null, 2)}
+                </pre>
+            )}
+        </section>
+    );
+}
+```
+
+5. Explicação do código.
+
+A UI mostra erro quando não há fontes, em vez de apresentar resumo falso.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Schema Mongoose `AiArtifact`.
-  - Endpoint de resumos.
-  - UI de geração/consulta.
-  - Exclusão explícita de RAG/indexação completa no MF0.
+    - Schema Mongoose `AiArtifact`.
+    - Endpoint de resumos.
+    - UI de geração/consulta.
+    - Exclusão explícita de RAG/indexação completa no MF0.
 - Verificações:
-  - Resumo válido responde `201`.
-  - Sem fontes responde erro controlado.
+    - Resumo válido responde `201`.
+    - Sem fontes responde erro controlado.
 - Qualidade:
-  - IA só usa fontes da área.
-  - PDF/DOCX não processável não faz fallback para resumo genérico.
-  - Erros externos tratados explicitamente.
+    - IA só usa fontes da área.
+    - PDF/DOCX não processável não faz fallback para resumo genérico.
+    - Erros externos tratados explicitamente.
 - Continuidade:
-  - BK-MF0-12 reutiliza artefacto/fonte.
+    - BK-MF0-12 reutiliza artefacto/fonte.
 - Evidência:
-  - PR inclui resumo, fontes e 3 negativos.
+    - PR inclui resumo, fontes e 3 negativos.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/ai/summaries.*`, `apps/web/src/components/ai/SummaryPanel.tsx`
-- `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
-- `screenshots`: `A preencher com resumo e fontes`
-- `notes`: `PDF/DOCX sem texto extraído devem bloquear geração`
+### Requests e responses esperados
 
-## TODOs
+- `POST /api/study-areas/:id/summaries -> 201` com artefacto `SUMMARY`.
+- `422 NO_PROCESSABLE_SOURCES` se a área não tiver fonte `READY`.
+- `422 NO_PROCESSABLE_SOURCES` para PDF/DOCX sem texto extraído.
+- `401 UNAUTHENTICATED` sem sessão.
+- `404 STUDY_AREA_NOT_FOUND` para área alheia.
+- `503 AI_PROVIDER_UNAVAILABLE` quando o provider falha.
 
-- TODO: confirmar provider IA e modelo antes de produção.
-- TODO (BLOCKER): resumo factual de PDF/DOCX depende de texto extraído/indexado; se ainda não existir, bloquear.
-- TODO (BLOCKER): definir em fase posterior o contrato de RAG/indexação completa; não implementar nem prometer este comportamento no MF0.
-- FOLLOW-UP: BK-MF0-12 deve reutilizar fontes do resumo.
-- Assunção a validar com o orientador: tópicos manuais podem servir como fonte inicial controlada.
-- Decisão dependente de mockup: ecrã de resumos ainda não existe.
-- Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
+### Como validar o BK e cenários negativos
+
+- Tópico manual `READY`: esperado resumo com `sourcesJson`.
+- Área só com PDF pendente: esperado `422` e nenhuma chamada ao provider.
+- Área alheia: esperado `404`.
+- Provider indisponível: esperado `503` sem expor API key.
+
+## Evidence para PR/defesa
+
+- JSON de resumo com `sourcesJson`.
+- Output `422 NO_PROCESSABLE_SOURCES`.
+- Output `503 AI_PROVIDER_UNAVAILABLE`.
+- Screenshot do painel com resumo ou erro pedagógico.
+
+## Handoff para BK-MF0-12
+
+- BK-MF0-12 deve reutilizar `AiArtifact` e a mesma regra `NO_PROCESSABLE_SOURCES`.
+- Explicações/cards/quizzes não podem usar PDF/DOCX pendente.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para resumos IA com fontes obrigatórias, fallback honesto e provider isolado.
 - `2026-05-25`: escopo IA MF0 reforçado: apenas fontes processáveis; PDF/DOCX sem texto extraído bloqueia; RAG/indexação completa fica para fases posteriores.
 - `2026-05-25`: artefactos IA atualizados para coleção MongoDB/Mongoose.
