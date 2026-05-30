@@ -1,4 +1,4 @@
-# StudyFlow - Prompt final para auditoria e correção de guias BK
+Studyflow - Hidratação
 
 Estás no repositório StudyFlow.
 
@@ -6,18 +6,16 @@ Trabalha como arquiteto de software sénior, professor de programação e reviso
 
 ## Variáveis desta execução
 
-```md
 MF_ALVO: MF1
-MODO: {escolher um dos modos possíveis}
-```
+MODO: {escolher um dos possíveis modos}
 
-Valores possíveis para `MODO`:
+Valores possíveis para MODO:
 
-- `auditar_apenas`: cria/atualiza relatório, mas não edita BKs.
-- `hidratar_corrigir`: audita, corrige e reescreve BKs incompletos.
-- `corrigir_apenas`: usa relatório existente e corrige BKs já trabalhados.
+- auditar_apenas: cria/atualiza relatório, mas não edita BKs.
+- hidratar_corrigir: audita, corrige e reescreve BKs incompletos.
+- corrigir_apenas: usa relatório existente e corrige BKs já trabalhados.
 
-## Regra crítica sobre código existente em `apps/`
+## Regra crítica sobre código existente em apps
 
 O código existente em `apps/` pode ser uma resolução inicial dos alunos e pode estar errado, incompleto ou por corrigir.
 
@@ -86,12 +84,8 @@ Para cada BK, consulta no mínimo:
 A teoria, nomes de entidades, endpoints, permissões, fluxos, campos e validações devem nascer destas fontes.
 
 Se uma decisão vier diretamente da documentação, marca como `CANONICO`.
-
 Se for uma decisão técnica mínima necessária para implementar sem contrariar a documentação, marca como `DERIVADO`.
-
 Se faltar informação indispensável, marca como `TODO (BLOCKER)` e regista no relatório.
-
-Não marques todas as frases com `CANONICO` ou `DERIVADO`. Usa estas marcas em metadados, decisões técnicas, notas de escopo ou quando uma decisão possa ser ambígua.
 
 ## Regra de formato obrigatório: MF0 é contrato, não inspiração
 
@@ -101,7 +95,6 @@ Os BKs da `MF_ALVO` devem seguir o mesmo padrão estrutural dos BKs da `MF0`.
 
 Cada passo deve seguir exatamente esta estrutura, nesta ordem:
 
-```md
 ### Passo N - Nome claro
 
 1. Explicação simples do objetivo.
@@ -115,7 +108,6 @@ Cada passo deve seguir exatamente esta estrutura, nesta ordem:
 5. Explicação do código.
 6. Como validar este passo.
 7. Erros comuns ou cenário negativo.
-```
 
 Não substituas esta estrutura por tabelas, mapas pedagógicos, resumos globais, secções alternativas ou qualquer layout inventado.
 
@@ -264,8 +256,7 @@ Todo o código apresentado nos BKs deve ser:
 - sem funções chamadas mas não implementadas;
 - sem código meramente ilustrativo apresentado como solução.
 
-Cada BK deve ser tratado como uma entrega incremental da aplicação final.
-
+Cada BK deve ser tratado como uma entrega incremental da aplicação final.  
 Depois de aplicar os BKs por ordem, o resultado esperado é uma app que compila, arranca e executa os fluxos documentados.
 
 ## Regra de integração entre BKs
@@ -349,9 +340,7 @@ Se a documentação não definir uma regra de negócio, não a apresentes como f
 
 Cria ou atualiza:
 
-```md
-docs/planificacao/guias-bk/AUDITORIA-HIDRATACAO-{MF_ALVO}.md
-```
+`docs/planificacao/guias-bk/AUDITORIA-HIDRATACAO-{MF_ALVO}.md`
 
 Classifica cada BK como:
 
@@ -404,11 +393,9 @@ O relatório deve terminar com ordem recomendada de correção.
 
 ## Hidratação/correção dos BKs
 
-Se `MODO` for `hidratar_corrigir`, audita primeiro e depois edita apenas os BKs da `MF_ALVO` marcados como `PARCIAL` ou `CRÍTICO`.
+Se `MODO` for `hidratar_corrigir`, edita apenas os BKs da `MF_ALVO` marcados como `PARCIAL` ou `CRÍTICO`.
 
-Se `MODO` for `corrigir_apenas`, usa o relatório existente como ponto de partida, corrige apenas os BKs da `MF_ALVO` já identificados como `PARCIAL` ou `CRÍTICO`, e atualiza o relatório com contagem antes/depois, BKs editados e validações executadas.
-
-Para cada BK corrigido, inclui:
+Para cada BK, inclui:
 
 - objetivo;
 - importância;
@@ -429,29 +416,39 @@ Para cada BK corrigido, inclui:
 - cenários negativos;
 - expected results;
 - critérios de aceite;
-- validação final;
 - evidence;
 - handoff;
 - changelog.
 
-Cada passo deve seguir exatamente a estrutura definida em `Regra de formato obrigatório: MF0 é contrato, não inspiração`.
+Cada passo deve seguir esta estrutura:
+
+### Passo N - Nome claro
+
+1. Objetivo do passo.
+2. Ficheiros envolvidos:
+    - CRIAR: `caminho`
+    - EDITAR: `caminho`
+    - REVER: `caminho`
+    - LOCALIZAÇÃO: local exato
+3. O que fazer.
+4. Código completo, se houver implementação.
+5. Explicação do código.
+6. Como validar.
+7. Erros comuns ou cenário negativo.
 
 No fim do BK só podem ficar:
 
-- Expected results;
-- Critérios de aceite;
-- Validação final;
-- Evidence para PR/defesa;
-- Handoff;
-- Changelog.
+- Critérios de aceite
+- Validação final
+- Evidence para PR/defesa
+- Handoff
+- Changelog
 
 Não deixes código novo solto no fim do BK.
 
 ## Regra de explicação e documentação didática do código
 
 Todo o código incluído nos BKs deve ser documentado e explicado de forma didática, completa e explícita, adequada a alunos do 12.º ano.
-
-A explicação fora do código e os comentários dentro do código são ambos obrigatórios. Um não substitui o outro.
 
 Cada ficheiro novo deve incluir:
 
@@ -524,12 +521,42 @@ Bom comentário:
 Mau comentário:
 
 ```ts
-// Define userId.
+// Cria uma variável userId.
+```
+
+Se um bloco de código for complexo, divide a explicação em partes pequenas antes de avançar para o próximo passo.
+
+## Regra obrigatória de comentários no código
+
+Todo o código apresentado nos BKs deve ter comentários didáticos suficientes para um aluno do 12.º ano perceber o raciocínio.
+
+Cada bloco de código deve comentar, quando existir:
+
+- o caminho do ficheiro;
+- a responsabilidade da classe, função ou componente;
+- campos importantes de schemas;
+- validações de DTOs;
+- regras de ownership ou membership;
+- chamadas a services;
+- exceções lançadas;
+- chamadas `fetch`;
+- uso de `credentials: 'include'`;
+- hooks React como `useState` e `useEffect`;
+- construção de prompts e fontes, quando houver IA.
+
+Os comentários devem ensinar o raciocínio, não repetir o óbvio.
+
+Bom comentário:
+
+```ts
+// O teacherId vem da sessão para impedir que o frontend crie turmas em nome de outro professor.
+```
+
+```ts
+// Define teacherId.
 ```
 
 Um bloco de código sem comentários didáticos suficientes não pode ser considerado completo.
-
-Se um bloco de código for complexo, divide a explicação em partes pequenas antes de avançar para o próximo passo.
 
 ## Qualidade backend obrigatória
 
@@ -573,7 +600,7 @@ Quando houver IA, inclui:
 - input permitido;
 - fontes usadas;
 - bloqueio sem fontes;
-- prompt de sistema ou instruções equivalentes enviadas ao provider;
+- prompt de sistema;
 - provider isolado;
 - guardrails;
 - explicabilidade;
@@ -613,12 +640,10 @@ Antes de considerar um BK concluído, confirma manualmente:
 
 ## Gate de qualidade antes de terminar
 
-Depois de editar, executa estas verificações textuais.
-
-Antes de executar o comando, substitui `{MF_ALVO}` pelo valor real, por exemplo `MF1`.
+Depois de editar, executa estas verificações textuais:
 
 ```bash
-rg -n "hidrata|pós-auditoria|scaffold|roteiro genérico|conversa interna|este guia deixa de ser|código ainda não corrigido|snippet|exemplo simplificado|implementar depois|quando aplicável|helpers chamados|substitu(ir|i)r? mocks|pseudo-código|solução parcial|payload: unknown|as any|ContextAction|contextApi" docs/planificacao/guias-bk/{MF_ALVO}/*.md
+rg -n "hidrata|pós-auditoria|scaffold|roteiro genérico|snippet|pseudo-código|implementar depois|quando aplicável|helpers chamados|Substitui os mocks|payload: unknown|as any|ContextAction|contextApi" docs/planificacao/guias-bk/{MF_ALVO}/*.md
 ```
 
 Se aparecerem ocorrências nos BKs dos alunos, corrige.
