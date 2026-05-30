@@ -18,197 +18,453 @@
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md`
 - `last_updated`: `2026-05-30`
 
-## O que vamos fazer neste BK
-Este BK implementa `RF21`: Submeter materiais da disciplina (versão oficial). Vamos construir a funcionalidade de ponta a ponta, com contrato de dados, validação, permissões, endpoint NestJS e chamada frontend.
+## Objetivo
+Implementar `RF21`: permitir que professores submetam materiais oficiais de uma disciplina. Estes materiais são a fonte autorizada para a IA limitada de `BK-MF1-11`.
 
-O guia é autocontido para o aluno: inclui o código necessário para este BK, explica o objetivo de cada bloco e define resultados esperados para sucesso e falha.
+## Importância
+Materiais oficiais são diferentes dos materiais privados do aluno. A IA docente só deve responder com base em fontes aprovadas pelo professor da disciplina. Este BK cria essa fronteira de dados.
 
-## Porque é que isto é importante
-A `MF1` liga o estudo individual da `MF0` a contextos com salas, turmas, disciplinas e professores. Estes contextos aumentam o risco de fuga de dados se o backend confiar em IDs enviados pelo cliente.
+## Scope-in
+- Criar `OfficialMaterial`.
+- Submeter material `TEXT` ou `URL`.
+- Marcar `TEXT` como `PROCESSED`.
+- Marcar `URL` como `REFERENCE_ONLY`.
+- Listar materiais oficiais de uma disciplina do professor.
 
-A regra base deste BK é simples: a sessão identifica o ator, o service confirma o contexto, e só depois a aplicação lê, escreve ou chama IA.
+## Scope-out
+- Upload de ficheiros pesados.
+- Extração automática de PDF/DOCX.
+- Versionamento e reversão de materiais.
+- Aprovação por coordenação escolar.
 
-## O que entra (scope)
-- Criar materiais oficiais `TEXT` ou `URL`.
-- Confirmar que a disciplina pertence ao professor.
-- Guardar estado `PROCESSED` ou `REFERENCE_ONLY`.
-- Preparar fontes para IA limitada.
+## Estado antes
+- `BK-MF1-08` criou disciplinas associadas a turmas.
+- Ainda não existe fonte oficial por disciplina.
 
-## O que não entra (scope-out)
-- Notificações em tempo real.
-- Dashboards avançados.
-- Alterações fora do requisito deste BK.
+## Estado depois
+- Professor submete texto oficial processável.
+- Professor submete URL como referência.
+- IA limitada só pode usar materiais `PROCESSED`.
+- Materiais ficam ligados a `subjectId`, `classId` e `teacherId`.
 
-## Como saber que isto ficou bem
-- Ator correto executa o caminho principal.
-- Ator errado recebe erro controlado.
-- Contexto fora do ownership não é exposto.
-- Payload inválido é rejeitado.
+## Pré-requisitos
+- `SubjectsModule` exporta `SubjectsService`.
+- `SessionGuard` funcional.
+- Validação global de DTOs ativa.
 
-## Metadados do BK (CANONICO/DERIVADO)
-- BK: `BK-MF1-09` (CANONICO)
-- Requisito: `RF21` (CANONICO)
-- Ator principal: professor dono da disciplina (DERIVADO)
-- Endpoint principal: `POST /api/teacher/subjects/:subjectId/materials` (DERIVADO)
-- Persistência principal: `official_materials` (DERIVADO)
-- Fonte de verdade: `docs/RF.md` e `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md` (CANONICO)
+## Glossário
+- **Material oficial**: conteúdo fornecido pelo professor para uma disciplina.
+- **PROCESSED**: texto pronto para ser usado por IA.
+- **REFERENCE_ONLY**: referência guardada, mas sem texto suficiente para resposta factual.
 
-## Pre-leitura mínima
-- `README.md`
-- `docs/RF.md`
-- `docs/RNF.md`
-- `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`
-- `docs/planificacao/backlogs/CONTRATO-CAMPOS-BK.md`
-- Dependências indicadas no header concluídas.
+## Conceitos teóricos
+Uma URL não prova que o sistema conhece o seu conteúdo. Até existir extração e indexação, uma URL deve ser guardada como referência e não como fonte de resposta. Assim, a IA não inventa conteúdo com base num link.
 
-## Glossário rápido
-- `Ownership`: regra que limita acesso ao dono ou ao contexto autorizado.
-- `Membership`: pertença a turma ou sala usada para autorizar acesso.
-- `DTO`: validação de entrada antes do service.
-- `Fonte oficial/processável`: conteúdo permitido para fundamentar resposta da IA.
-- `Guardrail`: regra que impede a IA de responder fora do contexto autorizado.
+## Arquitetura do BK
+- `apps/api/src/modules/official-materials/schemas/official-material.schema.ts`
+- `apps/api/src/modules/official-materials/dto/create-official-material.dto.ts`
+- `apps/api/src/modules/official-materials/official-materials.service.ts`
+- `apps/api/src/modules/official-materials/official-materials.controller.ts`
+- `apps/api/src/modules/official-materials/official-materials.module.ts`
+- `apps/web/src/lib/api/officialMaterials.ts`
+- `apps/web/src/pages/teacher/TeacherOfficialMaterialsPage.tsx`
 
-## Conceitos teóricos essenciais
-- Material oficial tem autoridade pedagógica do professor.
-- URL é referência; texto pode ser fonte processável imediata.
-- A autorização passa pela disciplina, não pelo material isolado.
-
-## Arquitetura final deste BK
-### Ficheiros a criar ou editar
-```text
-apps/api/src/modules/official-materials/schemas/official-material.schema.ts
-apps/api/src/modules/official-materials/dto/create-official-material.dto.ts
-apps/api/src/modules/official-materials/services/official-materials.service.ts
-apps/api/src/modules/official-materials/controllers/official-materials.controller.ts
-apps/web/src/lib/officialMaterialsApi.ts
-```
-
-### Sequência do fluxo
-1. Frontend envia pedido autenticado.
-2. Controller aplica sessão.
-3. Service confirma ownership ou membership.
-4. Dados são persistidos ou usados como fontes autorizadas.
-5. Resposta devolve view simples.
-
-### Riscos técnicos a controlar
-- Aceitar identidade no body.
-- Carregar dados só por `_id`.
-- Misturar contextos de professor/aluno.
-- Responder com IA sem fontes oficiais quando existir IA.
+Endpoints:
+- `POST /api/teacher/subjects/:subjectId/materials`
+- `GET /api/teacher/subjects/:subjectId/materials`
 
 ## Guia linear de implementação
 
-### Passo 1 - Confirmar contrato e dependências
-Relê o requisito funcional e confirma que as dependências do header estão concluídas. Se uma dependência não existir, este BK não deve inventar outro caminho; deve aguardar ou implementar primeiro a dependência.
+### Passo 1 - Criar schema
 
-Validação deste passo:
-- O endpoint pertence ao ator correto.
-- O service consegue confirmar ownership ou membership sem confiar no body.
-- A funcionalidade não altera RFs de outras macro-features.
-
-### Passo 2 - Criar modelo e DTO
 ```ts
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
-import { IsEnum, IsString, IsUrl, MaxLength, MinLength, ValidateIf } from 'class-validator';
+// apps/api/src/modules/official-materials/schemas/official-material.schema.ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Types } from "mongoose";
+
 export type OfficialMaterialDocument = HydratedDocument<OfficialMaterial>;
-@Schema({ timestamps: true, collection: 'official_materials' })
-export class OfficialMaterial { @Prop({ type: Types.ObjectId, ref: 'Subject', required: true, index: true }) subjectId!: Types.ObjectId; @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true }) teacherId!: Types.ObjectId; @Prop({ required: true, trim: true, maxlength: 160 }) title!: string; @Prop({ enum: ['TEXT', 'URL'], required: true }) type!: 'TEXT' | 'URL'; @Prop({ required: true, trim: true, maxlength: 12000 }) content!: string; @Prop({ enum: ['PROCESSED', 'REFERENCE_ONLY'], default: 'PROCESSED' }) status!: 'PROCESSED' | 'REFERENCE_ONLY'; }
+export type OfficialMaterialType = "TEXT" | "URL";
+export type OfficialMaterialStatus = "PROCESSED" | "REFERENCE_ONLY";
+
+@Schema({ timestamps: true, collection: "official_materials" })
+export class OfficialMaterial {
+    @Prop({ type: Types.ObjectId, ref: "Subject", required: true, index: true })
+    subjectId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
+    classId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    teacherId!: Types.ObjectId;
+
+    @Prop({ required: true, trim: true, minlength: 2, maxlength: 160 })
+    title!: string;
+
+    @Prop({ required: true, enum: ["TEXT", "URL"] })
+    type!: OfficialMaterialType;
+
+    @Prop({ trim: true, maxlength: 20000 })
+    textContent?: string;
+
+    @Prop({ trim: true, maxlength: 1000 })
+    sourceUrl?: string;
+
+    @Prop({ required: true, enum: ["PROCESSED", "REFERENCE_ONLY"] })
+    status!: OfficialMaterialStatus;
+}
+
 export const OfficialMaterialSchema = SchemaFactory.createForClass(OfficialMaterial);
-export class CreateOfficialMaterialDto { @IsString() @MinLength(2) @MaxLength(160) title!: string; @IsEnum(['TEXT', 'URL']) type!: 'TEXT' | 'URL'; @ValidateIf((d: CreateOfficialMaterialDto) => d.type === 'URL') @IsUrl() content!: string; @ValidateIf((d: CreateOfficialMaterialDto) => d.type === 'TEXT') @IsString() @MinLength(20) @MaxLength(12000) content!: string; }
+OfficialMaterialSchema.index({ subjectId: 1, createdAt: -1 });
+OfficialMaterialSchema.index({ teacherId: 1, subjectId: 1 });
 ```
 
-Explicação do código:
-- O schema guarda apenas o estado necessário ao requisito.
-- O DTO permite só os campos que o cliente pode realmente escolher.
-- Campos de identidade vêm da sessão ou de relações já persistidas.
-- Os índices refletem as queries usadas pelo service.
+### Passo 2 - Criar DTO
 
-### Passo 3 - Criar service completo
 ```ts
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
-import { Subject, SubjectDocument } from '../../subjects/schemas/subject.schema';
-import { CreateOfficialMaterialDto } from '../dto/create-official-material.dto';
-import { OfficialMaterial, OfficialMaterialDocument } from '../schemas/official-material.schema';
-@Injectable()
-export class OfficialMaterialsService { constructor(@InjectModel(OfficialMaterial.name) private readonly materialModel: Model<OfficialMaterialDocument>, @InjectModel(Subject.name) private readonly subjectModel: Model<SubjectDocument>) {} async create(actor: AuthenticatedUser, subjectId: string, dto: CreateOfficialMaterialDto) { this.assertTeacher(actor); const subject = await this.findOwnedSubject(actor.id, subjectId); const material = await this.materialModel.create({ subjectId: subject._id, teacherId: new Types.ObjectId(actor.id), title: dto.title.trim(), type: dto.type, content: dto.content.trim(), status: dto.type === 'TEXT' ? 'PROCESSED' : 'REFERENCE_ONLY' }); return { id: material._id.toString(), subjectId: material.subjectId.toString(), title: material.title, type: material.type, status: material.status }; } private async findOwnedSubject(teacherId: string, subjectId: string) { const subject = await this.subjectModel.findOne({ _id: new Types.ObjectId(subjectId), teacherId: new Types.ObjectId(teacherId) }); if (!subject) throw new NotFoundException('Disciplina não encontrada para este professor.'); return subject; } private assertTeacher(actor: AuthenticatedUser) { if (actor.role !== 'TEACHER') throw new ForbiddenException('Apenas professores podem gerir materiais oficiais.'); } }
-```
+// apps/api/src/modules/official-materials/dto/create-official-material.dto.ts
+import {
+    IsIn,
+    IsOptional,
+    IsString,
+    IsUrl,
+    MaxLength,
+    MinLength,
+    ValidateIf,
+} from "class-validator";
 
-Explicação do código:
-- A autorização acontece antes de carregar dados sensíveis.
-- As queries filtram por professor, aluno, turma, disciplina ou sala, consoante o BK.
-- Quando existe IA, o provider recebe apenas fontes autorizadas.
-- Não há chamadas para métodos externos por implementar neste BK.
+export class CreateOfficialMaterialDto {
+    @IsString()
+    @MinLength(2)
+    @MaxLength(160)
+    title!: string;
 
-### Passo 4 - Criar controller e módulo
-```ts
-import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
-import { SessionGuard } from '../../auth/guards/session.guard';
-import { CreateOfficialMaterialDto } from '../dto/create-official-material.dto';
-import { OfficialMaterialsService } from '../services/official-materials.service';
-@UseGuards(SessionGuard)
-@Controller('api/teacher/subjects/:subjectId/materials')
-export class OfficialMaterialsController { constructor(private readonly service: OfficialMaterialsService) {} @Post() create(@Req() request: Request, @Param('subjectId') subjectId: string, @Body() dto: CreateOfficialMaterialDto) { return this.service.create(request.user, subjectId, dto); } }
-```
+    @IsIn(["TEXT", "URL"])
+    type!: "TEXT" | "URL";
 
-Explicação do código:
-- `SessionGuard` obriga sessão válida.
-- `request.user` é a identidade confiável.
-- O controller não recebe `userId`, `teacherId` ou `studentId` no body.
-- O módulo regista schemas e provider necessários para o service.
+    @ValidateIf((body: CreateOfficialMaterialDto) => body.type === "TEXT")
+    @IsString()
+    @MinLength(20)
+    @MaxLength(20000)
+    textContent?: string;
 
-### Passo 5 - Criar cliente frontend
-```tsx
-export async function submitTeacherContext(url: string, payload: Record<string, unknown>) {
-  const response = await fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  if (!response.ok) throw new Error('Não foi possível concluir a operação.');
-  return response.json();
+    @ValidateIf((body: CreateOfficialMaterialDto) => body.type === "URL")
+    @IsUrl({ require_protocol: true })
+    @MaxLength(1000)
+    sourceUrl?: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(300)
+    notes?: string;
 }
 ```
 
-Explicação do código:
-- O payload é tipado.
-- `credentials: 'include'` envia a sessão sem expor tokens.
-- O erro mostrado ao utilizador é seguro e curto.
-- O backend continua a validar mesmo que a UI bloqueie campos vazios.
+### Passo 3 - Criar service
 
-### Passo 6 - Validar caminho principal e negativos
-Caminho principal:
-- Professor cria material oficial.
+```ts
+// apps/api/src/modules/official-materials/official-materials.service.ts
+import { ForbiddenException, Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { Subject } from "../subjects/schemas/subject.schema";
+import { SubjectsService } from "../subjects/subjects.service";
+import { CreateOfficialMaterialDto } from "./dto/create-official-material.dto";
+import {
+    OfficialMaterial,
+    OfficialMaterialDocument,
+} from "./schemas/official-material.schema";
+
+@Injectable()
+export class OfficialMaterialsService {
+    constructor(
+        @InjectModel(OfficialMaterial.name)
+        private readonly materialModel: Model<OfficialMaterialDocument>,
+        private readonly subjectsService: SubjectsService,
+    ) {}
+
+    async create(actor: AuthenticatedUser, subjectId: string, dto: CreateOfficialMaterialDto) {
+        this.assertTeacher(actor);
+        const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
+
+        const material = await this.materialModel.create({
+            subjectId: subject._id,
+            classId: subject.classId,
+            teacherId: new Types.ObjectId(actor.id),
+            title: dto.title.trim(),
+            type: dto.type,
+            textContent: dto.type === "TEXT" ? dto.textContent?.trim() : undefined,
+            sourceUrl: dto.type === "URL" ? dto.sourceUrl?.trim() : undefined,
+            status: dto.type === "TEXT" ? "PROCESSED" : "REFERENCE_ONLY",
+        });
+
+        return this.toView(material);
+    }
+
+    async listForTeacher(actor: AuthenticatedUser, subjectId: string) {
+        this.assertTeacher(actor);
+        const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
+
+        const materials = await this.materialModel
+            .find({ subjectId: subject._id, teacherId: new Types.ObjectId(actor.id) })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return materials.map((material) => this.toView(material));
+    }
+
+    async findProcessedBySubject(subject: Subject) {
+        return this.materialModel
+            .find({ subjectId: subject._id, status: "PROCESSED" })
+            .sort({ createdAt: -1 });
+    }
+
+    private assertTeacher(actor: AuthenticatedUser) {
+        if (actor.role !== "TEACHER") {
+            throw new ForbiddenException("Apenas professores podem gerir materiais oficiais.");
+        }
+    }
+
+    private toView(material: OfficialMaterial | OfficialMaterialDocument) {
+        return {
+            id: material._id.toString(),
+            subjectId: material.subjectId.toString(),
+            classId: material.classId.toString(),
+            teacherId: material.teacherId.toString(),
+            title: material.title,
+            type: material.type,
+            textContent: material.textContent ?? "",
+            sourceUrl: material.sourceUrl ?? "",
+            status: material.status,
+        };
+    }
+}
+```
+
+### Passo 4 - Criar controller
+
+```ts
+// apps/api/src/modules/official-materials/official-materials.controller.ts
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+    AuthenticatedRequest,
+    AuthenticatedUser,
+} from "../../common/types/authenticated-request";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { CreateOfficialMaterialDto } from "./dto/create-official-material.dto";
+import { OfficialMaterialsService } from "./official-materials.service";
+
+@Controller("api/teacher/subjects/:subjectId/materials")
+@UseGuards(SessionGuard)
+export class OfficialMaterialsController {
+    constructor(private readonly officialMaterialsService: OfficialMaterialsService) {}
+
+    @Post()
+    create(
+        @Req() request: AuthenticatedRequest,
+        @Param("subjectId") subjectId: string,
+        @Body() dto: CreateOfficialMaterialDto,
+    ) {
+        return this.officialMaterialsService.create(
+            request.user as AuthenticatedUser,
+            subjectId,
+            dto,
+        );
+    }
+
+    @Get()
+    list(@Req() request: AuthenticatedRequest, @Param("subjectId") subjectId: string) {
+        return this.officialMaterialsService.listForTeacher(
+            request.user as AuthenticatedUser,
+            subjectId,
+        );
+    }
+}
+```
+
+### Passo 5 - Criar módulo
+
+```ts
+// apps/api/src/modules/official-materials/official-materials.module.ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { SubjectsModule } from "../subjects/subjects.module";
+import { OfficialMaterialsController } from "./official-materials.controller";
+import { OfficialMaterialsService } from "./official-materials.service";
+import {
+    OfficialMaterial,
+    OfficialMaterialSchema,
+} from "./schemas/official-material.schema";
+
+@Module({
+    imports: [
+        SubjectsModule,
+        MongooseModule.forFeature([
+            { name: OfficialMaterial.name, schema: OfficialMaterialSchema },
+        ]),
+    ],
+    controllers: [OfficialMaterialsController],
+    providers: [OfficialMaterialsService],
+    exports: [OfficialMaterialsService, MongooseModule],
+})
+export class OfficialMaterialsModule {}
+```
+
+### Passo 6 - Criar cliente frontend
+
+```ts
+// apps/web/src/lib/api/officialMaterials.ts
+export type OfficialMaterialView = {
+    id: string;
+    subjectId: string;
+    classId: string;
+    title: string;
+    type: "TEXT" | "URL";
+    textContent: string;
+    sourceUrl: string;
+    status: "PROCESSED" | "REFERENCE_ONLY";
+};
+
+async function parseResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+        throw new Error(error.message ?? "Pedido inválido.");
+    }
+
+    return response.json() as Promise<T>;
+}
+
+export async function createOfficialMaterial(
+    subjectId: string,
+    input: { title: string; type: "TEXT" | "URL"; textContent?: string; sourceUrl?: string },
+) {
+    const response = await fetch(`/api/teacher/subjects/${subjectId}/materials`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+
+    return parseResponse<OfficialMaterialView>(response);
+}
+
+export async function listOfficialMaterials(subjectId: string) {
+    const response = await fetch(`/api/teacher/subjects/${subjectId}/materials`, {
+        credentials: "include",
+    });
+
+    return parseResponse<OfficialMaterialView[]>(response);
+}
+```
+
+### Passo 7 - Criar página do professor
+
+```tsx
+// apps/web/src/pages/teacher/TeacherOfficialMaterialsPage.tsx
+import { FormEvent, useEffect, useState } from "react";
+import {
+    OfficialMaterialView,
+    createOfficialMaterial,
+    listOfficialMaterials,
+} from "../../lib/api/officialMaterials";
+
+type Props = {
+    subjectId: string;
+};
+
+export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
+    const [materials, setMaterials] = useState<OfficialMaterialView[]>([]);
+    const [type, setType] = useState<"TEXT" | "URL">("TEXT");
+    const [error, setError] = useState("");
+
+    async function refresh() {
+        setMaterials(await listOfficialMaterials(subjectId));
+    }
+
+    useEffect(() => {
+        refresh().catch((reason: Error) => setError(reason.message));
+    }, [subjectId]);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError("");
+
+        const form = new FormData(event.currentTarget);
+
+        try {
+            await createOfficialMaterial(subjectId, {
+                title: String(form.get("title") ?? ""),
+                type,
+                textContent: String(form.get("textContent") ?? ""),
+                sourceUrl: String(form.get("sourceUrl") ?? ""),
+            });
+            event.currentTarget.reset();
+            await refresh();
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Não foi possível guardar o material.");
+        }
+    }
+
+    return (
+        <main>
+            <h1>Materiais oficiais</h1>
+            <form onSubmit={handleSubmit}>
+                <input name="title" placeholder="Título" required />
+                <select value={type} onChange={(event) => setType(event.target.value as "TEXT" | "URL")}>
+                    <option value="TEXT">Texto</option>
+                    <option value="URL">URL</option>
+                </select>
+                {type === "TEXT" ? <textarea name="textContent" required /> : null}
+                {type === "URL" ? <input name="sourceUrl" type="url" required /> : null}
+                <button type="submit">Guardar material</button>
+            </form>
+
+            {error ? <p role="alert">{error}</p> : null}
+
+            {materials.map((material) => (
+                <article key={material.id}>
+                    <h2>{material.title}</h2>
+                    <p>{material.type} · {material.status}</p>
+                </article>
+            ))}
+        </main>
+    );
+}
+```
+
+### Passo 8 - Validar comportamento
+- Professor dono da disciplina cria material `TEXT`.
 - Material `TEXT` fica `PROCESSED`.
-
-Cenários negativos:
+- Material `URL` fica `REFERENCE_ONLY`.
+- Professor sem ownership recebe `404`.
 - Aluno recebe `403`.
-- Professor de outra disciplina recebe `404`.
-- Texto curto recebe `400`.
+- `BK-MF1-11` usa apenas materiais `PROCESSED`.
 
-Comandos úteis:
+## Critérios de aceite
+- Não existe campo duplicado para conteúdo.
+- `textContent` e `sourceUrl` têm responsabilidades separadas.
+- O material guarda `subjectId`, `classId` e `teacherId`.
+- `OfficialMaterialsModule` exporta service e schema.
+- Frontend usa `credentials: 'include'`.
+
+## Validação final
+Executa:
+
 ```bash
 npm run test:unit
 npm run test:integration
-npm run test:contracts
-bash scripts/validate-planificacao.sh
 ```
 
-## Evidência de conclusão
-- Output do endpoint principal.
-- Registo de três negativos.
-- Print ou log da UI com sucesso/erro.
+Confirma que um material `URL` não alimenta a IA como texto processado.
 
-## Handoff para o próximo BK
-- `BK-MF1-11` usa estes materiais como fontes oficiais.
+## Evidence para PR/defesa
+- Screenshot de material `TEXT` criado.
+- Screenshot de material `URL` criado.
+- Resposta `403` para aluno.
+- Diff do schema sem campo genérico duplicado.
 
-## Checklist final
-- [ ] Header preservado sem alterar campos canónicos.
-- [ ] Código completo para schema, DTO, service, controller/módulo e frontend.
-- [ ] Sem funções por implementar nem payloads sem tipo.
-- [ ] Caminho principal e negativos com expected results.
-- [ ] Validação executada ou bloqueio registado com erro exato.
+## Handoff
+`BK-MF1-10` associa voz docente à mesma disciplina. `BK-MF1-11` consulta `OfficialMaterialsService.findProcessedBySubject`.
 
 ## Changelog
-- `2026-04-19`: guia semântico inicial alinhado ao requisito.
-- `2026-05-30`: guia reescrito como tutorial guiado para alunos, com código completo do BK e validação objetiva.
+- 2026-05-30: Guia reescrito com schema sem campo duplicado, módulo exportado e estados de fonte explícitos.

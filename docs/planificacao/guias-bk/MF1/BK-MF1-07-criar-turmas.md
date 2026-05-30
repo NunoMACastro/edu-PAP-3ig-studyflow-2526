@@ -18,425 +18,611 @@
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-07-criar-turmas.md`
 - `last_updated`: `2026-05-30`
 
-## O que vamos fazer neste BK
-Este BK implementa `RF19`: Criar turmas. O objetivo é guiar a implementação completa deste requisito, desde o contrato de dados até ao endpoint protegido e à chamada no frontend.
+## Objetivo
+Implementar `RF19`: permitir que um professor crie turmas oficiais e consulte apenas as suas turmas. Este BK também acrescenta, como decisão `DERIVADO`, o fluxo mínimo para associar alunos por email, porque `RF23`, `RF24` e os BKs seguintes dependem de existir um aluno inscrito numa turma.
 
-No final, deves conseguir responder a quatro perguntas sem consultar outro ficheiro: que dados são guardados, quem pode executar a ação, que validações acontecem no backend e que resultado a aplicação mostra ao utilizador.
+## Importância
+Turmas são a fronteira principal da área docente. Disciplinas, materiais oficiais, voz da IA, IA limitada e publicações usam a turma para saber quem é o professor responsável e que alunos podem consultar conteúdo. Por isso, a turma não pode depender de um `teacherId` enviado pelo browser.
 
-## Porque é que isto é importante
-A `MF1` introduz colaboração, turmas, disciplinas e IA contextual. Isso significa que a aplicação deixa de trabalhar apenas com dados privados de um aluno e passa a cruzar dados de alunos, professores, salas e turmas.
+## Scope-in
+- Criar `SchoolClass`.
+- Listar turmas do professor autenticado.
+- Adicionar aluno existente à turma por email.
+- Listar turmas do aluno autenticado.
+- Garantir que ownership e inscrição vêm da sessão e da base de dados.
 
-Por isso, a prioridade deste BK é dupla: implementar a funcionalidade pedida e manter fronteiras de segurança claras. Em cada endpoint, a identidade confiável vem da sessão autenticada e nunca de campos enviados livremente pelo frontend.
+## Scope-out
+- Importação CSV.
+- Horários, avaliações e sumários.
+- Convites por email com token.
+- Gestão avançada de vários professores na mesma turma.
 
-## O que entra (scope)
-- Criar turmas oficiais associadas ao professor autenticado.
-- Listar apenas as turmas do professor autenticado.
-- Guardar código, ano letivo e lista inicial de alunos.
-- Preparar base para disciplinas, materiais oficiais e publicações.
+## Estado antes
+- Existe autenticação com cookie HttpOnly e `SessionGuard`.
+- Existem utilizadores com `role` `TEACHER` ou `STUDENT`.
+- Não existe fronteira persistente para turmas oficiais.
 
-## O que não entra (scope-out)
-- Inscrição automática de alunos.
-- Importação por CSV.
-- Horários, avaliações ou sumários.
+## Estado depois
+- `SchoolClass` guarda professor, código, ano letivo e alunos.
+- Professor cria e lista as suas turmas.
+- Professor associa um aluno existente à turma.
+- Aluno lista apenas turmas onde está inscrito.
 
-## Como saber que isto ficou bem
-- Professor cria turma e recebe `201 Created`.
-- Aluno recebe `403 Forbidden`.
-- Código duplicado no mesmo professor recebe `409 Conflict`.
-- Listagem não mostra turmas de outro professor.
+## Pré-requisitos
+- `BK-MF0-01` com `User`.
+- `BK-MF0-02` com `SessionGuard` e `AuthenticatedRequest`.
+- Mongoose configurado no backend.
+- Frontend a chamar endpoints privados com `credentials: 'include'`.
 
-## Metadados do BK (CANONICO/DERIVADO)
-- BK: `BK-MF1-07` (CANONICO)
-- Requisito: `RF19` (CANONICO)
-- Ator principal: professor autenticado (DERIVADO a partir do requisito)
-- Endpoint principal: `POST /api/teacher/classes` (DERIVADO a partir da implementação)
-- Persistência principal: `school_classes` (DERIVADO a partir do modelo)
-- Fonte de verdade: `docs/RF.md` e `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md` (CANONICO)
+## Glossário
+- **Turma oficial**: grupo criado por um professor para organizar disciplinas e alunos.
+- **Professor dono**: utilizador autenticado que criou a turma.
+- **Aluno inscrito**: aluno cujo `_id` está em `studentIds`.
+- **Decisão DERIVADO**: detalhe técnico não escrito literalmente em `RF19`, mas necessário para cumprir RFs seguintes sem inventar dados.
 
-## Pre-leitura mínima
-- `README.md`
-- `docs/RF.md`
-- `docs/RNF.md`
-- `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`
-- `docs/planificacao/backlogs/CONTRATO-CAMPOS-BK.md`
-- `BK-MF0-02` para sessão segura.
-- `BK-MF0-03` para perfil e papel do utilizador.
+## Conceitos teóricos
+O backend é a autoridade de segurança. O frontend pode mostrar ou esconder botões, mas o service tem sempre de validar a sessão, o papel do utilizador e o ownership da turma.
 
-## Glossário rápido
-- `Ownership`: regra que garante que cada utilizador só acede ao seu próprio contexto.
-- `DTO`: classe que valida a entrada HTTP antes da regra de negócio.
-- `Service`: camada onde ficam validações de papel, permissões, ownership e persistência.
-- `Controller`: camada HTTP; recebe sessão, body e parâmetros, mas não decide regras de negócio.
-- `IDOR`: falha de segurança em que alguém acede a dados de outro utilizador mudando um ID no pedido.
+A inscrição por email é uma decisão pequena e verificável. Não cria utilizadores, não envia convite externo e não altera permissões globais: apenas associa um aluno já existente a uma turma do professor autenticado.
 
-## Conceitos teóricos essenciais
-- Uma turma é um contexto oficial controlado por um professor.
-- O `teacherId` deve vir da sessão, nunca do body.
-- O código da turma é legível para humanos; o `_id` continua a ser o identificador técnico.
+## Arquitetura do BK
+- `apps/api/src/modules/classes/schemas/school-class.schema.ts`
+- `apps/api/src/modules/classes/dto/create-class.dto.ts`
+- `apps/api/src/modules/classes/dto/add-class-student.dto.ts`
+- `apps/api/src/modules/classes/classes.service.ts`
+- `apps/api/src/modules/classes/classes.controller.ts`
+- `apps/api/src/modules/classes/classes.module.ts`
+- `apps/web/src/lib/api/classes.ts`
+- `apps/web/src/pages/teacher/TeacherClassesPage.tsx`
+- `apps/web/src/pages/student/StudentClassesPage.tsx`
 
-## Arquitetura final deste BK
-A implementação assume a stack definida para o StudyFlow: NestJS no backend, MongoDB/Mongoose para persistência, React/TypeScript no frontend e autenticação por sessão com cookie HttpOnly.
-
-### Ficheiros a criar ou editar
-```text
-apps/api/src/modules/classes/schemas/school-class.schema.ts
-apps/api/src/modules/classes/dto/create-class.dto.ts
-apps/api/src/modules/classes/services/classes.service.ts
-apps/api/src/modules/classes/controllers/classes.controller.ts
-apps/api/src/modules/classes/classes.module.ts
-apps/web/src/lib/teacherClassesApi.ts
-apps/web/src/pages/teacher/TeacherClassesPage.tsx
-```
-
-### Sequência do fluxo
-1. Professor preenche nome, código e ano letivo.
-2. Frontend envia pedido autenticado.
-3. Controller valida sessão e DTO.
-4. Service confirma papel `TEACHER` e código único por professor.
-5. Turma é criada com `teacherId` da sessão.
-
-### Erros que este BK deve evitar
-- Aceitar `teacherId` no body.
-- Permitir códigos duplicados no mesmo contexto.
-- Criar turma sem professor dono.
+Endpoints:
+- `POST /api/teacher/classes`
+- `GET /api/teacher/classes`
+- `POST /api/teacher/classes/:classId/students`
+- `GET /api/student/classes`
 
 ## Guia linear de implementação
 
-### Passo 1 - Confirmar contrato e dependências
-Antes de escrever código, confirma o header deste BK e relê o requisito funcional. Se encontrares divergência entre documentos, regista-a no relatório de auditoria em vez de alterar silenciosamente `bk_id`, `rf_rnf`, `owner`, prioridade ou sprint.
-
-Validação deste passo:
-- O requisito no header continua alinhado com `docs/RF.md`.
-- As dependências diretas estão concluídas ou explicitamente assumidas como pré-requisito.
-- O endpoint escolhido não quebra a organização por ator: `/api/student/...` para aluno e `/api/teacher/...` para professor.
-
-Erro comum: começar por criar a página React e só depois descobrir que o backend não sabe quem tem permissão. Neste tipo de funcionalidade, a regra de autorização vem primeiro.
-
-### Passo 2 - Criar modelo e DTO
-O modelo define a forma do dado persistido. O DTO define o que o cliente pode enviar. Campos como `userId`, `teacherId`, `ownerId`, `studentId` ou `authorId` não aparecem no DTO quando podem ser obtidos pela sessão.
+### Passo 1 - Criar schema da turma
+Cria a entidade persistente usada por todos os BKs docentes seguintes.
 
 ```ts
 // apps/api/src/modules/classes/schemas/school-class.schema.ts
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Types } from "mongoose";
 
 export type SchoolClassDocument = HydratedDocument<SchoolClass>;
 
-@Schema({ timestamps: true, collection: 'school_classes' })
+@Schema({ timestamps: true, collection: "school_classes" })
 export class SchoolClass {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-  teacherId!: Types.ObjectId;
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    teacherId!: Types.ObjectId;
 
-  @Prop({ required: true, trim: true, maxlength: 120 })
-  name!: string;
+    @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
+    name!: string;
 
-  @Prop({ required: true, trim: true, uppercase: true, maxlength: 20 })
-  code!: string;
+    @Prop({ required: true, trim: true, uppercase: true, minlength: 2, maxlength: 24 })
+    code!: string;
 
-  @Prop({ trim: true, maxlength: 40, default: '2025/2026' })
-  schoolYear!: string;
+    @Prop({ required: true, trim: true, minlength: 4, maxlength: 20 })
+    schoolYear!: string;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
-  studentIds!: Types.ObjectId[];
+    @Prop({ trim: true, maxlength: 500 })
+    description?: string;
+
+    @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [], index: true })
+    studentIds!: Types.ObjectId[];
 }
 
 export const SchoolClassSchema = SchemaFactory.createForClass(SchoolClass);
 SchoolClassSchema.index({ teacherId: 1, code: 1 }, { unique: true });
+SchoolClassSchema.index({ studentIds: 1, createdAt: -1 });
+```
 
+Valida que o índice único é por professor. Dois professores podem usar o mesmo código, mas o mesmo professor não deve duplicar a turma.
+
+### Passo 2 - Criar DTOs de entrada
+Os DTOs limitam campos aceites e impedem que o cliente envie ownership.
+
+```ts
 // apps/api/src/modules/classes/dto/create-class.dto.ts
-import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class CreateClassDto {
-  @IsString()
-  @MinLength(2)
-  @MaxLength(120)
-  name!: string;
+    @IsString()
+    @MinLength(2)
+    @MaxLength(120)
+    name!: string;
 
-  @IsString()
-  @Matches(/^[A-Z0-9-]{4,20}$/)
-  code!: string;
+    @IsString()
+    @MinLength(2)
+    @MaxLength(24)
+    code!: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  schoolYear?: string;
+    @IsString()
+    @MinLength(4)
+    @MaxLength(20)
+    schoolYear!: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    description?: string;
 }
 ```
 
-Explicação do código:
-- O schema inclui índices para as queries usadas pelo service.
-- O DTO limita tamanho, formato e valores permitidos.
-- A identidade do ator fica fora do body para evitar mass assignment.
-- O nome dos ficheiros indica claramente o contexto funcional do BK.
+```ts
+// apps/api/src/modules/classes/dto/add-class-student.dto.ts
+import { IsEmail } from "class-validator";
 
-Validação deste passo:
-- Payload incompleto devolve `400 Bad Request`.
-- IDs inválidos devolvem `400 Bad Request` antes de executar a regra de negócio.
-- Campos extra não devem ser usados para determinar ownership.
+export class AddClassStudentDto {
+    @IsEmail()
+    email!: string;
+}
+```
 
-### Passo 3 - Criar service completo
-O service abaixo é a peça central do BK. Ele contém as validações de papel, ownership, contexto, estados inválidos e normalização dos dados guardados.
+### Passo 3 - Criar service com regras de segurança
+O service valida papel, ownership e existência do aluno. Não aceita `teacherId` nem `studentIds` vindos do cliente.
 
 ```ts
-// apps/api/src/modules/classes/services/classes.service.ts
-import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
-import { CreateClassDto } from '../dto/create-class.dto';
-import { SchoolClass, SchoolClassDocument } from '../schemas/school-class.schema';
+// apps/api/src/modules/classes/classes.service.ts
+import {
+    ConflictException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { User, UserDocument } from "../auth/schemas/user.schema";
+import { AddClassStudentDto } from "./dto/add-class-student.dto";
+import { CreateClassDto } from "./dto/create-class.dto";
+import { SchoolClass, SchoolClassDocument } from "./schemas/school-class.schema";
 
 @Injectable()
 export class ClassesService {
-  constructor(
-    @InjectModel(SchoolClass.name)
-    private readonly classModel: Model<SchoolClassDocument>,
-  ) {}
+    constructor(
+        @InjectModel(SchoolClass.name)
+        private readonly classModel: Model<SchoolClassDocument>,
+        @InjectModel(User.name)
+        private readonly userModel: Model<UserDocument>,
+    ) {}
 
-  async create(actor: AuthenticatedUser, dto: CreateClassDto) {
-    this.assertTeacher(actor);
+    async create(actor: AuthenticatedUser, dto: CreateClassDto) {
+        this.assertTeacher(actor);
 
-    const teacherId = new Types.ObjectId(actor.id);
-    const code = dto.code.trim().toUpperCase();
-    const exists = await this.classModel.exists({ teacherId, code });
+        const code = dto.code.trim().toUpperCase();
+        const duplicate = await this.classModel.exists({
+            teacherId: new Types.ObjectId(actor.id),
+            code,
+        });
 
-    if (exists) {
-      throw new ConflictException('Já existe uma turma com esse código.');
+        if (duplicate) {
+            throw new ConflictException("Já existe uma turma com este código.");
+        }
+
+        const schoolClass = await this.classModel.create({
+            teacherId: new Types.ObjectId(actor.id),
+            name: dto.name.trim(),
+            code,
+            schoolYear: dto.schoolYear.trim(),
+            description: dto.description?.trim(),
+            studentIds: [],
+        });
+
+        return this.toView(schoolClass);
     }
 
-    const created = await this.classModel.create({
-      teacherId,
-      name: dto.name.trim(),
-      code,
-      schoolYear: dto.schoolYear?.trim() || '2025/2026',
-      studentIds: [],
-    });
+    async listForTeacher(actor: AuthenticatedUser) {
+        this.assertTeacher(actor);
 
-    return this.toView(created);
-  }
+        const classes = await this.classModel
+            .find({ teacherId: new Types.ObjectId(actor.id) })
+            .sort({ createdAt: -1 })
+            .lean();
 
-  async listMine(actor: AuthenticatedUser) {
-    this.assertTeacher(actor);
-
-    const classes = await this.classModel
-      .find({ teacherId: new Types.ObjectId(actor.id) })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    return classes.map((schoolClass) => this.toView(schoolClass));
-  }
-
-  private assertTeacher(actor: AuthenticatedUser) {
-    if (actor.role !== 'TEACHER') {
-      throw new ForbiddenException('Apenas professores podem gerir turmas.');
+        return classes.map((schoolClass) => this.toView(schoolClass));
     }
-  }
 
-  private toView(schoolClass: SchoolClassDocument | SchoolClass & { _id: Types.ObjectId }) {
-    return {
-      id: schoolClass._id.toString(),
-      name: schoolClass.name,
-      code: schoolClass.code,
-      schoolYear: schoolClass.schoolYear,
-      studentCount: schoolClass.studentIds.length,
-    };
-  }
+    async addStudent(actor: AuthenticatedUser, classId: string, dto: AddClassStudentDto) {
+        this.assertTeacher(actor);
+
+        const schoolClass = await this.findOwnedClass(actor.id, classId);
+        const student = await this.userModel
+            .findOne({ email: dto.email.toLowerCase().trim(), role: "STUDENT" })
+            .lean();
+
+        if (!student) {
+            throw new NotFoundException("Aluno não encontrado.");
+        }
+
+        const studentId = new Types.ObjectId(student._id);
+        const alreadyEnrolled = schoolClass.studentIds.some((id) => id.equals(studentId));
+
+        if (!alreadyEnrolled) {
+            schoolClass.studentIds.push(studentId);
+            await schoolClass.save();
+        }
+
+        return this.toView(schoolClass);
+    }
+
+    async listForStudent(actor: AuthenticatedUser) {
+        this.assertStudent(actor);
+
+        const classes = await this.classModel
+            .find({ studentIds: new Types.ObjectId(actor.id) })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return classes.map((schoolClass) => this.toView(schoolClass));
+    }
+
+    async findOwnedClass(teacherId: string, classId: string) {
+        if (!Types.ObjectId.isValid(classId)) {
+            throw new NotFoundException("Turma não encontrada.");
+        }
+
+        const schoolClass = await this.classModel.findOne({
+            _id: new Types.ObjectId(classId),
+            teacherId: new Types.ObjectId(teacherId),
+        });
+
+        if (!schoolClass) {
+            throw new NotFoundException("Turma não encontrada para este professor.");
+        }
+
+        return schoolClass;
+    }
+
+    async ensureStudentEnrollment(studentId: string, classId: string) {
+        if (!Types.ObjectId.isValid(classId)) {
+            throw new NotFoundException("Turma não encontrada.");
+        }
+
+        const schoolClass = await this.classModel.findOne({
+            _id: new Types.ObjectId(classId),
+            studentIds: new Types.ObjectId(studentId),
+        });
+
+        if (!schoolClass) {
+            throw new ForbiddenException("Aluno sem inscrição nesta turma.");
+        }
+
+        return schoolClass;
+    }
+
+    private assertTeacher(actor: AuthenticatedUser) {
+        if (actor.role !== "TEACHER") {
+            throw new ForbiddenException("Apenas professores podem gerir turmas.");
+        }
+    }
+
+    private assertStudent(actor: AuthenticatedUser) {
+        if (actor.role !== "STUDENT") {
+            throw new ForbiddenException("Apenas alunos podem consultar as suas turmas.");
+        }
+    }
+
+    private toView(schoolClass: SchoolClass | SchoolClassDocument) {
+        return {
+            id: schoolClass._id.toString(),
+            teacherId: schoolClass.teacherId.toString(),
+            name: schoolClass.name,
+            code: schoolClass.code,
+            schoolYear: schoolClass.schoolYear,
+            description: schoolClass.description ?? "",
+            studentIds: schoolClass.studentIds.map((id) => id.toString()),
+        };
+    }
 }
 ```
 
-Explicação do código:
-- A primeira decisão é sempre validar o papel do ator.
-- As queries sensíveis incluem o contexto autorizado, não apenas `_id`.
-- As exceções têm mensagens controladas e não revelam detalhes internos.
-- A resposta final é uma view simples, adequada ao frontend.
-
-Validação deste passo:
-- Ator sem permissão recebe `403 Forbidden`.
-- Recurso fora do contexto do ator recebe `404 Not Found` ou `403 Forbidden`, conforme a regra do BK.
-- Caminho principal devolve a view esperada.
-
-### Passo 4 - Criar controller e módulo
-O controller protege a rota com sessão, recebe parâmetros e body, e delega a regra de negócio no service. O módulo regista todos os schemas necessários para o service funcionar.
+### Passo 4 - Criar controller
+O controller expõe rotas separadas para professor e aluno, mantendo o mesmo service.
 
 ```ts
-// apps/api/src/modules/classes/controllers/classes.controller.ts
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
-import { SessionGuard } from '../../auth/guards/session.guard';
-import { CreateClassDto } from '../dto/create-class.dto';
-import { ClassesService } from '../services/classes.service';
+// apps/api/src/modules/classes/classes.controller.ts
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+    AuthenticatedRequest,
+    AuthenticatedUser,
+} from "../../common/types/authenticated-request";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { ClassesService } from "./classes.service";
+import { AddClassStudentDto } from "./dto/add-class-student.dto";
+import { CreateClassDto } from "./dto/create-class.dto";
 
+@Controller("api")
 @UseGuards(SessionGuard)
-@Controller('api/teacher/classes')
 export class ClassesController {
-  constructor(private readonly classesService: ClassesService) {}
+    constructor(private readonly classesService: ClassesService) {}
 
-  @Post()
-  create(@Req() request: Request, @Body() dto: CreateClassDto) {
-    return this.classesService.create(request.user, dto);
-  }
+    @Post("teacher/classes")
+    create(@Req() request: AuthenticatedRequest, @Body() dto: CreateClassDto) {
+        return this.classesService.create(request.user as AuthenticatedUser, dto);
+    }
 
-  @Get()
-  listMine(@Req() request: Request) {
-    return this.classesService.listMine(request.user);
-  }
+    @Get("teacher/classes")
+    listForTeacher(@Req() request: AuthenticatedRequest) {
+        return this.classesService.listForTeacher(request.user as AuthenticatedUser);
+    }
+
+    @Post("teacher/classes/:classId/students")
+    addStudent(
+        @Req() request: AuthenticatedRequest,
+        @Param("classId") classId: string,
+        @Body() dto: AddClassStudentDto,
+    ) {
+        return this.classesService.addStudent(request.user as AuthenticatedUser, classId, dto);
+    }
+
+    @Get("student/classes")
+    listForStudent(@Req() request: AuthenticatedRequest) {
+        return this.classesService.listForStudent(request.user as AuthenticatedUser);
+    }
 }
+```
 
+### Passo 5 - Criar módulo
+O módulo exporta `ClassesService` para os BKs de disciplinas, IA limitada e publicações.
+
+```ts
 // apps/api/src/modules/classes/classes.module.ts
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { ClassesController } from './controllers/classes.controller';
-import { SchoolClass, SchoolClassSchema } from './schemas/school-class.schema';
-import { ClassesService } from './services/classes.service';
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { User, UserSchema } from "../auth/schemas/user.schema";
+import { ClassesController } from "./classes.controller";
+import { ClassesService } from "./classes.service";
+import { SchoolClass, SchoolClassSchema } from "./schemas/school-class.schema";
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: SchoolClass.name, schema: SchoolClassSchema }])],
-  controllers: [ClassesController],
-  providers: [ClassesService],
-  exports: [ClassesService],
+    imports: [
+        MongooseModule.forFeature([
+            { name: SchoolClass.name, schema: SchoolClassSchema },
+            { name: User.name, schema: UserSchema },
+        ]),
+    ],
+    controllers: [ClassesController],
+    providers: [ClassesService],
+    exports: [ClassesService, MongooseModule],
 })
 export class ClassesModule {}
 ```
 
-Explicação do código:
-- `SessionGuard` impede chamadas anónimas.
-- `request.user` é a fonte confiável de identidade.
-- `@Param` identifica o contexto técnico, mas o service confirma se esse contexto pertence ao ator.
-- O módulo torna explícitas as dependências de persistência usadas neste BK.
+### Passo 6 - Criar cliente frontend
+O cliente centraliza as chamadas e envia sempre o cookie de sessão.
 
-Validação deste passo:
-- Pedido sem sessão devolve `401 Unauthorized`.
-- Pedido autenticado chama o método certo do service.
-- O controller não contém regras de ownership duplicadas.
-
-### Passo 5 - Criar cliente frontend
-O frontend chama o endpoint com `credentials: 'include'` para enviar o cookie HttpOnly. A UI deve mostrar loading, erro e sucesso, mas a segurança principal continua sempre no backend.
-
-```tsx
-// apps/web/src/lib/teacherClassesApi.ts
-export type CreateClassPayload = {
-  name: string;
-  code: string;
-  schoolYear?: string;
-};
-
+```ts
+// apps/web/src/lib/api/classes.ts
 export type SchoolClassView = {
-  id: string;
-  name: string;
-  code: string;
-  schoolYear: string;
-  studentCount: number;
+    id: string;
+    teacherId: string;
+    name: string;
+    code: string;
+    schoolYear: string;
+    description: string;
+    studentIds: string[];
 };
 
-export async function createSchoolClass(payload: CreateClassPayload): Promise<SchoolClassView> {
-  const response = await fetch('/api/teacher/classes', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+async function parseResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+        throw new Error(error.message ?? "Pedido inválido.");
+    }
 
-  if (!response.ok) {
-    throw new Error('Não foi possível criar a turma.');
-  }
-
-  return response.json() as Promise<SchoolClassView>;
+    return response.json() as Promise<T>;
 }
 
-// apps/web/src/pages/teacher/TeacherClassesPage.tsx
-import { FormEvent, useState } from 'react';
-import { createSchoolClass, SchoolClassView } from '../../lib/teacherClassesApi';
+export async function createClass(input: {
+    name: string;
+    code: string;
+    schoolYear: string;
+    description?: string;
+}) {
+    const response = await fetch("/api/teacher/classes", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
 
-export function TeacherClassesPage() {
-  const [classes, setClasses] = useState<SchoolClassView[]>([]);
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
+    return parseResponse<SchoolClassView>(response);
+}
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
+export async function listTeacherClasses() {
+    const response = await fetch("/api/teacher/classes", {
+        credentials: "include",
+    });
 
-    try {
-      const created = await createSchoolClass({ name, code: code.toUpperCase() });
-      setClasses((current) => [created, ...current]);
-      setName('');
-      setCode('');
-    } catch {
-      setError('Confirma os dados da turma e tenta novamente.');
-    }
-  }
+    return parseResponse<SchoolClassView[]>(response);
+}
 
-  return (
-    <main className="mx-auto grid max-w-3xl gap-4 p-6">
-      <h1 className="text-2xl font-semibold">Turmas</h1>
-      <form className="grid gap-3" onSubmit={handleSubmit}>
-        <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nome da turma" />
-        <input value={code} onChange={(event) => setCode(event.target.value)} placeholder="Código" />
-        <button disabled={name.trim().length < 2 || code.trim().length < 4} type="submit">Criar turma</button>
-      </form>
-      {error && <p>{error}</p>}
-      <ul>{classes.map((schoolClass) => <li key={schoolClass.id}>{schoolClass.name}</li>)}</ul>
-    </main>
-  );
+export async function addClassStudent(classId: string, email: string) {
+    const response = await fetch(`/api/teacher/classes/${classId}/students`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+    });
+
+    return parseResponse<SchoolClassView>(response);
+}
+
+export async function listStudentClasses() {
+    const response = await fetch("/api/student/classes", {
+        credentials: "include",
+    });
+
+    return parseResponse<SchoolClassView[]>(response);
 }
 ```
 
-Explicação do código:
-- O payload tem tipo próprio; não há chamadas com `unknown`.
-- O cookie de sessão é enviado sem expor tokens ao JavaScript.
-- O formulário impede submissões óbvias incompletas, mas o backend continua a validar tudo.
-- A mensagem de erro é curta e segura para o utilizador final.
+### Passo 7 - Criar páginas mínimas de utilização
+A página do professor deve permitir criar turma, ver lista e adicionar aluno por email.
 
-Validação deste passo:
-- O botão fica bloqueado quando faltam dados mínimos.
-- Uma resposta de sucesso atualiza a página sem refresh manual.
-- Uma resposta de erro mostra feedback sem expor stack trace.
+```tsx
+// apps/web/src/pages/teacher/TeacherClassesPage.tsx
+import { FormEvent, useEffect, useState } from "react";
+import {
+    SchoolClassView,
+    addClassStudent,
+    createClass,
+    listTeacherClasses,
+} from "../../lib/api/classes";
 
-### Passo 6 - Validar caminho principal e negativos
-Caminho principal esperado:
-- Criar turma com professor autenticado devolve `201 Created`.
-- `GET /api/teacher/classes` devolve apenas turmas desse professor.
+export function TeacherClassesPage() {
+    const [classes, setClasses] = useState<SchoolClassView[]>([]);
+    const [error, setError] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
 
-Cenários negativos obrigatórios:
-- Aluno tenta criar turma e recebe `403 Forbidden`.
-- Código duplicado recebe `409 Conflict`.
-- Pedido sem sessão recebe `401 Unauthorized`.
+    async function refresh() {
+        setClasses(await listTeacherClasses());
+    }
 
-Comandos úteis:
+    useEffect(() => {
+        refresh().catch((reason: Error) => setError(reason.message));
+    }, []);
+
+    async function handleCreate(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setIsSaving(true);
+        setError("");
+
+        const form = new FormData(event.currentTarget);
+
+        try {
+            await createClass({
+                name: String(form.get("name") ?? ""),
+                code: String(form.get("code") ?? ""),
+                schoolYear: String(form.get("schoolYear") ?? ""),
+                description: String(form.get("description") ?? ""),
+            });
+            event.currentTarget.reset();
+            await refresh();
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Não foi possível criar a turma.");
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function handleAddStudent(classId: string, email: string) {
+        setError("");
+        await addClassStudent(classId, email);
+        await refresh();
+    }
+
+    return (
+        <main>
+            <h1>Turmas</h1>
+            <form onSubmit={handleCreate}>
+                <input name="name" placeholder="Nome da turma" required />
+                <input name="code" placeholder="Código" required />
+                <input name="schoolYear" placeholder="Ano letivo" required />
+                <textarea name="description" placeholder="Descrição" />
+                <button type="submit" disabled={isSaving}>
+                    {isSaving ? "A guardar" : "Criar turma"}
+                </button>
+            </form>
+
+            {error ? <p role="alert">{error}</p> : null}
+
+            <section>
+                {classes.map((schoolClass) => (
+                    <article key={schoolClass.id}>
+                        <h2>{schoolClass.name}</h2>
+                        <p>{schoolClass.code} · {schoolClass.schoolYear}</p>
+                        <p>{schoolClass.studentIds.length} alunos inscritos</p>
+                        <form
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                const form = new FormData(event.currentTarget);
+                                handleAddStudent(schoolClass.id, String(form.get("email") ?? "")).catch(
+                                    (reason: Error) => setError(reason.message),
+                                );
+                                event.currentTarget.reset();
+                            }}
+                        >
+                            <input name="email" type="email" placeholder="Email do aluno" required />
+                            <button type="submit">Adicionar aluno</button>
+                        </form>
+                    </article>
+                ))}
+            </section>
+        </main>
+    );
+}
+```
+
+```tsx
+// apps/web/src/pages/student/StudentClassesPage.tsx
+import { useEffect, useState } from "react";
+import { SchoolClassView, listStudentClasses } from "../../lib/api/classes";
+
+export function StudentClassesPage() {
+    const [classes, setClasses] = useState<SchoolClassView[]>([]);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        listStudentClasses()
+            .then(setClasses)
+            .catch((reason: Error) => setError(reason.message));
+    }, []);
+
+    return (
+        <main>
+            <h1>As minhas turmas</h1>
+            {error ? <p role="alert">{error}</p> : null}
+            {classes.length === 0 ? <p>Ainda não estás inscrito em turmas.</p> : null}
+            {classes.map((schoolClass) => (
+                <article key={schoolClass.id}>
+                    <h2>{schoolClass.name}</h2>
+                    <p>{schoolClass.code} · {schoolClass.schoolYear}</p>
+                </article>
+            ))}
+        </main>
+    );
+}
+```
+
+### Passo 8 - Validar comportamento e integração
+Valida estes cenários:
+
+- Professor cria turma com `name`, `code` e `schoolYear`.
+- Professor não consegue duplicar `code` dentro das suas turmas.
+- Aluno recebe `403` ao tentar criar turma.
+- Professor adiciona aluno existente por email.
+- Aluno inscrito vê a turma em `GET /api/student/classes`.
+- Aluno não inscrito não vê a turma.
+
+## Critérios de aceite
+- `SchoolClass` existe com `teacherId`, `name`, `code`, `schoolYear` e `studentIds`.
+- O `teacherId` vem sempre da sessão.
+- A associação de aluno usa email de utilizador existente com `role` `STUDENT`.
+- `ClassesModule` exporta `ClassesService` para BKs seguintes.
+- Frontend usa `credentials: 'include'`.
+
+## Validação final
+Executa validações manuais e automatizadas relevantes:
+
 ```bash
 npm run test:unit
 npm run test:integration
-npm run test:contracts
-bash scripts/validate-planificacao.sh
 ```
 
-Se algum comando falhar por infraestrutura, regista o erro exato. Não escrevas que está validado se o comando não correu.
+Confirma também que `BK-MF1-08`, `BK-MF1-11` e `BK-MF1-12` conseguem depender de `SchoolClass.studentIds`.
 
-### Passo 7 - Revisão de segurança e privacidade
-Antes de fechar, confirma:
-- O backend ignora IDs de utilizador recebidos no body.
-- Todas as queries com dados de utilizador filtram pelo contexto autorizado.
-- Dados de aluno, professor, turma, disciplina ou sala não aparecem fora do contexto correto.
-- Quando existe IA, a resposta fica limitada às fontes permitidas.
-- Erros são claros para o utilizador, mas não revelam detalhes internos.
+## Evidence para PR/defesa
+- Screenshot da criação de turma.
+- Screenshot da associação de aluno.
+- Resposta `403` para aluno a tentar criar turma.
+- Registo de turma com `studentIds` preenchido.
 
-## Evidência de conclusão
-- Output do pedido `POST` com turma criada.
-- Output de listagem sem turmas de outro professor.
-- Registo dos três negativos obrigatórios.
-
-## Handoff para o próximo BK
-- `BK-MF1-08` usa `SchoolClass.teacherId` para autorizar disciplinas.
-- `BK-MF1-12` usa `SchoolClass.studentIds` para publicações visíveis aos alunos.
-
-## Checklist final
-- [ ] Header preservado sem alterações a campos canónicos.
-- [ ] Modelo, DTO, service, controller/módulo e frontend descritos com código completo para este BK.
-- [ ] Código sem helpers por implementar, `any` desnecessário ou payloads sem tipo.
-- [ ] Caminho principal e cenários negativos têm expected results concretos.
-- [ ] Validação documental executada ou bloqueio registado com erro exato.
+## Handoff
+O próximo BK (`BK-MF1-08`) deve usar `SchoolClass.teacherId` para confirmar que a disciplina pertence ao professor autenticado. `BK-MF1-11` e `BK-MF1-12` devem usar `studentIds` para proteger a leitura por alunos.
 
 ## Changelog
-- `2026-04-19`: guia semântico inicial alinhado ao requisito.
-- `2026-05-30`: guia reescrito como tutorial guiado para alunos, com implementação fechada por BK, explicação didática e validação objetiva.
+- 2026-05-30: Guia reescrito para fechar módulo, endpoints, cliente frontend e fluxo derivado de inscrição de alunos.

@@ -18,197 +18,455 @@
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-12-professores-podem-enviar-avisos-e-publicacoes.md`
 - `last_updated`: `2026-05-30`
 
-## O que vamos fazer neste BK
-Este BK implementa `RF24`: Professores podem enviar avisos e publicações. Vamos construir a funcionalidade de ponta a ponta, com contrato de dados, validação, permissões, endpoint NestJS e chamada frontend.
+## Objetivo
+Implementar `RF24`: permitir que professores publiquem avisos e publicações numa turma, e que alunos inscritos os consultem.
 
-O guia é autocontido para o aluno: inclui o código necessário para este BK, explica o objetivo de cada bloco e define resultados esperados para sucesso e falha.
+## Importância
+Publicações docentes são comunicação oficial. A leitura por alunos tem de usar a inscrição real da turma, não uma rota pública nem um `classId` sem validação.
 
-## Porque é que isto é importante
-A `MF1` liga o estudo individual da `MF0` a contextos com salas, turmas, disciplinas e professores. Estes contextos aumentam o risco de fuga de dados se o backend confiar em IDs enviados pelo cliente.
+## Scope-in
+- Criar `ClassPost`.
+- Criar aviso ou publicação.
+- Listar publicações para professor dono da turma.
+- Listar publicações para aluno inscrito.
+- Separar cliente frontend de criação e cliente de leitura do aluno.
 
-A regra base deste BK é simples: a sessão identifica o ator, o service confirma o contexto, e só depois a aplicação lê, escreve ou chama IA.
+## Scope-out
+- Notificações push.
+- Comentários e reações.
+- Anexos.
+- Agendamento de publicações.
 
-## O que entra (scope)
-- Criar avisos e publicações numa turma.
-- Confirmar que a turma pertence ao professor.
-- Permitir listagem por alunos inscritos.
-- Guardar autor e tipo.
+## Estado antes
+- `BK-MF1-07` criou turmas e inscrição por aluno.
+- Ainda não existe canal oficial de avisos.
 
-## O que não entra (scope-out)
-- Notificações em tempo real.
-- Dashboards avançados.
-- Alterações fora do requisito deste BK.
+## Estado depois
+- Professor cria publicações.
+- Professor lista publicações da sua turma.
+- Aluno inscrito lista publicações da turma.
+- Aluno não inscrito recebe erro.
 
-## Como saber que isto ficou bem
-- Ator correto executa o caminho principal.
-- Ator errado recebe erro controlado.
-- Contexto fora do ownership não é exposto.
-- Payload inválido é rejeitado.
+## Pré-requisitos
+- `ClassesService.findOwnedClass`.
+- `ClassesService.ensureStudentEnrollment`.
+- `SessionGuard`.
 
-## Metadados do BK (CANONICO/DERIVADO)
-- BK: `BK-MF1-12` (CANONICO)
-- Requisito: `RF24` (CANONICO)
-- Ator principal: professor dono da turma (DERIVADO)
-- Endpoint principal: `POST /api/teacher/classes/:classId/posts` (DERIVADO)
-- Persistência principal: `class_posts` (DERIVADO)
-- Fonte de verdade: `docs/RF.md` e `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md` (CANONICO)
+## Glossário
+- **Aviso**: mensagem curta e importante.
+- **Publicação**: conteúdo informativo mais geral.
+- **Autor**: professor autenticado que criou o conteúdo.
 
-## Pre-leitura mínima
-- `README.md`
-- `docs/RF.md`
-- `docs/RNF.md`
-- `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`
-- `docs/planificacao/backlogs/CONTRATO-CAMPOS-BK.md`
-- Dependências indicadas no header concluídas.
+## Conceitos teóricos
+A escrita e a leitura têm regras diferentes. O professor escreve se for dono da turma. O aluno lê se estiver em `studentIds`. Separar estas regras no service evita exposição acidental de informação.
 
-## Glossário rápido
-- `Ownership`: regra que limita acesso ao dono ou ao contexto autorizado.
-- `Membership`: pertença a turma ou sala usada para autorizar acesso.
-- `DTO`: validação de entrada antes do service.
-- `Fonte oficial/processável`: conteúdo permitido para fundamentar resposta da IA.
-- `Guardrail`: regra que impede a IA de responder fora do contexto autorizado.
+## Arquitetura do BK
+- `apps/api/src/modules/class-posts/schemas/class-post.schema.ts`
+- `apps/api/src/modules/class-posts/dto/create-class-post.dto.ts`
+- `apps/api/src/modules/class-posts/class-posts.service.ts`
+- `apps/api/src/modules/class-posts/class-posts.controller.ts`
+- `apps/api/src/modules/class-posts/class-posts.module.ts`
+- `apps/web/src/lib/api/classPosts.ts`
+- `apps/web/src/pages/teacher/TeacherClassPostsPage.tsx`
+- `apps/web/src/pages/student/StudentClassPostsPage.tsx`
 
-## Conceitos teóricos essenciais
-- Publicação pertence à turma.
-- Professor autoriza por `teacherId`; aluno por `studentIds`.
-- Avisos devem ser auditáveis.
-
-## Arquitetura final deste BK
-### Ficheiros a criar ou editar
-```text
-apps/api/src/modules/class-posts/schemas/class-post.schema.ts
-apps/api/src/modules/class-posts/dto/create-class-post.dto.ts
-apps/api/src/modules/class-posts/services/class-posts.service.ts
-apps/api/src/modules/class-posts/controllers/class-posts.controller.ts
-apps/web/src/lib/classPostsApi.ts
-```
-
-### Sequência do fluxo
-1. Frontend envia pedido autenticado.
-2. Controller aplica sessão.
-3. Service confirma ownership ou membership.
-4. Dados são persistidos ou usados como fontes autorizadas.
-5. Resposta devolve view simples.
-
-### Riscos técnicos a controlar
-- Aceitar identidade no body.
-- Carregar dados só por `_id`.
-- Misturar contextos de professor/aluno.
-- Responder com IA sem fontes oficiais quando existir IA.
+Endpoints:
+- `POST /api/teacher/classes/:classId/posts`
+- `GET /api/teacher/classes/:classId/posts`
+- `GET /api/student/classes/:classId/posts`
 
 ## Guia linear de implementação
 
-### Passo 1 - Confirmar contrato e dependências
-Relê o requisito funcional e confirma que as dependências do header estão concluídas. Se uma dependência não existir, este BK não deve inventar outro caminho; deve aguardar ou implementar primeiro a dependência.
+### Passo 1 - Criar schema
 
-Validação deste passo:
-- O endpoint pertence ao ator correto.
-- O service consegue confirmar ownership ou membership sem confiar no body.
-- A funcionalidade não altera RFs de outras macro-features.
-
-### Passo 2 - Criar modelo e DTO
 ```ts
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
-import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
+// apps/api/src/modules/class-posts/schemas/class-post.schema.ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Types } from "mongoose";
+
 export type ClassPostDocument = HydratedDocument<ClassPost>;
-@Schema({ timestamps: true, collection: 'class_posts' })
-export class ClassPost { @Prop({ type: Types.ObjectId, ref: 'SchoolClass', required: true }) classId!: Types.ObjectId; @Prop({ type: Types.ObjectId, ref: 'User', required: true }) authorId!: Types.ObjectId; @Prop({ enum: ['NOTICE', 'POST'], required: true }) type!: 'NOTICE' | 'POST'; @Prop({ required: true, trim: true, maxlength: 160 }) title!: string; @Prop({ required: true, trim: true, maxlength: 4000 }) content!: string; }
+export type ClassPostType = "NOTICE" | "POST";
+
+@Schema({ timestamps: true, collection: "class_posts" })
+export class ClassPost {
+    @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
+    classId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    teacherId!: Types.ObjectId;
+
+    @Prop({ required: true, enum: ["NOTICE", "POST"] })
+    type!: ClassPostType;
+
+    @Prop({ required: true, trim: true, minlength: 2, maxlength: 160 })
+    title!: string;
+
+    @Prop({ required: true, trim: true, minlength: 5, maxlength: 4000 })
+    body!: string;
+}
+
 export const ClassPostSchema = SchemaFactory.createForClass(ClassPost);
-export class CreateClassPostDto { @IsEnum(['NOTICE', 'POST']) type!: 'NOTICE' | 'POST'; @IsString() @MinLength(2) @MaxLength(160) title!: string; @IsString() @MinLength(2) @MaxLength(4000) content!: string; }
+ClassPostSchema.index({ classId: 1, createdAt: -1 });
 ```
 
-Explicação do código:
-- O schema guarda apenas o estado necessário ao requisito.
-- O DTO permite só os campos que o cliente pode realmente escolher.
-- Campos de identidade vêm da sessão ou de relações já persistidas.
-- Os índices refletem as queries usadas pelo service.
+### Passo 2 - Criar DTO
 
-### Passo 3 - Criar service completo
 ```ts
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
-import { SchoolClass, SchoolClassDocument } from '../../classes/schemas/school-class.schema';
-import { CreateClassPostDto } from '../dto/create-class-post.dto';
-import { ClassPost, ClassPostDocument } from '../schemas/class-post.schema';
-@Injectable()
-export class ClassPostsService { constructor(@InjectModel(ClassPost.name) private readonly postModel: Model<ClassPostDocument>, @InjectModel(SchoolClass.name) private readonly classModel: Model<SchoolClassDocument>) {} async create(actor: AuthenticatedUser, classId: string, dto: CreateClassPostDto) { if (actor.role !== 'TEACHER') throw new ForbiddenException('Apenas professores podem publicar.'); const schoolClass = await this.classModel.findOne({ _id: new Types.ObjectId(classId), teacherId: new Types.ObjectId(actor.id) }); if (!schoolClass) throw new NotFoundException('Turma não encontrada para este professor.'); const post = await this.postModel.create({ classId: schoolClass._id, authorId: new Types.ObjectId(actor.id), type: dto.type, title: dto.title.trim(), content: dto.content.trim() }); return { id: post._id.toString(), classId: post.classId.toString(), type: post.type, title: post.title, content: post.content }; } async listForStudent(actor: AuthenticatedUser, classId: string) { if (actor.role !== 'STUDENT') throw new ForbiddenException('Apenas alunos podem consultar publicações.'); const schoolClass = await this.classModel.findOne({ _id: new Types.ObjectId(classId), studentIds: new Types.ObjectId(actor.id) }); if (!schoolClass) throw new NotFoundException('Turma não encontrada para este aluno.'); return this.postModel.find({ classId: schoolClass._id }).sort({ createdAt: -1 }).lean(); } }
-```
+// apps/api/src/modules/class-posts/dto/create-class-post.dto.ts
+import { IsIn, IsString, MaxLength, MinLength } from "class-validator";
 
-Explicação do código:
-- A autorização acontece antes de carregar dados sensíveis.
-- As queries filtram por professor, aluno, turma, disciplina ou sala, consoante o BK.
-- Quando existe IA, o provider recebe apenas fontes autorizadas.
-- Não há chamadas para métodos externos por implementar neste BK.
+export class CreateClassPostDto {
+    @IsIn(["NOTICE", "POST"])
+    type!: "NOTICE" | "POST";
 
-### Passo 4 - Criar controller e módulo
-```ts
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
-import { SessionGuard } from '../../auth/guards/session.guard';
-import { CreateClassPostDto } from '../dto/create-class-post.dto';
-import { ClassPostsService } from '../services/class-posts.service';
-@UseGuards(SessionGuard)
-@Controller()
-export class ClassPostsController { constructor(private readonly service: ClassPostsService) {} @Post('api/teacher/classes/:classId/posts') create(@Req() request: Request, @Param('classId') classId: string, @Body() dto: CreateClassPostDto) { return this.service.create(request.user, classId, dto); } @Get('api/student/classes/:classId/posts') listForStudent(@Req() request: Request, @Param('classId') classId: string) { return this.service.listForStudent(request.user, classId); } }
-```
+    @IsString()
+    @MinLength(2)
+    @MaxLength(160)
+    title!: string;
 
-Explicação do código:
-- `SessionGuard` obriga sessão válida.
-- `request.user` é a identidade confiável.
-- O controller não recebe `userId`, `teacherId` ou `studentId` no body.
-- O módulo regista schemas e provider necessários para o service.
-
-### Passo 5 - Criar cliente frontend
-```tsx
-export async function submitTeacherContext(url: string, payload: Record<string, unknown>) {
-  const response = await fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  if (!response.ok) throw new Error('Não foi possível concluir a operação.');
-  return response.json();
+    @IsString()
+    @MinLength(5)
+    @MaxLength(4000)
+    body!: string;
 }
 ```
 
-Explicação do código:
-- O payload é tipado.
-- `credentials: 'include'` envia a sessão sem expor tokens.
-- O erro mostrado ao utilizador é seguro e curto.
-- O backend continua a validar mesmo que a UI bloqueie campos vazios.
+### Passo 3 - Criar service
 
-### Passo 6 - Validar caminho principal e negativos
-Caminho principal:
-- Professor publica aviso.
-- Aluno inscrito lista publicações.
+```ts
+// apps/api/src/modules/class-posts/class-posts.service.ts
+import { ForbiddenException, Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { ClassesService } from "../classes/classes.service";
+import { CreateClassPostDto } from "./dto/create-class-post.dto";
+import { ClassPost, ClassPostDocument } from "./schemas/class-post.schema";
 
-Cenários negativos:
-- Professor de outra turma recebe `404`.
-- Aluno fora da turma recebe `404`.
-- Título vazio recebe `400`.
+@Injectable()
+export class ClassPostsService {
+    constructor(
+        @InjectModel(ClassPost.name)
+        private readonly postModel: Model<ClassPostDocument>,
+        private readonly classesService: ClassesService,
+    ) {}
 
-Comandos úteis:
+    async create(actor: AuthenticatedUser, classId: string, dto: CreateClassPostDto) {
+        this.assertTeacher(actor);
+        const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
+
+        const post = await this.postModel.create({
+            classId: schoolClass._id,
+            teacherId: new Types.ObjectId(actor.id),
+            type: dto.type,
+            title: dto.title.trim(),
+            body: dto.body.trim(),
+        });
+
+        return this.toView(post);
+    }
+
+    async listForTeacher(actor: AuthenticatedUser, classId: string) {
+        this.assertTeacher(actor);
+        const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
+        const posts = await this.postModel
+            .find({ classId: schoolClass._id, teacherId: new Types.ObjectId(actor.id) })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return posts.map((post) => this.toView(post));
+    }
+
+    async listForStudent(actor: AuthenticatedUser, classId: string) {
+        this.assertStudent(actor);
+        const schoolClass = await this.classesService.ensureStudentEnrollment(actor.id, classId);
+        const posts = await this.postModel
+            .find({ classId: schoolClass._id })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return posts.map((post) => this.toView(post));
+    }
+
+    private assertTeacher(actor: AuthenticatedUser) {
+        if (actor.role !== "TEACHER") {
+            throw new ForbiddenException("Apenas professores podem criar publicações.");
+        }
+    }
+
+    private assertStudent(actor: AuthenticatedUser) {
+        if (actor.role !== "STUDENT") {
+            throw new ForbiddenException("Apenas alunos inscritos podem ler publicações.");
+        }
+    }
+
+    private toView(post: ClassPost | ClassPostDocument) {
+        return {
+            id: post._id.toString(),
+            classId: post.classId.toString(),
+            teacherId: post.teacherId.toString(),
+            type: post.type,
+            title: post.title,
+            body: post.body,
+        };
+    }
+}
+```
+
+### Passo 4 - Criar controller
+
+```ts
+// apps/api/src/modules/class-posts/class-posts.controller.ts
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+    AuthenticatedRequest,
+    AuthenticatedUser,
+} from "../../common/types/authenticated-request";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { ClassPostsService } from "./class-posts.service";
+import { CreateClassPostDto } from "./dto/create-class-post.dto";
+
+@Controller("api")
+@UseGuards(SessionGuard)
+export class ClassPostsController {
+    constructor(private readonly classPostsService: ClassPostsService) {}
+
+    @Post("teacher/classes/:classId/posts")
+    create(
+        @Req() request: AuthenticatedRequest,
+        @Param("classId") classId: string,
+        @Body() dto: CreateClassPostDto,
+    ) {
+        return this.classPostsService.create(request.user as AuthenticatedUser, classId, dto);
+    }
+
+    @Get("teacher/classes/:classId/posts")
+    listForTeacher(@Req() request: AuthenticatedRequest, @Param("classId") classId: string) {
+        return this.classPostsService.listForTeacher(request.user as AuthenticatedUser, classId);
+    }
+
+    @Get("student/classes/:classId/posts")
+    listForStudent(@Req() request: AuthenticatedRequest, @Param("classId") classId: string) {
+        return this.classPostsService.listForStudent(request.user as AuthenticatedUser, classId);
+    }
+}
+```
+
+### Passo 5 - Criar módulo
+
+```ts
+// apps/api/src/modules/class-posts/class-posts.module.ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { ClassesModule } from "../classes/classes.module";
+import { ClassPostsController } from "./class-posts.controller";
+import { ClassPostsService } from "./class-posts.service";
+import { ClassPost, ClassPostSchema } from "./schemas/class-post.schema";
+
+@Module({
+    imports: [
+        ClassesModule,
+        MongooseModule.forFeature([{ name: ClassPost.name, schema: ClassPostSchema }]),
+    ],
+    controllers: [ClassPostsController],
+    providers: [ClassPostsService],
+})
+export class ClassPostsModule {}
+```
+
+### Passo 6 - Criar cliente frontend
+
+```ts
+// apps/web/src/lib/api/classPosts.ts
+export type ClassPostView = {
+    id: string;
+    classId: string;
+    teacherId: string;
+    type: "NOTICE" | "POST";
+    title: string;
+    body: string;
+};
+
+async function parseResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+        throw new Error(error.message ?? "Pedido inválido.");
+    }
+
+    return response.json() as Promise<T>;
+}
+
+export async function createClassPost(
+    classId: string,
+    input: { type: "NOTICE" | "POST"; title: string; body: string },
+) {
+    const response = await fetch(`/api/teacher/classes/${classId}/posts`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+
+    return parseResponse<ClassPostView>(response);
+}
+
+export async function listTeacherClassPosts(classId: string) {
+    const response = await fetch(`/api/teacher/classes/${classId}/posts`, {
+        credentials: "include",
+    });
+
+    return parseResponse<ClassPostView[]>(response);
+}
+
+export async function listClassPostsForStudent(classId: string) {
+    const response = await fetch(`/api/student/classes/${classId}/posts`, {
+        credentials: "include",
+    });
+
+    return parseResponse<ClassPostView[]>(response);
+}
+```
+
+### Passo 7 - Criar página do professor
+
+```tsx
+// apps/web/src/pages/teacher/TeacherClassPostsPage.tsx
+import { FormEvent, useEffect, useState } from "react";
+import {
+    ClassPostView,
+    createClassPost,
+    listTeacherClassPosts,
+} from "../../lib/api/classPosts";
+
+type Props = {
+    classId: string;
+};
+
+export function TeacherClassPostsPage({ classId }: Props) {
+    const [posts, setPosts] = useState<ClassPostView[]>([]);
+    const [error, setError] = useState("");
+
+    async function refresh() {
+        setPosts(await listTeacherClassPosts(classId));
+    }
+
+    useEffect(() => {
+        refresh().catch((reason: Error) => setError(reason.message));
+    }, [classId]);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError("");
+
+        const form = new FormData(event.currentTarget);
+
+        try {
+            await createClassPost(classId, {
+                type: String(form.get("type") ?? "NOTICE") as "NOTICE" | "POST",
+                title: String(form.get("title") ?? ""),
+                body: String(form.get("body") ?? ""),
+            });
+            event.currentTarget.reset();
+            await refresh();
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Não foi possível publicar.");
+        }
+    }
+
+    return (
+        <main>
+            <h1>Publicações da turma</h1>
+            <form onSubmit={handleSubmit}>
+                <select name="type">
+                    <option value="NOTICE">Aviso</option>
+                    <option value="POST">Publicação</option>
+                </select>
+                <input name="title" placeholder="Título" required />
+                <textarea name="body" required />
+                <button type="submit">Publicar</button>
+            </form>
+            {error ? <p role="alert">{error}</p> : null}
+            {posts.map((post) => (
+                <article key={post.id}>
+                    <strong>{post.type}</strong>
+                    <h2>{post.title}</h2>
+                    <p>{post.body}</p>
+                </article>
+            ))}
+        </main>
+    );
+}
+```
+
+### Passo 8 - Criar página do aluno e validar
+
+```tsx
+// apps/web/src/pages/student/StudentClassPostsPage.tsx
+import { useEffect, useState } from "react";
+import { ClassPostView, listClassPostsForStudent } from "../../lib/api/classPosts";
+
+type Props = {
+    classId: string;
+};
+
+export function StudentClassPostsPage({ classId }: Props) {
+    const [posts, setPosts] = useState<ClassPostView[]>([]);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        listClassPostsForStudent(classId)
+            .then(setPosts)
+            .catch((reason: Error) => setError(reason.message));
+    }, [classId]);
+
+    return (
+        <main>
+            <h1>Avisos e publicações</h1>
+            {error ? <p role="alert">{error}</p> : null}
+            {posts.map((post) => (
+                <article key={post.id}>
+                    <strong>{post.type}</strong>
+                    <h2>{post.title}</h2>
+                    <p>{post.body}</p>
+                </article>
+            ))}
+        </main>
+    );
+}
+```
+
+Valida:
+- Professor dono cria publicação.
+- Professor sem ownership recebe `404`.
+- Aluno inscrito lê publicações.
+- Aluno não inscrito recebe `403`.
+- Aluno não consegue criar publicação.
+
+## Critérios de aceite
+- Escrita exige professor dono da turma.
+- Leitura de aluno exige inscrição.
+- `ClassPost` guarda `classId`, `teacherId`, `type`, `title` e `body`.
+- Frontend separa criação docente e leitura do aluno.
+- Chamadas usam `credentials: 'include'`.
+
+## Validação final
+Executa:
+
 ```bash
 npm run test:unit
 npm run test:integration
-npm run test:contracts
-bash scripts/validate-planificacao.sh
 ```
 
-## Evidência de conclusão
-- Output do endpoint principal.
-- Registo de três negativos.
-- Print ou log da UI com sucesso/erro.
+Testa cruzamento entre duas turmas para garantir que publicações não vazam.
 
-## Handoff para o próximo BK
-- MF2 pode usar publicações para comunicação e dashboards.
+## Evidence para PR/defesa
+- Screenshot de aviso criado por professor.
+- Screenshot de aluno inscrito a ler o aviso.
+- Resposta `403` para aluno não inscrito.
+- Resposta `403` para aluno a tentar criar publicação.
 
-## Checklist final
-- [ ] Header preservado sem alterar campos canónicos.
-- [ ] Código completo para schema, DTO, service, controller/módulo e frontend.
-- [ ] Sem funções por implementar nem payloads sem tipo.
-- [ ] Caminho principal e negativos com expected results.
-- [ ] Validação executada ou bloqueio registado com erro exato.
+## Handoff
+`BK-MF2-01` pode partir de uma turma com comunicação oficial funcional e acesso por aluno inscrito.
 
 ## Changelog
-- `2026-04-19`: guia semântico inicial alinhado ao requisito.
-- `2026-05-30`: guia reescrito como tutorial guiado para alunos, com código completo do BK e validação objetiva.
+- 2026-05-30: Guia reescrito com leitura protegida por inscrição e clientes frontend separados.

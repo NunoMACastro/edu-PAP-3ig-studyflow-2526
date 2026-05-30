@@ -18,201 +18,425 @@
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-11-o-aluno-inscrito-numa-turma-recebe-versao-limitada-da-ia.md`
 - `last_updated`: `2026-05-30`
 
-## O que vamos fazer neste BK
-Este BK implementa `RF23`: O aluno inscrito numa turma recebe versão limitada da IA. Vamos construir a funcionalidade de ponta a ponta, com contrato de dados, validação, permissões, endpoint NestJS e chamada frontend.
+## Objetivo
+Implementar `RF23`: permitir que um aluno inscrito numa turma use uma IA limitada aos materiais oficiais da disciplina.
 
-O guia é autocontido para o aluno: inclui o código necessário para este BK, explica o objetivo de cada bloco e define resultados esperados para sucesso e falha.
+## Importância
+Este é um dos pontos de maior risco da MF1. A IA não pode misturar disciplinas, turmas ou alunos. A resposta tem de usar apenas materiais oficiais `PROCESSED` e deve aplicar a voz docente sem ultrapassar as fontes.
 
-## Porque é que isto é importante
-A `MF1` liga o estudo individual da `MF0` a contextos com salas, turmas, disciplinas e professores. Estes contextos aumentam o risco de fuga de dados se o backend confiar em IDs enviados pelo cliente.
-
-A regra base deste BK é simples: a sessão identifica o ator, o service confirma o contexto, e só depois a aplicação lê, escreve ou chama IA.
-
-## O que entra (scope)
-- Responder apenas com materiais oficiais da disciplina.
-- Confirmar inscrição do aluno na turma.
+## Scope-in
+- Criar interação de IA por disciplina.
+- Confirmar inscrição do aluno na turma da disciplina.
+- Usar apenas materiais oficiais processados.
 - Aplicar voz docente.
-- Guardar pergunta, resposta e fontes.
+- Guardar pergunta, resposta e fontes usadas.
 
-## O que não entra (scope-out)
-- Notificações em tempo real.
-- Dashboards avançados.
-- Alterações fora do requisito deste BK.
+## Scope-out
+- Chat em tempo real.
+- Materiais privados do aluno.
+- Conhecimento externo sem fonte oficial.
+- IA para aluno não inscrito.
 
-## Como saber que isto ficou bem
-- Ator correto executa o caminho principal.
-- Ator errado recebe erro controlado.
-- Contexto fora do ownership não é exposto.
-- Payload inválido é rejeitado.
+## Estado antes
+- Existem turmas com `studentIds`.
+- Existem disciplinas.
+- Existem materiais oficiais e voz docente.
 
-## Metadados do BK (CANONICO/DERIVADO)
-- BK: `BK-MF1-11` (CANONICO)
-- Requisito: `RF23` (CANONICO)
-- Ator principal: aluno inscrito na turma (DERIVADO)
-- Endpoint principal: `POST /api/student/subjects/:subjectId/ai/answers` (DERIVADO)
-- Persistência principal: `class_ai_interactions` (DERIVADO)
-- Fonte de verdade: `docs/RF.md` e `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md` (CANONICO)
+## Estado depois
+- Aluno inscrito pergunta sobre uma disciplina.
+- API responde com fontes oficiais.
+- API devolve `422` se não houver material oficial processado.
+- Interação fica registada.
 
-## Pre-leitura mínima
-- `README.md`
-- `docs/RF.md`
-- `docs/RNF.md`
-- `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`
-- `docs/planificacao/backlogs/CONTRATO-CAMPOS-BK.md`
-- Dependências indicadas no header concluídas.
+## Pré-requisitos
+- `BK-MF1-07` com aluno inscrito em `SchoolClass.studentIds`.
+- `BK-MF1-08` com `SubjectsService.findSubjectForStudent`.
+- `BK-MF1-09` com `OfficialMaterialsService.findProcessedBySubject`.
+- `BK-MF1-10` com `TeacherAiVoiceService.findForSubject`.
+- `AiModule` com `AI_PROVIDER` exportado pelos BKs de IA da MF0.
 
-## Glossário rápido
-- `Ownership`: regra que limita acesso ao dono ou ao contexto autorizado.
-- `Membership`: pertença a turma ou sala usada para autorizar acesso.
-- `DTO`: validação de entrada antes do service.
-- `Fonte oficial/processável`: conteúdo permitido para fundamentar resposta da IA.
-- `Guardrail`: regra que impede a IA de responder fora do contexto autorizado.
+## Glossário
+- **IA limitada**: IA que responde apenas com fontes oficiais da disciplina.
+- **Fonte oficial processada**: material `TEXT` submetido pelo professor e marcado como `PROCESSED`.
+- **Interação**: pergunta e resposta guardadas para histórico e defesa.
 
-## Conceitos teóricos essenciais
-- Esta IA é limitada à disciplina.
-- A inscrição vem da turma, não do body.
-- Sem materiais oficiais a resposta deve ser recusada.
+## Conceitos teóricos
+Uma resposta de IA tem duas proteções: validação antes da chamada e instrução no prompt. A validação garante que há fontes e que o aluno está inscrito. O prompt limita a resposta ao conteúdo recebido. As duas camadas são necessárias.
 
-## Arquitetura final deste BK
-### Ficheiros a criar ou editar
-```text
-apps/api/src/modules/class-ai/schemas/class-ai-interaction.schema.ts
-apps/api/src/modules/class-ai/dto/ask-class-ai.dto.ts
-apps/api/src/modules/class-ai/services/class-ai.service.ts
-apps/api/src/modules/class-ai/controllers/class-ai.controller.ts
-apps/web/src/lib/classAiApi.ts
-```
+## Arquitetura do BK
+- `apps/api/src/modules/class-ai/schemas/class-ai-interaction.schema.ts`
+- `apps/api/src/modules/class-ai/dto/ask-class-ai.dto.ts`
+- `apps/api/src/modules/class-ai/prompts/class-ai.prompt.ts`
+- `apps/api/src/modules/class-ai/class-ai.service.ts`
+- `apps/api/src/modules/class-ai/class-ai.controller.ts`
+- `apps/api/src/modules/class-ai/class-ai.module.ts`
+- `apps/web/src/lib/api/classAi.ts`
+- `apps/web/src/pages/student/StudentClassAiPage.tsx`
 
-### Sequência do fluxo
-1. Frontend envia pedido autenticado.
-2. Controller aplica sessão.
-3. Service confirma ownership ou membership.
-4. Dados são persistidos ou usados como fontes autorizadas.
-5. Resposta devolve view simples.
-
-### Riscos técnicos a controlar
-- Aceitar identidade no body.
-- Carregar dados só por `_id`.
-- Misturar contextos de professor/aluno.
-- Responder com IA sem fontes oficiais quando existir IA.
+Endpoint:
+- `POST /api/student/subjects/:subjectId/ai/answers`
 
 ## Guia linear de implementação
 
-### Passo 1 - Confirmar contrato e dependências
-Relê o requisito funcional e confirma que as dependências do header estão concluídas. Se uma dependência não existir, este BK não deve inventar outro caminho; deve aguardar ou implementar primeiro a dependência.
+### Passo 1 - Criar schema da interação
 
-Validação deste passo:
-- O endpoint pertence ao ator correto.
-- O service consegue confirmar ownership ou membership sem confiar no body.
-- A funcionalidade não altera RFs de outras macro-features.
-
-### Passo 2 - Criar modelo e DTO
 ```ts
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+// apps/api/src/modules/class-ai/schemas/class-ai-interaction.schema.ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
+
 export type ClassAiInteractionDocument = HydratedDocument<ClassAiInteraction>;
-@Schema({ timestamps: true, collection: 'class_ai_interactions' })
-export class ClassAiInteraction { @Prop({ type: Types.ObjectId, ref: 'Subject', required: true }) subjectId!: Types.ObjectId; @Prop({ type: Types.ObjectId, ref: 'User', required: true }) studentId!: Types.ObjectId; @Prop({ required: true, trim: true, maxlength: 1000 }) question!: string; @Prop({ required: true, trim: true }) answer!: string; @Prop({ type: [{ type: Types.ObjectId, ref: 'OfficialMaterial' }], default: [] }) sourceIds!: Types.ObjectId[]; }
+
+@Schema({ timestamps: true, collection: "class_ai_interactions" })
+export class ClassAiInteraction {
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    studentId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
+    classId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: "Subject", required: true, index: true })
+    subjectId!: Types.ObjectId;
+
+    @Prop({ required: true, trim: true, maxlength: 800 })
+    question!: string;
+
+    @Prop({ required: true, trim: true, maxlength: 12000 })
+    answer!: string;
+
+    @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
+    sources!: Array<{ materialId: string; title: string }>;
+}
+
 export const ClassAiInteractionSchema = SchemaFactory.createForClass(ClassAiInteraction);
-export class AskClassAiDto { @IsString() @MinLength(3) @MaxLength(1000) question!: string; }
+ClassAiInteractionSchema.index({ studentId: 1, subjectId: 1, createdAt: -1 });
 ```
 
-Explicação do código:
-- O schema guarda apenas o estado necessário ao requisito.
-- O DTO permite só os campos que o cliente pode realmente escolher.
-- Campos de identidade vêm da sessão ou de relações já persistidas.
-- Os índices refletem as queries usadas pelo service.
+### Passo 2 - Criar DTO
 
-### Passo 3 - Criar service completo
 ```ts
-import { ForbiddenException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
-import { AiProvider } from '../../ai/providers/ai.provider';
-import { SchoolClass, SchoolClassDocument } from '../../classes/schemas/school-class.schema';
-import { OfficialMaterial, OfficialMaterialDocument } from '../../official-materials/schemas/official-material.schema';
-import { Subject, SubjectDocument } from '../../subjects/schemas/subject.schema';
-import { TeacherAiVoice, TeacherAiVoiceDocument } from '../../teacher-ai/schemas/teacher-ai-voice.schema';
-import { AskClassAiDto } from '../dto/ask-class-ai.dto';
-import { ClassAiInteraction, ClassAiInteractionDocument } from '../schemas/class-ai-interaction.schema';
-@Injectable()
-export class ClassAiService { constructor(@InjectModel(ClassAiInteraction.name) private readonly interactionModel: Model<ClassAiInteractionDocument>, @InjectModel(Subject.name) private readonly subjectModel: Model<SubjectDocument>, @InjectModel(SchoolClass.name) private readonly classModel: Model<SchoolClassDocument>, @InjectModel(OfficialMaterial.name) private readonly materialModel: Model<OfficialMaterialDocument>, @InjectModel(TeacherAiVoice.name) private readonly voiceModel: Model<TeacherAiVoiceDocument>, private readonly aiProvider: AiProvider) {} async answer(actor: AuthenticatedUser, subjectId: string, dto: AskClassAiDto) { if (actor.role !== 'STUDENT') throw new ForbiddenException('Apenas alunos inscritos podem usar esta IA.'); const subject = await this.subjectModel.findById(subjectId); if (!subject) throw new NotFoundException('Disciplina não encontrada.'); const schoolClass = await this.classModel.findOne({ _id: subject.classId, studentIds: new Types.ObjectId(actor.id) }); if (!schoolClass) throw new NotFoundException('Disciplina não encontrada para este aluno.'); const materials = await this.materialModel.find({ subjectId: subject._id, status: 'PROCESSED' }).limit(8).lean(); if (!materials.length) throw new UnprocessableEntityException('A disciplina ainda não tem materiais oficiais processados.'); const voice = await this.voiceModel.findOne({ subjectId: subject._id }).lean(); const aiAnswer = await this.aiProvider.answer({ system: ['Responde apenas com materiais oficiais.', `Tom: ${voice?.tone ?? 'CALM'}.`, ...(voice?.rules ?? [])].join('\\n'), user: dto.question.trim(), sources: materials.map((m) => ({ id: m._id.toString(), title: m.title, text: m.content })) }); const saved = await this.interactionModel.create({ subjectId: subject._id, studentId: new Types.ObjectId(actor.id), question: dto.question.trim(), answer: aiAnswer.text, sourceIds: aiAnswer.sourcesUsed.map((id) => new Types.ObjectId(id)) }); return { id: saved._id.toString(), answer: saved.answer, sourcesUsed: saved.sourceIds.map((id) => id.toString()) }; } }
-```
+// apps/api/src/modules/class-ai/dto/ask-class-ai.dto.ts
+import { IsString, MaxLength, MinLength } from "class-validator";
 
-Explicação do código:
-- A autorização acontece antes de carregar dados sensíveis.
-- As queries filtram por professor, aluno, turma, disciplina ou sala, consoante o BK.
-- Quando existe IA, o provider recebe apenas fontes autorizadas.
-- Não há chamadas para métodos externos por implementar neste BK.
-
-### Passo 4 - Criar controller e módulo
-```ts
-import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
-import { SessionGuard } from '../../auth/guards/session.guard';
-import { AskClassAiDto } from '../dto/ask-class-ai.dto';
-import { ClassAiService } from '../services/class-ai.service';
-@UseGuards(SessionGuard)
-@Controller('api/student/subjects/:subjectId/ai')
-export class ClassAiController { constructor(private readonly service: ClassAiService) {} @Post('answers') answer(@Req() request: Request, @Param('subjectId') subjectId: string, @Body() dto: AskClassAiDto) { return this.service.answer(request.user, subjectId, dto); } }
-```
-
-Explicação do código:
-- `SessionGuard` obriga sessão válida.
-- `request.user` é a identidade confiável.
-- O controller não recebe `userId`, `teacherId` ou `studentId` no body.
-- O módulo regista schemas e provider necessários para o service.
-
-### Passo 5 - Criar cliente frontend
-```tsx
-export async function submitTeacherContext(url: string, payload: Record<string, unknown>) {
-  const response = await fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  if (!response.ok) throw new Error('Não foi possível concluir a operação.');
-  return response.json();
+export class AskClassAiDto {
+    @IsString()
+    @MinLength(10)
+    @MaxLength(800)
+    question!: string;
 }
 ```
 
-Explicação do código:
-- O payload é tipado.
-- `credentials: 'include'` envia a sessão sem expor tokens.
-- O erro mostrado ao utilizador é seguro e curto.
-- O backend continua a validar mesmo que a UI bloqueie campos vazios.
+### Passo 3 - Criar prompt
 
-### Passo 6 - Validar caminho principal e negativos
-Caminho principal:
+```ts
+// apps/api/src/modules/class-ai/prompts/class-ai.prompt.ts
+import { OfficialMaterialDocument } from "../../official-materials/schemas/official-material.schema";
+import { TeacherAiVoiceDocument } from "../../teacher-ai/schemas/teacher-ai-voice.schema";
+
+type BuildClassAiPromptInput = {
+    question: string;
+    materials: OfficialMaterialDocument[];
+    voice: TeacherAiVoiceDocument | null;
+};
+
+export function buildClassAiPrompt(input: BuildClassAiPromptInput) {
+    const tone = input.voice?.tone ?? "CALM";
+    const detailLevel = input.voice?.detailLevel ?? "BALANCED";
+    const rules = input.voice?.rules ?? [];
+    const sources = input.materials
+        .map((material, index) => {
+            return `Fonte ${index + 1}: ${material.title}\n${material.textContent ?? ""}`;
+        })
+        .join("\n\n");
+
+    return [
+        "Responde apenas com base nas fontes oficiais fornecidas.",
+        "Se a pergunta não estiver coberta pelas fontes, diz que a disciplina ainda não tem material oficial suficiente.",
+        `Tom docente: ${tone}.`,
+        `Nível de detalhe: ${detailLevel}.`,
+        rules.length > 0 ? `Regras do professor: ${rules.join(" | ")}` : "Sem regras adicionais do professor.",
+        `Pergunta do aluno: ${input.question}`,
+        sources,
+        "Devolve JSON com as chaves answer e sourceMaterialIds.",
+    ].join("\n\n");
+}
+```
+
+### Passo 4 - Criar service
+
+```ts
+// apps/api/src/modules/class-ai/class-ai.service.ts
+import {
+    ForbiddenException,
+    Inject,
+    Injectable,
+    ServiceUnavailableException,
+    UnprocessableEntityException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { AI_PROVIDER, AiProvider } from "../ai/providers/ai-provider";
+import { OfficialMaterialsService } from "../official-materials/official-materials.service";
+import { SubjectsService } from "../subjects/subjects.service";
+import { TeacherAiVoiceService } from "../teacher-ai/teacher-ai-voice.service";
+import { AskClassAiDto } from "./dto/ask-class-ai.dto";
+import { buildClassAiPrompt } from "./prompts/class-ai.prompt";
+import {
+    ClassAiInteraction,
+    ClassAiInteractionDocument,
+} from "./schemas/class-ai-interaction.schema";
+
+@Injectable()
+export class ClassAiService {
+    constructor(
+        @InjectModel(ClassAiInteraction.name)
+        private readonly interactionModel: Model<ClassAiInteractionDocument>,
+        private readonly subjectsService: SubjectsService,
+        private readonly officialMaterialsService: OfficialMaterialsService,
+        private readonly teacherAiVoiceService: TeacherAiVoiceService,
+        @Inject(AI_PROVIDER)
+        private readonly aiProvider: AiProvider,
+    ) {}
+
+    async answer(actor: AuthenticatedUser, subjectId: string, dto: AskClassAiDto) {
+        this.assertStudent(actor);
+
+        const subject = await this.subjectsService.findSubjectForStudent(actor.id, subjectId);
+        const materials = await this.officialMaterialsService.findProcessedBySubject(subject);
+
+        if (materials.length === 0) {
+            throw new UnprocessableEntityException(
+                "Esta disciplina ainda não tem materiais oficiais processados.",
+            );
+        }
+
+        const voice = await this.teacherAiVoiceService.findForSubject(subject);
+        const prompt = buildClassAiPrompt({
+            question: dto.question.trim(),
+            materials,
+            voice,
+        });
+
+        let result: Record<string, unknown>;
+        try {
+            result = await this.aiProvider.generateStudyTool({
+                prompt,
+                type: "EXPLANATION",
+            });
+        } catch {
+            throw new ServiceUnavailableException("A IA não está disponível neste momento.");
+        }
+
+        const answer = typeof result.answer === "string" ? result.answer : "";
+        const sources = materials.map((material) => ({
+            materialId: material._id.toString(),
+            title: material.title,
+        }));
+
+        const interaction = await this.interactionModel.create({
+            studentId: new Types.ObjectId(actor.id),
+            classId: subject.classId,
+            subjectId: subject._id,
+            question: dto.question.trim(),
+            answer,
+            sources,
+        });
+
+        return {
+            id: interaction._id.toString(),
+            answer: interaction.answer,
+            sources: interaction.sources,
+        };
+    }
+
+    private assertStudent(actor: AuthenticatedUser) {
+        if (actor.role !== "STUDENT") {
+            throw new ForbiddenException("Apenas alunos inscritos podem usar a IA da disciplina.");
+        }
+    }
+}
+```
+
+### Passo 5 - Criar controller
+
+```ts
+// apps/api/src/modules/class-ai/class-ai.controller.ts
+import { Body, Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+    AuthenticatedRequest,
+    AuthenticatedUser,
+} from "../../common/types/authenticated-request";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { ClassAiService } from "./class-ai.service";
+import { AskClassAiDto } from "./dto/ask-class-ai.dto";
+
+@Controller("api/student/subjects/:subjectId/ai/answers")
+@UseGuards(SessionGuard)
+export class ClassAiController {
+    constructor(private readonly classAiService: ClassAiService) {}
+
+    @Post()
+    answer(
+        @Req() request: AuthenticatedRequest,
+        @Param("subjectId") subjectId: string,
+        @Body() dto: AskClassAiDto,
+    ) {
+        return this.classAiService.answer(request.user as AuthenticatedUser, subjectId, dto);
+    }
+}
+```
+
+### Passo 6 - Criar módulo
+
+```ts
+// apps/api/src/modules/class-ai/class-ai.module.ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { AiModule } from "../ai/ai.module";
+import { OfficialMaterialsModule } from "../official-materials/official-materials.module";
+import { SubjectsModule } from "../subjects/subjects.module";
+import { TeacherAiModule } from "../teacher-ai/teacher-ai.module";
+import { ClassAiController } from "./class-ai.controller";
+import { ClassAiService } from "./class-ai.service";
+import {
+    ClassAiInteraction,
+    ClassAiInteractionSchema,
+} from "./schemas/class-ai-interaction.schema";
+
+@Module({
+    imports: [
+        AiModule,
+        SubjectsModule,
+        OfficialMaterialsModule,
+        TeacherAiModule,
+        MongooseModule.forFeature([
+            { name: ClassAiInteraction.name, schema: ClassAiInteractionSchema },
+        ]),
+    ],
+    controllers: [ClassAiController],
+    providers: [ClassAiService],
+})
+export class ClassAiModule {}
+```
+
+### Passo 7 - Criar cliente e página
+
+```ts
+// apps/web/src/lib/api/classAi.ts
+export type ClassAiAnswer = {
+    id: string;
+    answer: string;
+    sources: Array<{ materialId: string; title: string }>;
+};
+
+export async function askClassAi(subjectId: string, question: string) {
+    const response = await fetch(`/api/student/subjects/${subjectId}/ai/answers`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+        throw new Error(error.message ?? "Pedido inválido.");
+    }
+
+    return response.json() as Promise<ClassAiAnswer>;
+}
+```
+
+```tsx
+// apps/web/src/pages/student/StudentClassAiPage.tsx
+import { FormEvent, useState } from "react";
+import { ClassAiAnswer, askClassAi } from "../../lib/api/classAi";
+
+type Props = {
+    subjectId: string;
+};
+
+export function StudentClassAiPage({ subjectId }: Props) {
+    const [answer, setAnswer] = useState<ClassAiAnswer | null>(null);
+    const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError("");
+        setIsLoading(true);
+
+        const form = new FormData(event.currentTarget);
+
+        try {
+            setAnswer(await askClassAi(subjectId, String(form.get("question") ?? "")));
+            event.currentTarget.reset();
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Não foi possível obter resposta.");
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    return (
+        <main>
+            <h1>IA da disciplina</h1>
+            <form onSubmit={handleSubmit}>
+                <textarea name="question" minLength={10} required />
+                <button type="submit" disabled={isLoading}>
+                    {isLoading ? "A responder" : "Perguntar"}
+                </button>
+            </form>
+            {error ? <p role="alert">{error}</p> : null}
+            {answer ? (
+                <section>
+                    <p>{answer.answer}</p>
+                    <h2>Fontes usadas</h2>
+                    <ul>
+                        {answer.sources.map((source) => (
+                            <li key={source.materialId}>{source.title}</li>
+                        ))}
+                    </ul>
+                </section>
+            ) : null}
+        </main>
+    );
+}
+```
+
+### Passo 8 - Validar comportamento
 - Aluno inscrito recebe resposta com fontes.
-- Fonte usada pertence à disciplina.
-
-Cenários negativos:
-- Aluno fora da turma recebe `404`.
-- Sem materiais oficiais recebe `422`.
+- Aluno não inscrito recebe `403`.
 - Professor recebe `403`.
+- Disciplina sem materiais `PROCESSED` devolve `422`.
+- A resposta guarda interação com `studentId`, `classId` e `subjectId`.
+- A IA não usa materiais `REFERENCE_ONLY`.
 
-Comandos úteis:
+## Critérios de aceite
+- Inscrição é validada via `SchoolClass.studentIds`.
+- Fontes oficiais vêm de `OfficialMaterialsService`.
+- Voz docente vem de `TeacherAiVoiceService`.
+- Sem materiais processados há `422`.
+- Resposta mostra fontes usadas.
+
+## Validação final
+Executa:
+
 ```bash
 npm run test:unit
 npm run test:integration
-npm run test:contracts
-bash scripts/validate-planificacao.sh
 ```
 
-## Evidência de conclusão
-- Output do endpoint principal.
-- Registo de três negativos.
-- Print ou log da UI com sucesso/erro.
+Inclui testes de acesso cruzado entre turmas.
 
-## Handoff para o próximo BK
-- MF2 pode usar histórico sem expor dados fora da turma.
+## Evidence para PR/defesa
+- Pergunta de aluno inscrito com fontes visíveis.
+- Resposta `422` sem material processado.
+- Resposta `403` para aluno não inscrito.
+- Registo de `ClassAiInteraction`.
 
-## Checklist final
-- [ ] Header preservado sem alterar campos canónicos.
-- [ ] Código completo para schema, DTO, service, controller/módulo e frontend.
-- [ ] Sem funções por implementar nem payloads sem tipo.
-- [ ] Caminho principal e negativos com expected results.
-- [ ] Validação executada ou bloqueio registado com erro exato.
+## Handoff
+`BK-MF1-12` usa a mesma inscrição por `studentIds` para proteger leitura de publicações por alunos.
 
 ## Changelog
-- `2026-04-19`: guia semântico inicial alinhado ao requisito.
-- `2026-05-30`: guia reescrito como tutorial guiado para alunos, com código completo do BK e validação objetiva.
+- 2026-05-30: Guia reescrito para depender de inscrição real, materiais oficiais processados e voz docente.

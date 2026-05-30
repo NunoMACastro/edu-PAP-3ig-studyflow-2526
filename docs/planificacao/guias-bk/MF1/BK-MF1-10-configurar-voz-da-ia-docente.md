@@ -18,197 +18,419 @@
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-10-configurar-voz-da-ia-docente.md`
 - `last_updated`: `2026-05-30`
 
-## O que vamos fazer neste BK
-Este BK implementa `RF22`: Configurar “voz da IA” docente. Vamos construir a funcionalidade de ponta a ponta, com contrato de dados, validação, permissões, endpoint NestJS e chamada frontend.
+## Objetivo
+Implementar `RF22`: permitir que o professor configure a voz pedagógica da IA para uma disciplina.
 
-O guia é autocontido para o aluno: inclui o código necessário para este BK, explica o objetivo de cada bloco e define resultados esperados para sucesso e falha.
+## Importância
+A IA limitada do aluno não deve soar genérica. Deve respeitar o tom, nível de detalhe e regras definidos pelo professor, mas sem ignorar guardrails: a voz altera forma e pedagogia, não autoriza respostas sem fontes.
 
-## Porque é que isto é importante
-A `MF1` liga o estudo individual da `MF0` a contextos com salas, turmas, disciplinas e professores. Estes contextos aumentam o risco de fuga de dados se o backend confiar em IDs enviados pelo cliente.
-
-A regra base deste BK é simples: a sessão identifica o ator, o service confirma o contexto, e só depois a aplicação lê, escreve ou chama IA.
-
-## O que entra (scope)
-- Guardar tom, nível de detalhe e regras pedagógicas.
-- Confirmar ownership da disciplina.
+## Scope-in
+- Criar `TeacherAiVoice`.
+- Guardar tom, nível de detalhe e regras.
 - Ter uma configuração por disciplina.
-- Disponibilizar configuração para IA do aluno.
+- Expor `PUT` para criação/atualização.
+- Disponibilizar leitura para a IA limitada.
 
-## O que não entra (scope-out)
-- Notificações em tempo real.
-- Dashboards avançados.
-- Alterações fora do requisito deste BK.
+## Scope-out
+- Voz por aluno.
+- Voz global da escola.
+- Configuração de modelo externo.
+- Permissão para responder sem materiais oficiais.
 
-## Como saber que isto ficou bem
-- Ator correto executa o caminho principal.
-- Ator errado recebe erro controlado.
-- Contexto fora do ownership não é exposto.
-- Payload inválido é rejeitado.
+## Estado antes
+- Existem disciplinas e materiais oficiais.
+- Ainda não existe configuração docente de IA.
 
-## Metadados do BK (CANONICO/DERIVADO)
-- BK: `BK-MF1-10` (CANONICO)
-- Requisito: `RF22` (CANONICO)
-- Ator principal: professor dono da disciplina (DERIVADO)
-- Endpoint principal: `PUT /api/teacher/subjects/:subjectId/ai-voice` (DERIVADO)
-- Persistência principal: `teacher_ai_voices` (DERIVADO)
-- Fonte de verdade: `docs/RF.md` e `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md` (CANONICO)
+## Estado depois
+- Professor configura voz da IA numa disciplina sua.
+- A configuração pode ser atualizada com `PUT`.
+- `BK-MF1-11` consegue aplicar a voz ao prompt.
 
-## Pre-leitura mínima
-- `README.md`
-- `docs/RF.md`
-- `docs/RNF.md`
-- `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`
-- `docs/planificacao/backlogs/CONTRATO-CAMPOS-BK.md`
-- Dependências indicadas no header concluídas.
+## Pré-requisitos
+- `BK-MF1-08` com `SubjectsService.findOwnedSubject`.
+- `SessionGuard`.
+- Validação global de DTOs.
 
-## Glossário rápido
-- `Ownership`: regra que limita acesso ao dono ou ao contexto autorizado.
-- `Membership`: pertença a turma ou sala usada para autorizar acesso.
-- `DTO`: validação de entrada antes do service.
-- `Fonte oficial/processável`: conteúdo permitido para fundamentar resposta da IA.
-- `Guardrail`: regra que impede a IA de responder fora do contexto autorizado.
+## Glossário
+- **Tom**: estilo de comunicação, por exemplo calmo ou direto.
+- **Nível de detalhe**: profundidade esperada da explicação.
+- **Regra pedagógica**: instrução curta definida pelo professor.
 
-## Conceitos teóricos essenciais
-- “Voz” é estilo textual, não áudio.
-- Alunos não podem editar a voz docente.
-- Regras curtas e claras reduzem conflitos no prompt.
+## Conceitos teóricos
+Configuração de voz é dado pedagógico, não autorização. Mesmo que a regra peça uma resposta longa, o service da IA continua obrigado a usar apenas materiais oficiais processados.
 
-## Arquitetura final deste BK
-### Ficheiros a criar ou editar
-```text
-apps/api/src/modules/teacher-ai/schemas/teacher-ai-voice.schema.ts
-apps/api/src/modules/teacher-ai/dto/update-teacher-ai-voice.dto.ts
-apps/api/src/modules/teacher-ai/services/teacher-ai-voice.service.ts
-apps/api/src/modules/teacher-ai/controllers/teacher-ai-voice.controller.ts
-apps/web/src/lib/teacherAiVoiceApi.ts
-```
+## Arquitetura do BK
+- `apps/api/src/modules/teacher-ai/schemas/teacher-ai-voice.schema.ts`
+- `apps/api/src/modules/teacher-ai/dto/update-teacher-ai-voice.dto.ts`
+- `apps/api/src/modules/teacher-ai/teacher-ai-voice.service.ts`
+- `apps/api/src/modules/teacher-ai/teacher-ai-voice.controller.ts`
+- `apps/api/src/modules/teacher-ai/teacher-ai.module.ts`
+- `apps/web/src/lib/api/teacherAiVoice.ts`
+- `apps/web/src/pages/teacher/TeacherAiVoicePage.tsx`
 
-### Sequência do fluxo
-1. Frontend envia pedido autenticado.
-2. Controller aplica sessão.
-3. Service confirma ownership ou membership.
-4. Dados são persistidos ou usados como fontes autorizadas.
-5. Resposta devolve view simples.
-
-### Riscos técnicos a controlar
-- Aceitar identidade no body.
-- Carregar dados só por `_id`.
-- Misturar contextos de professor/aluno.
-- Responder com IA sem fontes oficiais quando existir IA.
+Endpoints:
+- `PUT /api/teacher/subjects/:subjectId/ai-voice`
+- `GET /api/teacher/subjects/:subjectId/ai-voice`
 
 ## Guia linear de implementação
 
-### Passo 1 - Confirmar contrato e dependências
-Relê o requisito funcional e confirma que as dependências do header estão concluídas. Se uma dependência não existir, este BK não deve inventar outro caminho; deve aguardar ou implementar primeiro a dependência.
+### Passo 1 - Criar schema
 
-Validação deste passo:
-- O endpoint pertence ao ator correto.
-- O service consegue confirmar ownership ou membership sem confiar no body.
-- A funcionalidade não altera RFs de outras macro-features.
-
-### Passo 2 - Criar modelo e DTO
 ```ts
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
-import { ArrayMaxSize, IsArray, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+// apps/api/src/modules/teacher-ai/schemas/teacher-ai-voice.schema.ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Types } from "mongoose";
+
 export type TeacherAiVoiceDocument = HydratedDocument<TeacherAiVoice>;
-@Schema({ timestamps: true, collection: 'teacher_ai_voices' })
-export class TeacherAiVoice { @Prop({ type: Types.ObjectId, ref: 'Subject', required: true, unique: true }) subjectId!: Types.ObjectId; @Prop({ type: Types.ObjectId, ref: 'User', required: true }) teacherId!: Types.ObjectId; @Prop({ enum: ['CALM', 'DIRECT', 'SOCRATIC'], default: 'CALM' }) tone!: 'CALM' | 'DIRECT' | 'SOCRATIC'; @Prop({ enum: ['SHORT', 'BALANCED', 'DETAILED'], default: 'BALANCED' }) detailLevel!: 'SHORT' | 'BALANCED' | 'DETAILED'; @Prop({ type: [String], default: [] }) rules!: string[]; }
+export type TeacherAiTone = "CALM" | "DIRECT" | "SOCRATIC";
+export type TeacherAiDetailLevel = "SHORT" | "BALANCED" | "DETAILED";
+
+@Schema({ timestamps: true, collection: "teacher_ai_voices" })
+export class TeacherAiVoice {
+    @Prop({ type: Types.ObjectId, ref: "Subject", required: true, unique: true, index: true })
+    subjectId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    teacherId!: Types.ObjectId;
+
+    @Prop({ required: true, enum: ["CALM", "DIRECT", "SOCRATIC"], default: "CALM" })
+    tone!: TeacherAiTone;
+
+    @Prop({ required: true, enum: ["SHORT", "BALANCED", "DETAILED"], default: "BALANCED" })
+    detailLevel!: TeacherAiDetailLevel;
+
+    @Prop({ type: [String], default: [] })
+    rules!: string[];
+}
+
 export const TeacherAiVoiceSchema = SchemaFactory.createForClass(TeacherAiVoice);
-export class UpdateTeacherAiVoiceDto { @IsEnum(['CALM', 'DIRECT', 'SOCRATIC']) tone!: 'CALM' | 'DIRECT' | 'SOCRATIC'; @IsEnum(['SHORT', 'BALANCED', 'DETAILED']) detailLevel!: 'SHORT' | 'BALANCED' | 'DETAILED'; @IsOptional() @IsArray() @ArrayMaxSize(8) @IsString({ each: true }) @MaxLength(160, { each: true }) rules?: string[]; }
+TeacherAiVoiceSchema.index({ teacherId: 1, subjectId: 1 });
 ```
 
-Explicação do código:
-- O schema guarda apenas o estado necessário ao requisito.
-- O DTO permite só os campos que o cliente pode realmente escolher.
-- Campos de identidade vêm da sessão ou de relações já persistidas.
-- Os índices refletem as queries usadas pelo service.
+### Passo 2 - Criar DTO
 
-### Passo 3 - Criar service completo
 ```ts
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
-import { Subject, SubjectDocument } from '../../subjects/schemas/subject.schema';
-import { UpdateTeacherAiVoiceDto } from '../dto/update-teacher-ai-voice.dto';
-import { TeacherAiVoice, TeacherAiVoiceDocument } from '../schemas/teacher-ai-voice.schema';
-@Injectable()
-export class TeacherAiVoiceService { constructor(@InjectModel(TeacherAiVoice.name) private readonly voiceModel: Model<TeacherAiVoiceDocument>, @InjectModel(Subject.name) private readonly subjectModel: Model<SubjectDocument>) {} async upsert(actor: AuthenticatedUser, subjectId: string, dto: UpdateTeacherAiVoiceDto) { this.assertTeacher(actor); const subject = await this.findOwnedSubject(actor.id, subjectId); const voice = await this.voiceModel.findOneAndUpdate({ subjectId: subject._id }, { teacherId: new Types.ObjectId(actor.id), tone: dto.tone, detailLevel: dto.detailLevel, rules: (dto.rules ?? []).map((r) => r.trim()).filter(Boolean) }, { new: true, upsert: true, setDefaultsOnInsert: true }); return { id: voice._id.toString(), subjectId: voice.subjectId.toString(), tone: voice.tone, detailLevel: voice.detailLevel, rules: voice.rules }; } private async findOwnedSubject(teacherId: string, subjectId: string) { const subject = await this.subjectModel.findOne({ _id: new Types.ObjectId(subjectId), teacherId: new Types.ObjectId(teacherId) }); if (!subject) throw new NotFoundException('Disciplina não encontrada para este professor.'); return subject; } private assertTeacher(actor: AuthenticatedUser) { if (actor.role !== 'TEACHER') throw new ForbiddenException('Apenas professores podem configurar a voz da IA.'); } }
-```
+// apps/api/src/modules/teacher-ai/dto/update-teacher-ai-voice.dto.ts
+import { ArrayMaxSize, IsArray, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 
-Explicação do código:
-- A autorização acontece antes de carregar dados sensíveis.
-- As queries filtram por professor, aluno, turma, disciplina ou sala, consoante o BK.
-- Quando existe IA, o provider recebe apenas fontes autorizadas.
-- Não há chamadas para métodos externos por implementar neste BK.
+export class UpdateTeacherAiVoiceDto {
+    @IsIn(["CALM", "DIRECT", "SOCRATIC"])
+    tone!: "CALM" | "DIRECT" | "SOCRATIC";
 
-### Passo 4 - Criar controller e módulo
-```ts
-import { Body, Controller, Param, Put, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
-import { SessionGuard } from '../../auth/guards/session.guard';
-import { UpdateTeacherAiVoiceDto } from '../dto/update-teacher-ai-voice.dto';
-import { TeacherAiVoiceService } from '../services/teacher-ai-voice.service';
-@UseGuards(SessionGuard)
-@Controller('api/teacher/subjects/:subjectId/ai-voice')
-export class TeacherAiVoiceController { constructor(private readonly service: TeacherAiVoiceService) {} @Put() upsert(@Req() request: Request, @Param('subjectId') subjectId: string, @Body() dto: UpdateTeacherAiVoiceDto) { return this.service.upsert(request.user, subjectId, dto); } }
-```
+    @IsIn(["SHORT", "BALANCED", "DETAILED"])
+    detailLevel!: "SHORT" | "BALANCED" | "DETAILED";
 
-Explicação do código:
-- `SessionGuard` obriga sessão válida.
-- `request.user` é a identidade confiável.
-- O controller não recebe `userId`, `teacherId` ou `studentId` no body.
-- O módulo regista schemas e provider necessários para o service.
-
-### Passo 5 - Criar cliente frontend
-```tsx
-export async function submitTeacherContext(url: string, payload: Record<string, unknown>) {
-  const response = await fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  if (!response.ok) throw new Error('Não foi possível concluir a operação.');
-  return response.json();
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(8)
+    @IsString({ each: true })
+    @MaxLength(180, { each: true })
+    rules?: string[];
 }
 ```
 
-Explicação do código:
-- O payload é tipado.
-- `credentials: 'include'` envia a sessão sem expor tokens.
-- O erro mostrado ao utilizador é seguro e curto.
-- O backend continua a validar mesmo que a UI bloqueie campos vazios.
+### Passo 3 - Criar service
 
-### Passo 6 - Validar caminho principal e negativos
-Caminho principal:
-- Professor guarda voz docente.
-- Configuração fica associada à disciplina.
+```ts
+// apps/api/src/modules/teacher-ai/teacher-ai-voice.service.ts
+import { ForbiddenException, Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { Subject } from "../subjects/schemas/subject.schema";
+import { SubjectsService } from "../subjects/subjects.service";
+import { UpdateTeacherAiVoiceDto } from "./dto/update-teacher-ai-voice.dto";
+import { TeacherAiVoice, TeacherAiVoiceDocument } from "./schemas/teacher-ai-voice.schema";
 
-Cenários negativos:
+@Injectable()
+export class TeacherAiVoiceService {
+    constructor(
+        @InjectModel(TeacherAiVoice.name)
+        private readonly voiceModel: Model<TeacherAiVoiceDocument>,
+        private readonly subjectsService: SubjectsService,
+    ) {}
+
+    async upsert(actor: AuthenticatedUser, subjectId: string, dto: UpdateTeacherAiVoiceDto) {
+        this.assertTeacher(actor);
+        const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
+
+        const voice = await this.voiceModel.findOneAndUpdate(
+            { subjectId: subject._id },
+            {
+                teacherId: new Types.ObjectId(actor.id),
+                subjectId: subject._id,
+                tone: dto.tone,
+                detailLevel: dto.detailLevel,
+                rules: this.cleanRules(dto.rules ?? []),
+            },
+            { new: true, upsert: true, setDefaultsOnInsert: true },
+        );
+
+        return this.toView(voice);
+    }
+
+    async getForTeacher(actor: AuthenticatedUser, subjectId: string) {
+        this.assertTeacher(actor);
+        const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
+        const voice = await this.voiceModel.findOne({ subjectId: subject._id });
+        return voice ? this.toView(voice) : this.defaultVoice(subject);
+    }
+
+    async findForSubject(subject: Subject) {
+        return this.voiceModel.findOne({ subjectId: subject._id }).lean();
+    }
+
+    private cleanRules(rules: string[]) {
+        return rules
+            .map((rule) => rule.trim())
+            .filter((rule) => rule.length > 0)
+            .slice(0, 8);
+    }
+
+    private assertTeacher(actor: AuthenticatedUser) {
+        if (actor.role !== "TEACHER") {
+            throw new ForbiddenException("Apenas professores podem configurar a voz da IA.");
+        }
+    }
+
+    private defaultVoice(subject: Subject) {
+        return {
+            id: "",
+            subjectId: subject._id.toString(),
+            teacherId: subject.teacherId.toString(),
+            tone: "CALM",
+            detailLevel: "BALANCED",
+            rules: [],
+        };
+    }
+
+    private toView(voice: TeacherAiVoice | TeacherAiVoiceDocument) {
+        return {
+            id: voice._id.toString(),
+            subjectId: voice.subjectId.toString(),
+            teacherId: voice.teacherId.toString(),
+            tone: voice.tone,
+            detailLevel: voice.detailLevel,
+            rules: voice.rules,
+        };
+    }
+}
+```
+
+### Passo 4 - Criar controller com método PUT
+
+```ts
+// apps/api/src/modules/teacher-ai/teacher-ai-voice.controller.ts
+import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
+import {
+    AuthenticatedRequest,
+    AuthenticatedUser,
+} from "../../common/types/authenticated-request";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { UpdateTeacherAiVoiceDto } from "./dto/update-teacher-ai-voice.dto";
+import { TeacherAiVoiceService } from "./teacher-ai-voice.service";
+
+@Controller("api/teacher/subjects/:subjectId/ai-voice")
+@UseGuards(SessionGuard)
+export class TeacherAiVoiceController {
+    constructor(private readonly teacherAiVoiceService: TeacherAiVoiceService) {}
+
+    @Put()
+    update(
+        @Req() request: AuthenticatedRequest,
+        @Param("subjectId") subjectId: string,
+        @Body() dto: UpdateTeacherAiVoiceDto,
+    ) {
+        return this.teacherAiVoiceService.upsert(
+            request.user as AuthenticatedUser,
+            subjectId,
+            dto,
+        );
+    }
+
+    @Get()
+    get(@Req() request: AuthenticatedRequest, @Param("subjectId") subjectId: string) {
+        return this.teacherAiVoiceService.getForTeacher(
+            request.user as AuthenticatedUser,
+            subjectId,
+        );
+    }
+}
+```
+
+### Passo 5 - Criar módulo
+
+```ts
+// apps/api/src/modules/teacher-ai/teacher-ai.module.ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { SubjectsModule } from "../subjects/subjects.module";
+import { TeacherAiVoice, TeacherAiVoiceSchema } from "./schemas/teacher-ai-voice.schema";
+import { TeacherAiVoiceController } from "./teacher-ai-voice.controller";
+import { TeacherAiVoiceService } from "./teacher-ai-voice.service";
+
+@Module({
+    imports: [
+        SubjectsModule,
+        MongooseModule.forFeature([
+            { name: TeacherAiVoice.name, schema: TeacherAiVoiceSchema },
+        ]),
+    ],
+    controllers: [TeacherAiVoiceController],
+    providers: [TeacherAiVoiceService],
+    exports: [TeacherAiVoiceService, MongooseModule],
+})
+export class TeacherAiModule {}
+```
+
+### Passo 6 - Criar cliente frontend com PUT
+
+```ts
+// apps/web/src/lib/api/teacherAiVoice.ts
+export type TeacherAiVoiceView = {
+    id: string;
+    subjectId: string;
+    teacherId: string;
+    tone: "CALM" | "DIRECT" | "SOCRATIC";
+    detailLevel: "SHORT" | "BALANCED" | "DETAILED";
+    rules: string[];
+};
+
+async function parseResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+        throw new Error(error.message ?? "Pedido inválido.");
+    }
+
+    return response.json() as Promise<T>;
+}
+
+export async function updateTeacherAiVoice(
+    subjectId: string,
+    input: Pick<TeacherAiVoiceView, "tone" | "detailLevel" | "rules">,
+) {
+    const response = await fetch(`/api/teacher/subjects/${subjectId}/ai-voice`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+
+    return parseResponse<TeacherAiVoiceView>(response);
+}
+
+export async function getTeacherAiVoice(subjectId: string) {
+    const response = await fetch(`/api/teacher/subjects/${subjectId}/ai-voice`, {
+        credentials: "include",
+    });
+
+    return parseResponse<TeacherAiVoiceView>(response);
+}
+```
+
+### Passo 7 - Criar página do professor
+
+```tsx
+// apps/web/src/pages/teacher/TeacherAiVoicePage.tsx
+import { FormEvent, useEffect, useState } from "react";
+import {
+    TeacherAiVoiceView,
+    getTeacherAiVoice,
+    updateTeacherAiVoice,
+} from "../../lib/api/teacherAiVoice";
+
+type Props = {
+    subjectId: string;
+};
+
+export function TeacherAiVoicePage({ subjectId }: Props) {
+    const [voice, setVoice] = useState<TeacherAiVoiceView | null>(null);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        getTeacherAiVoice(subjectId)
+            .then(setVoice)
+            .catch((reason: Error) => setError(reason.message));
+    }, [subjectId]);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError("");
+
+        const form = new FormData(event.currentTarget);
+        const rules = String(form.get("rules") ?? "")
+            .split("\n")
+            .map((rule) => rule.trim())
+            .filter(Boolean);
+
+        try {
+            const updated = await updateTeacherAiVoice(subjectId, {
+                tone: String(form.get("tone") ?? "CALM") as TeacherAiVoiceView["tone"],
+                detailLevel: String(form.get("detailLevel") ?? "BALANCED") as TeacherAiVoiceView["detailLevel"],
+                rules,
+            });
+            setVoice(updated);
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Não foi possível guardar a voz.");
+        }
+    }
+
+    return (
+        <main>
+            <h1>Voz da IA docente</h1>
+            <form onSubmit={handleSubmit}>
+                <select name="tone" defaultValue={voice?.tone ?? "CALM"}>
+                    <option value="CALM">Calma</option>
+                    <option value="DIRECT">Direta</option>
+                    <option value="SOCRATIC">Socrática</option>
+                </select>
+                <select name="detailLevel" defaultValue={voice?.detailLevel ?? "BALANCED"}>
+                    <option value="SHORT">Curta</option>
+                    <option value="BALANCED">Equilibrada</option>
+                    <option value="DETAILED">Detalhada</option>
+                </select>
+                <textarea name="rules" defaultValue={voice?.rules.join("\n") ?? ""} />
+                <button type="submit">Guardar voz</button>
+            </form>
+            {error ? <p role="alert">{error}</p> : null}
+        </main>
+    );
+}
+```
+
+### Passo 8 - Validar comportamento
+- O frontend usa `PUT`, tal como o controller.
+- Professor cria configuração na primeira gravação.
+- Segunda gravação atualiza a mesma configuração.
+- Regras vazias são removidas.
 - Aluno recebe `403`.
-- Disciplina de outro professor recebe `404`.
-- Tom inválido recebe `400`.
+- Professor sem ownership recebe `404`.
 
-Comandos úteis:
+## Critérios de aceite
+- Uma configuração por disciplina.
+- `teacherId` vem da sessão.
+- Cliente e controller usam `PUT`.
+- `TeacherAiModule` exporta `TeacherAiVoiceService`.
+- Regras são normalizadas antes de gravar.
+
+## Validação final
+Executa:
+
 ```bash
 npm run test:unit
 npm run test:integration
-npm run test:contracts
-bash scripts/validate-planificacao.sh
 ```
 
-## Evidência de conclusão
-- Output do endpoint principal.
-- Registo de três negativos.
-- Print ou log da UI com sucesso/erro.
+Confirma no diff que não existe chamada `POST` para a rota de atualização de voz.
 
-## Handoff para o próximo BK
-- `BK-MF1-11` usa esta voz no prompt.
+## Evidence para PR/defesa
+- Screenshot da configuração guardada.
+- Segundo pedido `PUT` a atualizar a mesma configuração.
+- Resposta `403` para aluno.
+- Demonstração de regras vazias removidas.
 
-## Checklist final
-- [ ] Header preservado sem alterar campos canónicos.
-- [ ] Código completo para schema, DTO, service, controller/módulo e frontend.
-- [ ] Sem funções por implementar nem payloads sem tipo.
-- [ ] Caminho principal e negativos com expected results.
-- [ ] Validação executada ou bloqueio registado com erro exato.
+## Handoff
+`BK-MF1-11` deve ler `TeacherAiVoiceService.findForSubject` e usar tom, nível de detalhe e regras no prompt da IA limitada.
 
 ## Changelog
-- `2026-04-19`: guia semântico inicial alinhado ao requisito.
-- `2026-05-30`: guia reescrito como tutorial guiado para alunos, com código completo do BK e validação objetiva.
+- 2026-05-30: Guia reescrito com endpoint `PUT`, sanitização de regras e módulo exportado.

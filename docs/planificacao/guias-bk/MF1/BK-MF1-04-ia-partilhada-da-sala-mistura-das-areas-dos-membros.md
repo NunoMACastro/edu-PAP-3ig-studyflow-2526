@@ -18,221 +18,405 @@
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md`
 - `last_updated`: `2026-05-30`
 
-## O que vamos fazer neste BK
-Este BK implementa `RF16`: IA partilhada da sala (mistura das áreas dos membros). Vamos construir a funcionalidade de ponta a ponta, com contrato de dados, validação, regras de permissão, endpoint NestJS e chamada no frontend.
+## Objetivo
+Implementar `RF16`: permitir que membros de uma sala usem uma IA partilhada baseada apenas nas fontes textuais partilhadas nessa sala.
 
-O guia está escrito para ser seguido por alunos: cada bloco de código tem uma finalidade concreta, não depende de funções escondidas e indica como validar o comportamento esperado.
+## Importância
+A IA da sala mistura contribuições dos membros, mas não pode consultar materiais privados nem salas onde o aluno não é membro. A segurança depende de duas validações: membership da sala e seleção de fontes pertencentes à sala.
 
-## Porque é que isto é importante
-A `MF1` acrescenta colaboração e contexto partilhado ao StudyFlow. A partir daqui, já não basta guardar dados: é preciso provar que cada aluno ou professor só acede ao contexto certo.
+## Scope-in
+- Criar `RoomAiInteraction`.
+- Validar membership antes da chamada IA.
+- Usar apenas `RoomShare.usableByAi`.
+- Permitir filtrar fontes por `sourceIds`.
+- Guardar pergunta, resposta e fontes.
 
-Neste BK, a regra mais importante é: a identidade vem da sessão autenticada e o contexto é confirmado no backend. O frontend ajuda a experiência, mas nunca é a autoridade de segurança.
-
-## O que entra (scope)
-- Responder com IA usando apenas partilhas processáveis da sala.
-- Confirmar membership do aluno.
-- Guardar pergunta, resposta e fontes usadas.
-- Bloquear resposta sem fontes.
-
-## O que não entra (scope-out)
-- Materiais privados não partilhados.
+## Scope-out
 - Chat em tempo real.
-- Voz docente oficial.
+- Materiais privados fora da sala.
+- Voz docente.
+- Respostas sem fontes.
 
-## Como saber que isto ficou bem
-- Membro recebe resposta com fontes.
-- Não membro não acede.
-- Sem fontes devolve `422`.
-- Resposta não usa dados fora da sala.
+## Estado antes
+- `BK-MF1-02` criou salas.
+- `BK-MF1-03` criou partilhas e fontes textuais.
 
-## Metadados do BK (CANONICO/DERIVADO)
-- BK: `BK-MF1-04` (CANONICO)
-- Requisito: `RF16` (CANONICO)
-- Ator principal: aluno membro da sala (DERIVADO)
-- Endpoint principal: `POST /api/study-rooms/:roomId/ai/answers` (DERIVADO)
-- Persistência principal: `room_ai_requests` (DERIVADO)
-- Fonte de verdade: `docs/RF.md` e `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md` (CANONICO)
+## Estado depois
+- Membro pergunta à IA da sala.
+- API responde com fontes da sala.
+- Sala sem fontes devolve `422`.
+- Não membro recebe erro.
 
-## Pre-leitura mínima
-- `README.md`
-- `docs/RF.md`
-- `docs/RNF.md`
-- `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`
-- `docs/planificacao/backlogs/CONTRATO-CAMPOS-BK.md`
-- `BK-MF1-02` e `BK-MF1-03` concluídos.
+## Pré-requisitos
+- `StudyRoomsService.ensureMember`.
+- `RoomSharesService.findUsableSharesForRoom`.
+- `AiModule` com `AI_PROVIDER` exportado.
 
-## Glossário rápido
-- `Ownership`: garantia de que um utilizador só acede ao seu contexto.
-- `Membership`: garantia de que um aluno pertence a uma sala ou turma antes de ver dados desse contexto.
-- `DTO`: classe que valida o body antes do service.
-- `Fonte processável`: conteúdo que pode alimentar IA sem inventar informação.
-- `IDOR`: falha em que trocar um ID no pedido permite aceder a dados de outra pessoa.
+## Glossário
+- **Fonte da sala**: partilha textual com `usableByAi`.
+- **sourceIds**: lista opcional de partilhas escolhidas pelo aluno.
+- **Interação da sala**: registo de pergunta, resposta e fontes.
 
-## Conceitos teóricos essenciais
-- IA partilhada só é segura se a fronteira da sala for respeitada.
-- A resposta deve devolver IDs das fontes usadas para validação.
-- Sem fontes, a ação correta é recusar; não inventar.
+## Conceitos teóricos
+A lista `sourceIds` nunca é confiável por si só. O backend tem de cruzar os IDs pedidos com as fontes da própria sala. Se o aluno enviar um ID de outra sala, esse ID simplesmente não entra na lista de fontes válidas.
 
-## Arquitetura final deste BK
-### Ficheiros a criar ou editar
-```text
-apps/api/src/modules/study-rooms/schemas/room-ai-request.schema.ts
-apps/api/src/modules/study-rooms/dto/ask-room-ai.dto.ts
-apps/api/src/modules/study-rooms/services/room-ai.service.ts
-apps/api/src/modules/study-rooms/controllers/room-ai.controller.ts
-apps/web/src/lib/roomAiApi.ts
-```
+## Arquitetura do BK
+- `apps/api/src/modules/study-rooms/schemas/room-ai-interaction.schema.ts`
+- `apps/api/src/modules/study-rooms/dto/ask-room-ai.dto.ts`
+- `apps/api/src/modules/study-rooms/prompts/room-ai.prompt.ts`
+- `apps/api/src/modules/study-rooms/room-ai.service.ts`
+- `apps/api/src/modules/study-rooms/room-ai.controller.ts`
+- `apps/api/src/modules/study-rooms/study-rooms.module.ts`
+- `apps/web/src/lib/api/roomAi.ts`
+- `apps/web/src/pages/student/RoomAiPage.tsx`
 
-### Sequência do fluxo
-1. Aluno pergunta dentro da sala.
-2. Service confirma membership.
-3. Service carrega `RoomShare` processáveis.
-4. Provider recebe apenas essas fontes.
-5. Interação é guardada com `sourceIds`.
-
-### Riscos técnicos a controlar
-- Responder sem fontes.
-- Usar materiais privados.
-- Guardar resposta sem fontes usadas.
+Endpoint:
+- `POST /api/study-rooms/:roomId/ai/answers`
 
 ## Guia linear de implementação
 
-### Passo 1 - Confirmar contrato e dependências
-Confirma o header, o requisito funcional e as dependências. Se uma dependência ainda não existir no projeto real, implementa-a primeiro ou mantém o BK bloqueado; não inventes um atalho no endpoint.
+### Passo 1 - Criar schema da interação
 
-Validação deste passo:
-- O endpoint usa o ator correto: aluno em `/api/study-rooms` ou `/api/student`, professor em `/api/teacher`.
-- O service sabe verificar ownership ou membership no backend.
-- Não há campos de identidade confiável no body.
-
-### Passo 2 - Criar modelo e DTO
 ```ts
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
-import { IsString, MaxLength, MinLength } from 'class-validator';
-export type RoomAiRequestDocument = HydratedDocument<RoomAiRequest>;
-@Schema({ timestamps: true, collection: 'room_ai_requests' })
-export class RoomAiRequest {
-  @Prop({ type: Types.ObjectId, ref: 'StudyRoom', required: true, index: true }) roomId!: Types.ObjectId;
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true }) askedById!: Types.ObjectId;
-  @Prop({ required: true, trim: true, maxlength: 1000 }) question!: string;
-  @Prop({ required: true, trim: true }) answer!: string;
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'RoomShare' }], default: [] }) sourceIds!: Types.ObjectId[];
+// apps/api/src/modules/study-rooms/schemas/room-ai-interaction.schema.ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
+
+export type RoomAiInteractionDocument = HydratedDocument<RoomAiInteraction>;
+
+@Schema({ timestamps: true, collection: "room_ai_interactions" })
+export class RoomAiInteraction {
+    @Prop({ type: Types.ObjectId, ref: "StudyRoom", required: true, index: true })
+    roomId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    studentId!: Types.ObjectId;
+
+    @Prop({ required: true, trim: true, maxlength: 800 })
+    question!: string;
+
+    @Prop({ required: true, trim: true, maxlength: 12000 })
+    answer!: string;
+
+    @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
+    sources!: Array<{ shareId: string; title: string }>;
 }
-export const RoomAiRequestSchema = SchemaFactory.createForClass(RoomAiRequest);
-export class AskRoomAiDto { @IsString() @MinLength(3) @MaxLength(1000) question!: string; }
+
+export const RoomAiInteractionSchema = SchemaFactory.createForClass(RoomAiInteraction);
+RoomAiInteractionSchema.index({ roomId: 1, createdAt: -1 });
 ```
 
-Explicação do código:
-- O schema guarda o mínimo necessário para o requisito.
-- Os índices acompanham as queries que o service vai executar.
-- O DTO valida forma e tamanho antes de chegar à base de dados.
-- IDs de dono, autor ou aluno autenticado são derivados da sessão.
+### Passo 2 - Criar DTO
 
-### Passo 3 - Criar service completo
 ```ts
-import { ForbiddenException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
-import { AiProvider } from '../../ai/providers/ai.provider';
-import { AskRoomAiDto } from '../dto/ask-room-ai.dto';
-import { RoomAiRequest, RoomAiRequestDocument } from '../schemas/room-ai-request.schema';
-import { RoomShare, RoomShareDocument } from '../schemas/room-share.schema';
-import { StudyRoom, StudyRoomDocument } from '../schemas/study-room.schema';
+// apps/api/src/modules/study-rooms/dto/ask-room-ai.dto.ts
+import { ArrayMaxSize, IsArray, IsMongoId, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+
+export class AskRoomAiDto {
+    @IsString()
+    @MinLength(10)
+    @MaxLength(800)
+    question!: string;
+
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(12)
+    @IsMongoId({ each: true })
+    sourceIds?: string[];
+}
+```
+
+### Passo 3 - Criar prompt
+
+```ts
+// apps/api/src/modules/study-rooms/prompts/room-ai.prompt.ts
+import { RoomShareDocument } from "../schemas/room-share.schema";
+
+export function buildRoomAiPrompt(question: string, shares: RoomShareDocument[]) {
+    const sources = shares
+        .map((share, index) => {
+            return `Fonte ${index + 1}: ${share.title}\n${share.textContent ?? ""}`;
+        })
+        .join("\n\n");
+
+    return [
+        "Responde apenas com base nas fontes partilhadas nesta sala.",
+        "Se as fontes não cobrirem a pergunta, diz que a sala ainda não tem material suficiente.",
+        `Pergunta: ${question}`,
+        sources,
+        "Devolve JSON com as chaves answer e sourceShareIds.",
+    ].join("\n\n");
+}
+```
+
+### Passo 4 - Criar service
+
+```ts
+// apps/api/src/modules/study-rooms/room-ai.service.ts
+import {
+    ForbiddenException,
+    Inject,
+    Injectable,
+    ServiceUnavailableException,
+    UnprocessableEntityException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { AI_PROVIDER, AiProvider } from "../ai/providers/ai-provider";
+import { AskRoomAiDto } from "./dto/ask-room-ai.dto";
+import { buildRoomAiPrompt } from "./prompts/room-ai.prompt";
+import { RoomSharesService } from "./room-shares.service";
+import { RoomAiInteraction, RoomAiInteractionDocument } from "./schemas/room-ai-interaction.schema";
+import { StudyRoomsService } from "./study-rooms.service";
+
 @Injectable()
 export class RoomAiService {
-  constructor(@InjectModel(RoomAiRequest.name) private readonly requestModel: Model<RoomAiRequestDocument>, @InjectModel(RoomShare.name) private readonly shareModel: Model<RoomShareDocument>, @InjectModel(StudyRoom.name) private readonly roomModel: Model<StudyRoomDocument>, private readonly aiProvider: AiProvider) {}
-  async answer(actor: AuthenticatedUser, roomId: string, dto: AskRoomAiDto) {
-    this.assertStudent(actor);
-    const room = await this.findRoomForMember(actor.id, roomId);
-    const sources = await this.shareModel.find({ roomId: room._id, processableForAi: true, content: { $ne: '' } }).sort({ createdAt: -1 }).limit(8).lean();
-    if (!sources.length) throw new UnprocessableEntityException('A sala ainda não tem fontes processáveis.');
-    const aiAnswer = await this.aiProvider.answer({ system: 'Responde apenas com base nas fontes partilhadas nesta sala.', user: dto.question.trim(), sources: sources.map((source) => ({ id: source._id.toString(), title: source.title, text: source.content })) });
-    const saved = await this.requestModel.create({ roomId: room._id, askedById: new Types.ObjectId(actor.id), question: dto.question.trim(), answer: aiAnswer.text, sourceIds: aiAnswer.sourcesUsed.map((id) => new Types.ObjectId(id)) });
-    return { id: saved._id.toString(), answer: saved.answer, sourcesUsed: saved.sourceIds.map((id) => id.toString()) };
-  }
-  private async findRoomForMember(userId: string, roomId: string) { const room = await this.roomModel.findOne({ _id: new Types.ObjectId(roomId), memberIds: new Types.ObjectId(userId) }); if (!room) throw new NotFoundException('Sala não encontrada para este aluno.'); return room; }
-  private assertStudent(actor: AuthenticatedUser) { if (actor.role !== 'STUDENT') throw new ForbiddenException('Apenas alunos membros podem usar a IA da sala.'); }
+    constructor(
+        @InjectModel(RoomAiInteraction.name)
+        private readonly interactionModel: Model<RoomAiInteractionDocument>,
+        private readonly studyRoomsService: StudyRoomsService,
+        private readonly roomSharesService: RoomSharesService,
+        @Inject(AI_PROVIDER)
+        private readonly aiProvider: AiProvider,
+    ) {}
+
+    async answer(actor: AuthenticatedUser, roomId: string, dto: AskRoomAiDto) {
+        this.assertStudent(actor);
+        const room = await this.studyRoomsService.ensureMember(actor.id, roomId);
+        const shares = await this.roomSharesService.findUsableSharesForRoom(
+            room._id.toString(),
+            dto.sourceIds ?? [],
+        );
+
+        if (shares.length === 0) {
+            throw new UnprocessableEntityException("A sala ainda não tem fontes textuais partilhadas.");
+        }
+
+        const prompt = buildRoomAiPrompt(dto.question.trim(), shares);
+
+        let result: Record<string, unknown>;
+        try {
+            result = await this.aiProvider.generateStudyTool({
+                prompt,
+                type: "EXPLANATION",
+            });
+        } catch {
+            throw new ServiceUnavailableException("A IA não está disponível neste momento.");
+        }
+
+        const answer = typeof result.answer === "string" ? result.answer : "";
+        const sources = shares.map((share) => ({
+            shareId: share._id.toString(),
+            title: share.title,
+        }));
+
+        const interaction = await this.interactionModel.create({
+            roomId: room._id,
+            studentId: new Types.ObjectId(actor.id),
+            question: dto.question.trim(),
+            answer,
+            sources,
+        });
+
+        return {
+            id: interaction._id.toString(),
+            answer: interaction.answer,
+            sources: interaction.sources,
+        };
+    }
+
+    private assertStudent(actor: AuthenticatedUser) {
+        if (actor.role !== "STUDENT") {
+            throw new ForbiddenException("Apenas alunos membros podem usar a IA da sala.");
+        }
+    }
 }
 ```
 
-Explicação do código:
-- A autorização acontece antes da leitura ou escrita principal.
-- A query de contexto usa membership ou ownership, não apenas `_id`.
-- Não há métodos por implementar fora do ficheiro mostrado.
-- As exceções devolvem estados previsíveis para a UI e para os testes.
+### Passo 5 - Criar controller
 
-### Passo 4 - Criar controller e módulo
 ```ts
-import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
-import { SessionGuard } from '../../auth/guards/session.guard';
-import { AskRoomAiDto } from '../dto/ask-room-ai.dto';
-import { RoomAiService } from '../services/room-ai.service';
+// apps/api/src/modules/study-rooms/room-ai.controller.ts
+import { Body, Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+    AuthenticatedRequest,
+    AuthenticatedUser,
+} from "../../common/types/authenticated-request";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AskRoomAiDto } from "./dto/ask-room-ai.dto";
+import { RoomAiService } from "./room-ai.service";
+
+@Controller("api/study-rooms/:roomId/ai/answers")
 @UseGuards(SessionGuard)
-@Controller('api/study-rooms/:roomId/ai')
 export class RoomAiController {
-  constructor(private readonly service: RoomAiService) {}
-  @Post('answers') answer(@Req() request: Request, @Param('roomId') roomId: string, @Body() dto: AskRoomAiDto) { return this.service.answer(request.user, roomId, dto); }
+    constructor(private readonly roomAiService: RoomAiService) {}
+
+    @Post()
+    answer(
+        @Req() request: AuthenticatedRequest,
+        @Param("roomId") roomId: string,
+        @Body() dto: AskRoomAiDto,
+    ) {
+        return this.roomAiService.answer(request.user as AuthenticatedUser, roomId, dto);
+    }
 }
 ```
 
-Explicação do código:
-- `SessionGuard` garante sessão válida.
-- `request.user` é a identidade confiável.
-- `@Param` identifica o contexto, mas só o service decide se o ator pode usá-lo.
-- O módulo regista os schemas necessários ao service.
+### Passo 6 - Atualizar módulo da sala
 
-### Passo 5 - Criar cliente frontend
+```ts
+// apps/api/src/modules/study-rooms/study-rooms.module.ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { AiModule } from "../ai/ai.module";
+import { User, UserSchema } from "../auth/schemas/user.schema";
+import { Subject, SubjectSchema } from "../subjects/schemas/subject.schema";
+import { RoomAiController } from "./room-ai.controller";
+import { RoomAiService } from "./room-ai.service";
+import { RoomSharesController } from "./room-shares.controller";
+import { RoomSharesService } from "./room-shares.service";
+import { RoomAiInteraction, RoomAiInteractionSchema } from "./schemas/room-ai-interaction.schema";
+import { RoomShare, RoomShareSchema } from "./schemas/room-share.schema";
+import { StudyRoom, StudyRoomSchema } from "./schemas/study-room.schema";
+import { StudyRoomsController } from "./study-rooms.controller";
+import { StudyRoomsService } from "./study-rooms.service";
+
+@Module({
+    imports: [
+        AiModule,
+        MongooseModule.forFeature([
+            { name: StudyRoom.name, schema: StudyRoomSchema },
+            { name: RoomShare.name, schema: RoomShareSchema },
+            { name: RoomAiInteraction.name, schema: RoomAiInteractionSchema },
+            { name: User.name, schema: UserSchema },
+            { name: Subject.name, schema: SubjectSchema },
+        ]),
+    ],
+    controllers: [StudyRoomsController, RoomSharesController, RoomAiController],
+    providers: [StudyRoomsService, RoomSharesService, RoomAiService],
+    exports: [StudyRoomsService, RoomSharesService, MongooseModule],
+})
+export class StudyRoomsModule {}
+```
+
+### Passo 7 - Criar cliente e página
+
+```ts
+// apps/web/src/lib/api/roomAi.ts
+export type RoomAiAnswer = {
+    id: string;
+    answer: string;
+    sources: Array<{ shareId: string; title: string }>;
+};
+
+export async function askRoomAi(roomId: string, input: { question: string; sourceIds?: string[] }) {
+    const response = await fetch(`/api/study-rooms/${roomId}/ai/answers`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+        throw new Error(error.message ?? "Pedido inválido.");
+    }
+
+    return response.json() as Promise<RoomAiAnswer>;
+}
+```
+
 ```tsx
-export type AskRoomAiPayload = { question: string };
-export type RoomAiAnswerView = { id: string; answer: string; sourcesUsed: string[] };
-export async function askRoomAi(roomId: string, payload: AskRoomAiPayload): Promise<RoomAiAnswerView> {
-  const response = await fetch(`/api/study-rooms/${roomId}/ai/answers`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  if (!response.ok) throw new Error('A sala precisa de fontes partilhadas para responder.');
-  return response.json() as Promise<RoomAiAnswerView>;
+// apps/web/src/pages/student/RoomAiPage.tsx
+import { FormEvent, useState } from "react";
+import { RoomAiAnswer, askRoomAi } from "../../lib/api/roomAi";
+
+type Props = {
+    roomId: string;
+};
+
+export function RoomAiPage({ roomId }: Props) {
+    const [answer, setAnswer] = useState<RoomAiAnswer | null>(null);
+    const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError("");
+        setIsLoading(true);
+
+        const form = new FormData(event.currentTarget);
+
+        try {
+            setAnswer(await askRoomAi(roomId, { question: String(form.get("question") ?? "") }));
+            event.currentTarget.reset();
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Não foi possível obter resposta.");
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    return (
+        <main>
+            <h1>IA da sala</h1>
+            <form onSubmit={handleSubmit}>
+                <textarea name="question" minLength={10} required />
+                <button type="submit" disabled={isLoading}>
+                    {isLoading ? "A responder" : "Perguntar"}
+                </button>
+            </form>
+            {error ? <p role="alert">{error}</p> : null}
+            {answer ? (
+                <section>
+                    <p>{answer.answer}</p>
+                    <h2>Fontes da sala</h2>
+                    <ul>
+                        {answer.sources.map((source) => (
+                            <li key={source.shareId}>{source.title}</li>
+                        ))}
+                    </ul>
+                </section>
+            ) : null}
+        </main>
+    );
 }
 ```
 
-Explicação do código:
-- A chamada usa `credentials: 'include'` para enviar o cookie HttpOnly.
-- O payload tem tipo explícito.
-- A UI mostra erro seguro, sem revelar stack trace.
-- O backend continua a validar tudo, mesmo que o frontend bloqueie campos vazios.
+### Passo 8 - Validar comportamento
+- Membro recebe resposta com fontes.
+- Não membro recebe `403`.
+- Sala sem fontes textuais recebe `422`.
+- `sourceIds` de outra sala não entram nas fontes.
+- A interação fica gravada.
+- A resposta mostra fontes usadas.
 
-### Passo 6 - Validar caminho principal e negativos
-Caminho principal:
-- Membro pergunta e recebe `answer` com `sourcesUsed`.
-- Fontes usadas pertencem à sala.
+## Critérios de aceite
+- Membership é validada antes da IA.
+- Só `RoomShare.usableByAi` entra no prompt.
+- Sem fontes há `422`.
+- Interação guarda pergunta, resposta e fontes.
+- Frontend usa `credentials: 'include'`.
 
-Cenários negativos:
-- Sala sem fontes recebe `422`.
-- Não membro recebe `404`.
-- Professor recebe `403`.
+## Validação final
+Executa:
 
-Comandos úteis:
 ```bash
 npm run test:unit
 npm run test:integration
-npm run test:contracts
-bash scripts/validate-planificacao.sh
 ```
 
-## Evidência de conclusão
-- Resposta com fontes.
-- Teste provando que fonte privada fora da sala não entra.
+Inclui teste com `sourceIds` de outra sala.
 
-## Handoff para o próximo BK
-- `BK-MF1-11` aplica a mesma disciplina de fontes em contexto oficial de turma.
+## Evidence para PR/defesa
+- Resposta com fontes da sala.
+- Resposta `422` sem fontes.
+- Resposta `403` para não membro.
+- Registo de `RoomAiInteraction`.
 
-## Checklist final
-- [ ] Header preservado sem alterar campos canónicos.
-- [ ] Código do BK completo nos ficheiros indicados.
-- [ ] Sem funções por implementar nem payloads sem tipo.
-- [ ] Caminho principal e negativos documentados com expected results.
-- [ ] Validação executada ou bloqueio registado com erro exato.
+## Handoff
+`BK-MF1-07` inicia a cadeia docente. Este BK fica isolado na cadeia colaborativa de alunos e não deve alimentar IA docente oficial.
 
 ## Changelog
-- `2026-04-19`: guia semântico inicial alinhado ao requisito.
-- `2026-05-30`: guia reescrito como tutorial guiado para alunos, com código completo do BK e validação objetiva.
+- 2026-05-30: Guia reescrito com fontes filtradas, módulo integrado e bloqueio sem fontes.
