@@ -1,9 +1,69 @@
-export async function registerStudent(payload: RegisterStudentDto) {
-  const response = await fetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw new Error("Não foi possível criar a conta.");
-  return response.json();
+export type Material = {
+    _id: string;
+    title: string;
+    type: "PDF" | "DOCX" | "URL" | "TOPIC";
+    status: "PENDING_PROCESSING" | "READY" | "FAILED";
+    url?: string;
+};
+
+export async function listMaterials(studyAreaId: string): Promise<Material[]> {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/materials`, {
+        credentials: "include",
+    });
+    if (!response.ok) throw new Error("Não foi possível carregar materiais.");
+    return (await response.json()) as Material[];
+}
+
+export async function submitTopicMaterial(
+    studyAreaId: string,
+    payload: { title: string; topicText: string },
+): Promise<Material> {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/materials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type: "TOPIC", ...payload }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível submeter material.");
+    return data as Material;
+}
+
+export async function submitUrlMaterial(
+    studyAreaId: string,
+    payload: { title: string; url: string },
+): Promise<Material> {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/materials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type: "URL", ...payload }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível submeter URL.");
+    return data as Material;
+}
+
+export async function submitFileMaterial(
+    studyAreaId: string,
+    payload: { title: string; file: File },
+): Promise<Material> {
+    const formData = new FormData();
+    formData.append("title", payload.title);
+    formData.append("file", payload.file);
+
+    const response = await fetch(
+        `/api/study-areas/${studyAreaId}/materials/file`,
+        {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+        },
+    );
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível submeter ficheiro.");
+    return data as Material;
 }

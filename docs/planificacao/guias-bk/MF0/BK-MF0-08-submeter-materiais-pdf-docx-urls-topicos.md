@@ -1,6 +1,7 @@
 # BK-MF0-08 - Submeter materiais (PDF, DOCX, URLs, tópicos).
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-08`
 - `bk_id`: `BK-MF0-08`
 - `macro`: `MF0`
@@ -40,15 +41,15 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 
 - Estado esperado antes do BK: área de estudo criada no BK-MF0-07.
 - Estado esperado depois do BK: aluno submete material válido e vê o estado do material na área.
-- Ficheiros a criar/editar:
-  - `apps/api/src/modules/materials/schemas/material.schema.ts`
-  - `apps/api/src/modules/materials/materials.controller.ts`
-  - `apps/api/src/modules/materials/materials.service.ts`
-  - `apps/api/src/modules/materials/dto/create-material.dto.ts`
-  - `apps/api/src/modules/materials/validators/material-upload.validator.ts`
-  - `apps/web/src/pages/student/StudyAreaMaterialsPage.tsx`
-  - `apps/web/src/components/materials/MaterialSubmitForm.tsx`
-  - `apps/web/src/components/materials/MaterialList.tsx`
+- Ficheiros previstos neste BK:
+    - `apps/api/src/modules/materials/schemas/material.schema.ts`
+    - `apps/api/src/modules/materials/materials.controller.ts`
+    - `apps/api/src/modules/materials/materials.service.ts`
+    - `apps/api/src/modules/materials/dto/create-material.dto.ts`
+    - `apps/api/src/modules/materials/validators/material-upload.validator.ts`
+    - `apps/web/src/pages/student/StudyAreaMaterialsPage.tsx`
+    - `apps/web/src/components/materials/MaterialSubmitForm.tsx`
+    - `apps/web/src/components/materials/MaterialList.tsx`
 - Ficheiros a rever: BK-MF0-07, BK-MF0-06, `docs/RF.md`, `docs/RNF.md`.
 - Dependências de BK anteriores: `studyAreaId` válido do BK-MF0-07.
 - Impacto na arquitetura: cria domínio `materials`.
@@ -135,223 +136,939 @@ Como uploads e URLs são superfícies de risco, este BK deve ser conservador: va
 
 **Separação por área.** Todo material pertence a uma `StudyArea`. Isso permite que a IA futura responda com base no contexto certo.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~15 min): confirmar limites e tipos permitidos**
-   - Descrição detalhada do objetivo: definir tipos aceites sem inventar formatos extra.
-   - Justificação: RF08 menciona PDF, DOCX, URLs e tópicos.
-   - Como fazer (0.1): listar tipos `PDF`, `DOCX`, `URL`, `TOPIC`.
-   - Como fazer (0.2): definir limite inicial de tamanho como assunção técnica.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/materials/validators/material-upload.validator.ts`.
-   - Snippet de referência: `allowedTypes = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]`.
-   - O que verificar: não aceitar imagens, executáveis ou ZIP neste BK.
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~35 min): criar modelo Material**
-   - Descrição detalhada do objetivo: guardar metadados do material.
-   - Justificação: IA futura precisa de saber origem, tipo e estado.
-   - Como fazer (1.1): criar campos `studyAreaId`, `userId`, `type`, `title`, `status`.
-   - Como fazer (1.2): incluir campos opcionais `url`, `storageKey`, `mimeType`, `sizeBytes`, `contentText`.
-   - Ficheiro a rever: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/materials/schemas/material.schema.ts`.
-   - Snippet de referência:
-     ```ts
-     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-     import { HydratedDocument, Types } from 'mongoose';
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-     export type MaterialDocument = HydratedDocument<Material>;
+### Pré-requisitos concretos
 
-     @Schema({ timestamps: true, collection: 'materials' })
-     export class Material {
-       @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-       userId!: Types.ObjectId;
+- BK-MF0-02 com `SessionGuard`.
+- BK-MF0-07 com `StudyAreasService.getMyStudyArea`.
+- BK-MF0-06 opcional para registar `MATERIAL_SUBMITTED`.
+- `@nestjs/platform-express` disponível para upload multipart.
+- Limite inicial de upload: `10 MB`, assumido como valor conservador até decisão oficial.
 
-       @Prop({ type: Types.ObjectId, ref: 'StudyArea', required: true, index: true })
-       studyAreaId!: Types.ObjectId;
+### Passo 1 - Criar schema Material
 
-       @Prop({ required: true, enum: ['PDF', 'DOCX', 'URL', 'TOPIC'] })
-       type!: string;
+1. Explicação simples do objetivo.
 
-       @Prop({ required: true, trim: true })
-       title!: string;
+    Neste passo vais criar schema Material. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-       @Prop({ required: true, enum: ['PENDING_PROCESSING', 'READY', 'FAILED'], default: 'PENDING_PROCESSING' })
-       status!: string;
+2. Ficheiros envolvidos.
 
-       @Prop()
-       url?: string;
+- CRIAR: `apps/api/src/modules/materials/schemas/material.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-       @Prop()
-       storageKey?: string;
+3. O que fazer.
 
-       @Prop()
-       mimeType?: string;
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-       @Prop({ min: 0 })
-       sizeBytes?: number;
+4. Código completo, correto e integrado.
 
-       // Na MF0, usar apenas para TOPIC/texto manual. PDF/DOCX/URL ficam pendentes de extração.
-       @Prop()
-       contentText?: string;
-     }
+```ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument, Types } from "mongoose";
 
-     export const MaterialSchema = SchemaFactory.createForClass(Material);
-     ```
-   - O que verificar: material está ligado à área e ao aluno; o service define `READY` apenas quando `type === "TOPIC"` e existe `contentText` válido.
+export type MaterialDocument = HydratedDocument<Material>;
+export type MaterialType = "PDF" | "DOCX" | "URL" | "TOPIC";
+export type MaterialStatus = "PENDING_PROCESSING" | "READY" | "FAILED";
 
-2. **Objetivo (~35 min): validar área e ownership**
-   - Descrição detalhada do objetivo: garantir que o aluno só adiciona materiais às suas áreas.
-   - Justificação: evita IDOR.
-   - Como fazer (2.1): reutilizar `getMyStudyArea(userId, studyAreaId)`.
-   - Como fazer (2.2): se não existir, devolver `404` ou `403`.
-   - Ficheiro a rever: `apps/api/src/modules/study-areas/study-areas.service.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/materials/materials.service.ts`.
-   - Snippet de referência:
-     ```ts
-     const area = await studyAreasService.getMyStudyArea(userId, studyAreaId);
-     if (!area) throw new Error("STUDY_AREA_NOT_FOUND");
-     ```
-   - O que verificar: área de outro aluno não recebe material.
+@Schema({ timestamps: true, collection: "materials" })
+export class Material {
+    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+    userId!: Types.ObjectId;
 
-3. **Objetivo (~40 min): criar submissão de ficheiro**
-   - Descrição detalhada do objetivo: aceitar PDF/DOCX com validação.
-   - Justificação: uploads são risco de segurança.
-   - Como fazer (3.1): validar MIME e tamanho antes de guardar.
-   - Como fazer (3.2): guardar ficheiro em storage local/dev ou storage definido no scaffold.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/materials/validators/material-upload.validator.ts`.
-   - Snippet de referência:
-     ```ts
-     if (!allowedMimeTypes.includes(file.mimetype)) throw new Error("UNSUPPORTED_FILE_TYPE");
-     ```
-   - O que verificar: `.exe` renomeado para `.pdf` é rejeitado se MIME não bater certo.
+    @Prop({
+        type: Types.ObjectId,
+        ref: "StudyArea",
+        required: true,
+        index: true,
+    })
+    studyAreaId!: Types.ObjectId;
 
-4. **Objetivo (~35 min): criar submissão de URL e tópico**
-   - Descrição detalhada do objetivo: aceitar materiais sem ficheiro.
-   - Justificação: RF08 inclui URLs e tópicos.
-   - Como fazer (4.1): validar URL com protocolo `http` ou `https`.
-   - Como fazer (4.2): validar tópico com texto mínimo e máximo.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/materials/dto/create-material.dto.ts`.
-   - Snippet de referência:
-     ```ts
-     export type CreateMaterialDto = { type: "URL" | "TOPIC"; title: string; url?: string; topicText?: string };
-     ```
-   - O que verificar: `javascript:` e URLs inválidas são rejeitadas.
+    @Prop({ required: true, enum: ["PDF", "DOCX", "URL", "TOPIC"] })
+    type!: MaterialType;
 
-5. **Objetivo (~35 min): expor endpoints**
-   - Descrição detalhada do objetivo: criar API para criar e listar materiais.
-   - Justificação: frontend e IA futura precisam do contrato.
-   - Como fazer (5.1): criar `POST /api/study-areas/:studyAreaId/materials`.
-   - Como fazer (5.2): criar `GET /api/study-areas/:studyAreaId/materials`.
-   - Ficheiro a rever: `MATRIZ-CANONICA-BK.md`.
-   - Ficheiro alvo: `apps/api/src/modules/materials/materials.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // 201 ficheiro/URL: { id, type, title, status: "PENDING_PROCESSING" }
-     // 201 tópico manual: { id, type, title, status: "READY" }
-     ```
-   - O que verificar: resposta não expõe caminho absoluto do servidor.
+    @Prop({ required: true, trim: true, maxlength: 160 })
+    title!: string;
 
-6. **Objetivo (~45 min): criar UI de submissão**
-   - Descrição detalhada do objetivo: permitir ficheiro, URL ou tópico.
-   - Justificação: o aluno deve conseguir alimentar a área de estudo.
-   - Como fazer (6.1): criar `MaterialSubmitForm`.
-   - Como fazer (6.2): mostrar progresso/feedback e lista de materiais.
-   - Ficheiro a rever: BK-MF0-07.
-   - Ficheiro alvo: `apps/web/src/components/materials/MaterialSubmitForm.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <input type="file" accept=".pdf,.docx" />
-     ```
-   - O que verificar: UI mostra erro antes/depois da submissão inválida.
+    @Prop({
+        required: true,
+        enum: ["PENDING_PROCESSING", "READY", "FAILED"],
+        default: "PENDING_PROCESSING",
+    })
+    status!: MaterialStatus;
 
-7. **Objetivo (~35 min): integrar histórico e estado**
-   - Descrição detalhada do objetivo: registar evento e mostrar estado adequado ao tipo.
-   - Justificação: prepara BK-MF0-06 e BKs de IA.
-   - Como fazer (7.1): após criação, gravar `MATERIAL_SUBMITTED`.
-   - Como fazer (7.2): mostrar `Pendente de processamento` para ficheiros/URLs e `Pronto` para tópicos manuais.
-   - Ficheiro a rever: `apps/api/src/modules/study/history.service.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/materials/materials.service.ts`.
-   - Snippet de referência: `status: type === "TOPIC" ? "READY" : "PENDING_PROCESSING"`.
-   - O que verificar: falha de histórico não duplica material.
+    @Prop({ trim: true })
+    url?: string;
 
-8. **Objetivo (~45 min): testar negativos e handoff para IA**
-   - Descrição detalhada do objetivo: validar segurança e preparar próximo BK.
-   - Justificação: materiais são base da IA e superfície crítica.
-   - Como fazer (8.1): testar ficheiro inválido, tamanho excedido e área alheia.
-   - Como fazer (8.2): guardar material de teste para BK-MF0-10.
-   - Ficheiro a rever: `PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/materials/materials.e2e-spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(response.body.status).toBe("PENDING_PROCESSING"); // ficheiro/URL
-     ```
-   - O que verificar: próximos BKs têm `materialId` válido, mas não assumem que PDF/DOCX/URL já têm texto processável.
+    @Prop()
+    storageKey?: string;
 
-## Checklist de validação (DERIVADO):
+    @Prop()
+    originalName?: string;
 
-- Smoke:
-  - Submeter PDF válido.
-  - Submeter URL válida.
-  - Submeter tópico manual.
-- Negativos:
-  - passo 8; input/ação: ficheiro `.exe`; resultado esperado: `400`; risco que cobre: upload perigoso.
-  - passo 8; input/ação: ficheiro acima do limite; resultado esperado: `413` ou `400`; risco que cobre: abuso de armazenamento.
-  - passo 8; input/ação: `studyAreaId` de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
-- Técnico:
-  - Estado inicial de PDF/DOCX/URL é `PENDING_PROCESSING`.
-  - Estado inicial de tópico manual com texto válido é `READY`.
-  - `contentText` só é preenchido para tópico/texto manual na MF0.
-  - Paths absolutos de storage não são expostos.
-- Regressão das fases anteriores:
-  - Área de estudo continua privada.
-  - Histórico recebe evento quando disponível.
-- UI/mockup:
-  - Sem mockup específico; formulário deve ser claro e acessível.
-- Segurança:
-  - Validação no backend, não apenas no frontend.
+    @Prop()
+    mimeType?: string;
 
-## Critérios de aceite:
+    @Prop({ min: 0 })
+    sizeBytes?: number;
+
+    // Na MF0, só TOPIC/texto manual pode preencher contentText e ficar READY.
+    @Prop({ maxlength: 10000 })
+    contentText?: string;
+}
+
+export const MaterialSchema = SchemaFactory.createForClass(Material);
+MaterialSchema.index({ userId: 1, studyAreaId: 1, createdAt: -1 });
+```
+
+5. Explicação do código.
+
+O schema separa materiais submetidos de fontes processáveis. PDF/DOCX/URL não ficam prontos para IA neste BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Criar DTO de URL/tópico
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar DTO de URL/tópico. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/materials/dto/create-material.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export class CreateMaterialDto {
+    type!: "URL" | "TOPIC";
+    title!: string;
+    url?: string;
+    topicText?: string;
+}
+```
+
+5. Explicação do código.
+
+Uploads de ficheiro usam multipart; URL e tópico usam JSON.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar validador de upload
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar validador de upload. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/materials/validators/material-upload.validator.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { BadRequestException, PayloadTooLargeException } from "@nestjs/common";
+import { Express } from "express";
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = [
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+export function validateMaterialUpload(file: Express.Multer.File): void {
+    if (!file) {
+        throw new BadRequestException({
+            code: "FILE_REQUIRED",
+            message: "Envia um ficheiro PDF ou DOCX.",
+        });
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+        throw new PayloadTooLargeException({
+            code: "FILE_TOO_LARGE",
+            message: "O ficheiro excede o limite permitido.",
+        });
+    }
+
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+        throw new BadRequestException({
+            code: "UNSUPPORTED_FILE_TYPE",
+            message: "Só são aceites ficheiros PDF ou DOCX.",
+        });
+    }
+}
+
+export function materialTypeFromMime(mimeType: string): "PDF" | "DOCX" {
+    return mimeType === "application/pdf" ? "PDF" : "DOCX";
+}
+```
+
+5. Explicação do código.
+
+O backend valida MIME e tamanho. A extensão do ficheiro não é suficiente para segurança.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Criar storage local de desenvolvimento
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar storage local de desenvolvimento. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/materials/material-storage.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Injectable } from "@nestjs/common";
+import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import { join } from "path";
+import { Express } from "express";
+
+@Injectable()
+export class MaterialStorageService {
+    private readonly root =
+        process.env.MATERIALS_STORAGE_DIR ?? "storage/materials";
+
+    async save(file: Express.Multer.File): Promise<string> {
+        await mkdir(this.root, { recursive: true });
+        const extension = file.mimetype === "application/pdf" ? "pdf" : "docx";
+        const storageKey = `${randomUUID()}.${extension}`;
+
+        // Guardamos só storageKey na base. Nunca devolvemos caminho absoluto ao frontend.
+        await writeFile(join(this.root, storageKey), file.buffer);
+        return storageKey;
+    }
+}
+```
+
+5. Explicação do código.
+
+Este storage é aceitável para desenvolvimento/PAP local. Como não há storage externo documentado, o guia não inventa S3/Drive.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Criar service de materiais
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service de materiais. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/materials/materials.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Express } from "express";
+import { Model, Types } from "mongoose";
+import { StudyAreasService } from "../study-areas/study-areas.service";
+import { CreateMaterialDto } from "./dto/create-material.dto";
+import { Material, MaterialDocument } from "./schemas/material.schema";
+import { MaterialStorageService } from "./material-storage.service";
+import {
+    materialTypeFromMime,
+    validateMaterialUpload,
+} from "./validators/material-upload.validator";
+
+@Injectable()
+export class MaterialsService {
+    constructor(
+        @InjectModel(Material.name)
+        private readonly materialModel: Model<MaterialDocument>,
+        private readonly studyAreasService: StudyAreasService,
+        private readonly storage: MaterialStorageService,
+    ) {}
+
+    async listByArea(userId: string, studyAreaId: string) {
+        await this.assertOwnArea(userId, studyAreaId);
+        return this.materialModel
+            .find({
+                userId: new Types.ObjectId(userId),
+                studyAreaId: new Types.ObjectId(studyAreaId),
+            })
+            .sort({ createdAt: -1 })
+            .lean();
+    }
+
+    async submitFile(
+        userId: string,
+        studyAreaId: string,
+        file: Express.Multer.File,
+        title?: string,
+    ) {
+        await this.assertOwnArea(userId, studyAreaId);
+        validateMaterialUpload(file);
+
+        const storageKey = await this.storage.save(file);
+        return this.materialModel.create({
+            userId: new Types.ObjectId(userId),
+            studyAreaId: new Types.ObjectId(studyAreaId),
+            type: materialTypeFromMime(file.mimetype),
+            title: title?.trim() || file.originalname,
+            status: "PENDING_PROCESSING",
+            storageKey,
+            originalName: file.originalname,
+            mimeType: file.mimetype,
+            sizeBytes: file.size,
+        });
+    }
+
+    async submitTextMaterial(
+        userId: string,
+        studyAreaId: string,
+        input: CreateMaterialDto,
+    ) {
+        await this.assertOwnArea(userId, studyAreaId);
+        const title = input.title?.trim();
+        if (!title)
+            throw new BadRequestException({
+                code: "TITLE_REQUIRED",
+                message: "Indica um título.",
+            });
+
+        if (input.type === "URL") {
+            const url = this.parseSafeUrl(input.url);
+            return this.materialModel.create({
+                userId: new Types.ObjectId(userId),
+                studyAreaId: new Types.ObjectId(studyAreaId),
+                type: "URL",
+                title,
+                url,
+                status: "PENDING_PROCESSING",
+            });
+        }
+
+        if (input.type === "TOPIC") {
+            const contentText = input.topicText?.trim();
+            if (!contentText || contentText.length < 10) {
+                throw new BadRequestException({
+                    code: "TOPIC_TEXT_REQUIRED",
+                    message: "Escreve pelo menos 10 caracteres.",
+                });
+            }
+            return this.materialModel.create({
+                userId: new Types.ObjectId(userId),
+                studyAreaId: new Types.ObjectId(studyAreaId),
+                type: "TOPIC",
+                title,
+                contentText,
+                status: "READY",
+            });
+        }
+
+        throw new BadRequestException({
+            code: "INVALID_MATERIAL_TYPE",
+            message: "Tipo de material inválido.",
+        });
+    }
+
+    private async assertOwnArea(
+        userId: string,
+        studyAreaId: string,
+    ): Promise<void> {
+        const area = await this.studyAreasService.getMyStudyArea(
+            userId,
+            studyAreaId,
+        );
+        if (!area)
+            throw new NotFoundException({
+                code: "STUDY_AREA_NOT_FOUND",
+                message: "Área de estudo não encontrada.",
+            });
+    }
+
+    private parseSafeUrl(value: string | undefined): string {
+        try {
+            const url = new URL(String(value ?? ""));
+            if (!["http:", "https:"].includes(url.protocol))
+                throw new Error("invalid protocol");
+            return url.toString();
+        } catch {
+            throw new BadRequestException({
+                code: "INVALID_URL",
+                message: "Indica um URL http ou https válido.",
+            });
+        }
+    }
+}
+```
+
+5. Explicação do código.
+
+O service bloqueia área alheia, ficheiros perigosos, URLs inválidos e tópicos vazios. PDF/DOCX/URL ficam pendentes.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 6 - Criar controller
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/materials/materials.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Post,
+    Req,
+    UploadedFile,
+    UseGuards,
+    UseInterceptors,
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthenticatedRequest } from "../../common/types/authenticated-request";
+import { CreateMaterialDto } from "./dto/create-material.dto";
+import { MaterialsService } from "./materials.service";
+
+@Controller("api/study-areas/:studyAreaId/materials")
+@UseGuards(SessionGuard)
+export class MaterialsController {
+    constructor(private readonly materialsService: MaterialsService) {}
+
+    @Get()
+    list(
+        @Req() request: AuthenticatedRequest,
+        @Param("studyAreaId") studyAreaId: string,
+    ) {
+        return this.materialsService.listByArea(request.user!.id, studyAreaId);
+    }
+
+    @Post("file")
+    @UseInterceptors(FileInterceptor("file"))
+    uploadFile(
+        @Req() request: AuthenticatedRequest,
+        @Param("studyAreaId") studyAreaId: string,
+        @UploadedFile() file: Express.Multer.File,
+        @Body("title") title?: string,
+    ) {
+        return this.materialsService.submitFile(
+            request.user!.id,
+            studyAreaId,
+            file,
+            title,
+        );
+    }
+
+    @Post()
+    submitText(
+        @Req() request: AuthenticatedRequest,
+        @Param("studyAreaId") studyAreaId: string,
+        @Body() body: CreateMaterialDto,
+    ) {
+        return this.materialsService.submitTextMaterial(
+            request.user!.id,
+            studyAreaId,
+            body,
+        );
+    }
+}
+```
+
+5. Explicação do código.
+
+Há endpoints separados para ficheiro e JSON. Isto simplifica validação e evita misturar multipart com URL/tópico.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 7 - Criar módulo de materiais
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar módulo de materiais. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/materials/materials.module.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { StudyAreasModule } from "../study-areas/study-areas.module";
+import { MaterialsController } from "./materials.controller";
+import { MaterialsService } from "./materials.service";
+import { MaterialStorageService } from "./material-storage.service";
+import { Material, MaterialSchema } from "./schemas/material.schema";
+
+@Module({
+    imports: [
+        MongooseModule.forFeature([
+            { name: Material.name, schema: MaterialSchema },
+        ]),
+        StudyAreasModule,
+    ],
+    controllers: [MaterialsController],
+    providers: [MaterialsService, MaterialStorageService],
+    exports: [MaterialsService],
+})
+export class MaterialsModule {}
+```
+
+5. Explicação do código.
+
+O módulo liga schema, controller, service e storage. O `exports` é importante porque BK-MF0-10, BK-MF0-11 e BK-MF0-12 precisam de consultar materiais da área sem duplicar queries.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 8 - Cliente API e UI de submissão
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais cliente API e UI de submissão. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: no fim do ficheiro.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export type Material = {
+    _id: string;
+    title: string;
+    type: "PDF" | "DOCX" | "URL" | "TOPIC";
+    status: "PENDING_PROCESSING" | "READY" | "FAILED";
+    url?: string;
+};
+
+export async function listMaterials(studyAreaId: string): Promise<Material[]> {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/materials`, {
+        credentials: "include",
+    });
+    if (!response.ok) throw new Error("Não foi possível carregar materiais.");
+    return (await response.json()) as Material[];
+}
+
+export async function submitTopicMaterial(
+    studyAreaId: string,
+    payload: { title: string; topicText: string },
+): Promise<Material> {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/materials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type: "TOPIC", ...payload }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível submeter material.");
+    return data as Material;
+}
+
+export async function submitUrlMaterial(
+    studyAreaId: string,
+    payload: { title: string; url: string },
+): Promise<Material> {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/materials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type: "URL", ...payload }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível submeter URL.");
+    return data as Material;
+}
+
+export async function submitFileMaterial(
+    studyAreaId: string,
+    payload: { title: string; file: File },
+): Promise<Material> {
+    const formData = new FormData();
+    formData.append("title", payload.title);
+    formData.append("file", payload.file);
+
+    const response = await fetch(
+        `/api/study-areas/${studyAreaId}/materials/file`,
+        {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+        },
+    );
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível submeter ficheiro.");
+    return data as Material;
+}
+```
+
+O cliente separa JSON e multipart. Não se deve definir manualmente `Content-Type` no upload, porque o browser precisa de acrescentar o `boundary` do `FormData`.
+
+- CRIAR: `apps/web/src/components/materials/MaterialSubmitForm.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+import { FormEvent, useState } from "react";
+import {
+    Material,
+    submitFileMaterial,
+    submitTopicMaterial,
+    submitUrlMaterial,
+} from "../../lib/apiClient";
+
+type MaterialMode = "TOPIC" | "URL" | "FILE";
+
+export function MaterialSubmitForm({
+    studyAreaId,
+    onCreated,
+}: {
+    studyAreaId: string;
+    onCreated: (material: Material) => void;
+}) {
+    const [mode, setMode] = useState<MaterialMode>("TOPIC");
+    const [title, setTitle] = useState("");
+    const [topicText, setTopicText] = useState("");
+    const [url, setUrl] = useState("");
+    const [file, setFile] = useState<File | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError(null);
+
+        try {
+            const material =
+                mode === "TOPIC"
+                    ? await submitTopicMaterial(studyAreaId, {
+                          title,
+                          topicText,
+                      })
+                    : mode === "URL"
+                      ? await submitUrlMaterial(studyAreaId, { title, url })
+                      : await submitFileMaterial(studyAreaId, {
+                            title,
+                            file: requireSelectedFile(file),
+                        });
+
+            onCreated(material);
+            setTitle("");
+            setTopicText("");
+            setUrl("");
+            setFile(null);
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Erro ao submeter material.",
+            );
+        }
+    }
+
+    return (
+        <form
+            className="space-y-3 rounded border bg-white p-4"
+            onSubmit={handleSubmit}
+        >
+            <select
+                className="w-full rounded border px-3 py-2"
+                onChange={(event) =>
+                    setMode(event.target.value as MaterialMode)
+                }
+                value={mode}
+            >
+                <option value="TOPIC">Tópico manual</option>
+                <option value="URL">URL</option>
+                <option value="FILE">PDF/DOCX</option>
+            </select>
+            <input
+                className="w-full rounded border px-3 py-2"
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Título do material"
+                required
+                value={title}
+            />
+
+            {mode === "TOPIC" && (
+                <textarea
+                    className="min-h-32 w-full rounded border px-3 py-2"
+                    onChange={(event) => setTopicText(event.target.value)}
+                    placeholder="Escreve um tópico ou apontamento manual"
+                    required
+                    value={topicText}
+                />
+            )}
+
+            {mode === "URL" && (
+                <input
+                    className="w-full rounded border px-3 py-2"
+                    onChange={(event) => setUrl(event.target.value)}
+                    placeholder="https://exemplo.pt/recurso"
+                    required
+                    type="url"
+                    value={url}
+                />
+            )}
+
+            {mode === "FILE" && (
+                <input
+                    accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="w-full rounded border px-3 py-2"
+                    onChange={(event) =>
+                        setFile(event.target.files?.[0] ?? null)
+                    }
+                    required
+                    type="file"
+                />
+            )}
+
+            {error && (
+                <p className="rounded bg-red-50 p-3 text-red-700">{error}</p>
+            )}
+            <button
+                className="rounded bg-slate-900 px-4 py-2 text-white"
+                type="submit"
+            >
+                Submeter material
+            </button>
+        </form>
+    );
+}
+
+function requireSelectedFile(file: File | null): File {
+    if (!file) throw new Error("Escolhe um ficheiro PDF ou DOCX.");
+    return file;
+}
+```
+
+O formulário cobre os três caminhos do BK: tópico, URL e ficheiro. O frontend ajuda o aluno, mas a segurança continua no backend.
+
+- CRIAR: `apps/web/src/components/materials/MaterialList.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+import { Material } from "../../lib/apiClient";
+
+export function MaterialList({ materials }: { materials: Material[] }) {
+    if (materials.length === 0)
+        return <p>Ainda não há materiais nesta área.</p>;
+
+    return (
+        <ul className="space-y-3">
+            {materials.map((material) => (
+                <li className="rounded border bg-white p-4" key={material._id}>
+                    <strong>{material.title}</strong>
+                    <p>
+                        {material.type} ·{" "}
+                        {material.status === "READY"
+                            ? "Pronto"
+                            : "Pendente de processamento"}
+                    </p>
+                </li>
+            ))}
+        </ul>
+    );
+}
+```
+
+- CRIAR: `apps/web/src/pages/student/StudyAreaMaterialsPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+import { useEffect, useState } from "react";
+import { MaterialList } from "../../components/materials/MaterialList";
+import { MaterialSubmitForm } from "../../components/materials/MaterialSubmitForm";
+import { listMaterials, Material } from "../../lib/apiClient";
+
+export function StudyAreaMaterialsPage({
+    studyAreaId,
+}: {
+    studyAreaId: string;
+}) {
+    const [materials, setMaterials] = useState<Material[]>([]);
+
+    useEffect(() => {
+        listMaterials(studyAreaId).then(setMaterials);
+    }, [studyAreaId]);
+
+    return (
+        <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+            <h1 className="text-2xl font-semibold">Materiais da área</h1>
+            <MaterialSubmitForm
+                studyAreaId={studyAreaId}
+                onCreated={(material) =>
+                    setMaterials((current) => [material, ...current])
+                }
+            />
+            <MaterialList materials={materials} />
+        </main>
+    );
+}
+```
+
+5. Explicação do código.
+
+Esta UI mostra o estado do material. Na MF0, apenas tópicos manuais ficam `READY`; PDF/DOCX/URL aparecem como pendentes porque ainda não há extração/indexação completa.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Schema Mongoose `Material`.
-  - Endpoints de submissão/listagem.
-  - UI de submissão.
+    - Schema Mongoose `Material`.
+    - Endpoints de submissão/listagem.
+    - UI de submissão.
 - Verificações:
-  - PDF/DOCX válido responde `201`.
-  - URL inválida responde `400`.
-  - Área alheia falha.
+    - PDF/DOCX válido responde `201`.
+    - URL inválida responde `400`.
+    - Área alheia falha.
 - Qualidade:
-  - Upload, URL e tópico têm validações separadas.
-  - Estado prepara indexação futura.
+    - Upload, URL e tópico têm validações separadas.
+    - Estado prepara indexação futura.
 - Continuidade:
-  - BK-MF0-10 usa materiais da área.
-  - BK-MF0-11 só resume materiais existentes.
+    - BK-MF0-10 usa materiais da área.
+    - BK-MF0-11 só resume materiais existentes.
 - Evidência:
-  - PR inclui smoke, 3 negativos e screenshot da área com material.
+    - PR inclui smoke, 3 negativos e screenshot da área com material.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/materials/*`, `apps/web/src/components/materials/*`
-- `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
-- `screenshots`: `A preencher com formulário/lista de materiais`
-- `notes`: `Indexação real fica fora deste BK`
+### Requests e responses esperados
 
-## TODOs
+- `POST /api/study-areas/:id/materials/file -> 201` com `status: "PENDING_PROCESSING"`.
+- `POST /api/study-areas/:id/materials` com `{ "type": "URL" } -> 201` e `PENDING_PROCESSING`.
+- `POST /api/study-areas/:id/materials` com `{ "type": "TOPIC" } -> 201` e `READY`.
+- `400 UNSUPPORTED_FILE_TYPE` para `.exe`.
+- `400 INVALID_URL` para `javascript:alert(1)`.
+- `401 UNAUTHENTICATED` sem sessão.
+- `404 STUDY_AREA_NOT_FOUND` para área alheia.
+- `413 FILE_TOO_LARGE` para ficheiro acima do limite.
 
-- TODO: definir limite máximo oficial de upload para MVP.
-- TODO: escolher storage local/dev ou storage externo quando houver infraestrutura.
-- TODO (BLOCKER): processamento seguro/sandbox completo depende de RNF18 em fase posterior.
-- FOLLOW-UP: BK-MF0-10 deve separar materiais submetidos de fontes processáveis.
-- Assunção a validar com o orientador: guardar URL sem scraping avançado é suficiente nesta fase.
-- Decisão dependente de mockup: ecrã de materiais ainda não existe.
-- Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
+### Como validar o BK e cenários negativos
+
+- PDF válido: esperado `201 PENDING_PROCESSING`.
+- Tópico manual com texto válido: esperado `201 READY`.
+- URL `javascript:`: esperado `400`.
+- Ficheiro `.exe`: esperado `400`.
+- Área de outro aluno: esperado `404`.
+- Confirmar que a resposta não inclui caminho absoluto do servidor.
+
+## Evidence para PR/defesa
+
+- Output de PDF/DOCX válido.
+- Output de tópico manual `READY`.
+- Output negativo `.exe -> 400`.
+- Output negativo área alheia `404`.
+- Screenshot do formulário/lista de materiais.
+- Nota: indexação/RAG fora da MF0; PDF/DOCX/URL não alimentam IA até processamento futuro.
+
+## Handoff para BK-MF0-10 e BK-MF0-11
+
+- BK-MF0-10 deve contar materiais submetidos e fontes processáveis separadamente.
+- BK-MF0-11 só pode gerar resumo com materiais `READY`, ou seja, nesta MF0 principalmente `TOPIC`.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para submissão segura de materiais, com validação, ownership e handoff para IA.
 - `2026-05-25`: material atualizado para coleção MongoDB/Mongoose e referências `ObjectId`.
 - `2026-05-25`: clarificado que `contentText` na MF0 só se aplica a tópicos/texto manual; PDF/DOCX/URL ficam pendentes de processamento.

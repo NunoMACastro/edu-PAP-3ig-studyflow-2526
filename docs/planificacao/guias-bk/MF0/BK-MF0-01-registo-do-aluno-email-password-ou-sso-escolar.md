@@ -1,6 +1,7 @@
 # BK-MF0-01 - Registo do aluno (email/password ou SSO escolar).
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-01`
 - `bk_id`: `BK-MF0-01`
 - `macro`: `MF0`
@@ -20,7 +21,7 @@
 
 ## O que vamos fazer neste BK
 
-Neste BK vamos construir a primeira entrada real do StudyFlow: o registo de aluno. O resultado esperado é que um aluno consiga criar uma conta usando email e password, ficando preparado para iniciar sessão no BK seguinte. O RF01 também menciona SSO escolar, mas nenhum documento define fornecedor, protocolo, campos institucionais ou credenciais de integração. Por isso, nesta fase o SSO fica como contrato preparado e `TODO (BLOCKER)`, sem implementação real inventada.
+Neste BK vamos construir a primeira entrada real do StudyFlow: o registo de aluno. O resultado esperado é que um aluno consiga criar uma conta usando email e password, ficando preparado para iniciar sessão no BK seguinte. O RF01 também menciona SSO escolar, mas nenhum documento define fornecedor, protocolo, campos institucionais ou credenciais de integração. Por isso, nesta fase o SSO fica apenas como contrato preparado, sem implementação real inventada.
 
 Como ainda não existe código da app no repositório, este guia define a estrutura técnica que deve ser criada quando a equipa iniciar a implementação. A stack canónica dos RNF é React/TypeScript/Tailwind no frontend e Node.js LTS com NestJS, MongoDB e Mongoose no backend. Redis e SSO ficam preparados, mas não são obrigatórios neste BK.
 
@@ -40,20 +41,20 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 
 - Estado esperado antes do BK: não existe modelo de utilizador, endpoint de registo nem página de registo.
 - Estado esperado depois do BK: existe registo de aluno por email/password, password guardada como hash, email único e resposta sem dados sensíveis.
-- Ficheiros a criar, assumindo scaffold ainda inexistente:
-  - `apps/api/src/modules/auth/schemas/user.schema.ts`
-  - `apps/api/src/modules/auth/auth.module.ts`
-  - `apps/api/src/modules/auth/auth.controller.ts`
-  - `apps/api/src/modules/auth/auth.service.ts`
-  - `apps/api/src/modules/auth/dto/register-student.dto.ts`
-  - `apps/api/src/modules/users/users.service.ts`
-  - `apps/web/src/pages/auth/RegisterPage.tsx`
-  - `apps/web/src/lib/apiClient.ts`
+- Ficheiros a criar:
+    - `apps/api/src/modules/auth/schemas/user.schema.ts`
+    - `apps/api/src/modules/auth/auth.module.ts`
+    - `apps/api/src/modules/auth/auth.controller.ts`
+    - `apps/api/src/modules/auth/auth.service.ts`
+    - `apps/api/src/modules/auth/dto/register-student.dto.ts`
+    - `apps/api/src/modules/users/users.service.ts`
+    - `apps/web/src/pages/auth/RegisterPage.tsx`
+    - `apps/web/src/lib/apiClient.ts`
 - Ficheiros a rever:
-  - `docs/RF.md`
-  - `docs/RNF.md`
-  - `mockup/thumbnail.png`
-  - `mockup/images/ede75b815bb4a2993eb44966fab060d2102ef8b5`
+    - `docs/RF.md`
+    - `docs/RNF.md`
+    - `mockup/thumbnail.png`
+    - `mockup/images/ede75b815bb4a2993eb44966fab060d2102ef8b5`
 - Dependências de BK anteriores: nenhuma.
 - Impacto na arquitetura: cria o domínio `auth` e o contrato mínimo da entidade `User`.
 - Impacto em frontend: cria página de registo ligada ao ecrã de login do mockup.
@@ -117,7 +118,7 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 - `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`: linha `BK-MF0-01`.
 - `docs/planificacao/sprints/PLANO-SPRINTS.md`: matriz mínima de testes por prioridade.
 - `mockup/thumbnail.png`: fluxo visual login/registo.
-- Código da app: `TODO (BLOCKER)` até existir scaffold.
+- Código da app: bloqueado até existir scaffold real.
 
 ## Glossário (rápido) (DERIVADO):
 
@@ -132,6 +133,7 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 - **ObjectId**: identificador do MongoDB usado em `_id` e em referências entre documentos.
 - **SSO escolar**: autenticação via fornecedor institucional, ainda não definido no projeto.
 - **Validação backend**: verificação feita no servidor, obrigatória mesmo que o frontend valide.
+- **Scaffold**: estrutura inicial de código que define organização, dependências e padrões do projeto.
 
 ## Conceitos teóricos essenciais (DERIVADO):
 
@@ -147,225 +149,768 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 
 **Mockup como referência.** O mockup mostra a página de login e a ligação para `Registar`. O registo deve respeitar a navegação esperada, mas o design final pode evoluir.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~20 min): confirmar contrato e criar branch de trabalho**
-   - Descrição detalhada do objetivo: confirmar que o BK implementa apenas RF01 e que não inclui login, perfil ou SSO real.
-   - Justificação: evita scope creep logo no primeiro BK da plataforma.
-   - Como fazer (0.0): criar a estrutura inicial do projeto com duas áreas principais: `apps/api` para o backend/API e `apps/web` para o frontend. Esta separação ajuda a manter claro o que corre no servidor e o que pertence à interface do utilizador.
-   - Como fazer (0.1): rever `RF01`, `RNF15`, `RNF17` e a linha `BK-MF0-01` no backlog.
-   - Como fazer (0.2): criar uma nota técnica no PR com a decisão: `SSO escolar fica TODO (BLOCKER)`.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `docs/planificacao/guias-bk/MF0/BK-MF0-01-registo-do-aluno-email-password-ou-sso-escolar.md`.
-   - Snippet de referência: `RF01 -> POST /api/auth/register`.
-   - O que verificar: o escopo não menciona login, cookie nem perfil editável.
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~35 min): criar modelo mínimo de utilizador**
-   - Descrição detalhada do objetivo: adicionar o modelo `User` com campos mínimos para autenticação local.
-   - Justificação: todos os BKs seguintes precisam de uma identidade estável.
-   - Como fazer (1.1): criar `UserSchema` em `apps/api/src/modules/auth/schemas/user.schema.ts`.
-   - Como fazer (1.2): marcar `email` como único e guardar `passwordHash`, nunca `password`.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/schemas/user.schema.ts`.
-   - Snippet de referência:
-     ```ts
-     import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-     import { HydratedDocument } from 'mongoose';
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-     export type UserDocument = HydratedDocument<User>;
+### Pré-requisitos concretos
 
-     @Schema({ timestamps: true, collection: 'users' })
-     export class User {
-       @Prop({ required: true, unique: true, lowercase: true, trim: true })
-       email!: string;
+- Ter criado o scaffold NestJS em `apps/api`.
+- Ter criado o scaffold React/TypeScript em `apps/web`.
+- Ter MongoDB configurado no módulo raiz da API.
+- Instalar uma biblioteca de hashing segura. Para este guia, usar `bcrypt`, por cumprir RNF15. Se a equipa escolher `argon2`, deve trocar apenas as funções `hash`/`compare` mantendo o contrato.
+- Não implementar SSO real neste BK, porque o fornecedor/protocolo não está documentado.
 
-       @Prop({ required: true })
-       passwordHash!: string;
+### Passo 1 - Criar schema do utilizador
 
-       @Prop({ required: true, enum: ['STUDENT', 'TEACHER', 'ADMIN'], default: 'STUDENT' })
-       role!: string;
+1. Explicação simples do objetivo.
 
-       @Prop({ required: true, default: 'local' })
-       authProvider!: string;
-     }
+    Neste passo vais criar schema do utilizador. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-     export const UserSchema = SchemaFactory.createForClass(User);
-     ```
-   - O que verificar: não existe campo `password` persistido.
+2. Ficheiros envolvidos.
 
-2. **Objetivo (~35 min): criar DTO de registo**
-   - Descrição detalhada do objetivo: definir a entrada aceite pelo endpoint de registo.
-   - Justificação: um contrato explícito torna o endpoint previsível e testável.
-   - Como fazer (2.1): criar `RegisterStudentDto` com `email`, `password` e `confirmPassword`.
-   - Como fazer (2.2): validar formato de email e comprimento mínimo da password.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/dto/register-student.dto.ts`.
-   - Snippet de referência:
-     ```ts
-     export type RegisterStudentDto = {
-       email: string;
-       password: string;
-       confirmPassword: string;
-     };
-     ```
-   - O que verificar: o DTO não aceita `role`, porque aluno não escolhe permissões no registo.
+- CRIAR: `apps/api/src/modules/auth/schemas/user.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-3. **Objetivo (~45 min): implementar service de registo**
-   - Descrição detalhada do objetivo: criar a lógica que valida duplicados, confirma password e guarda hash.
-   - Justificação: a regra principal fica testável fora do HTTP.
-   - Como fazer (3.1): criar método `registerStudent(input)`.
-   - Como fazer (3.2): se o email já existir, devolver erro controlado `409 Conflict`.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/auth.service.ts`.
-   - Snippet de referência:
-     ```ts
-     export async function registerStudent(input: RegisterStudentDto) {
-       if (input.password !== input.confirmPassword) {
-         throw new Error("PASSWORD_CONFIRMATION_MISMATCH");
-       }
-       return { email: input.email.toLowerCase(), role: "STUDENT" };
-     }
-     ```
-   - O que verificar: a resposta do service não inclui `passwordHash`.
+3. O que fazer.
 
-4. **Objetivo (~35 min): expor endpoint de API**
-   - Descrição detalhada do objetivo: criar `POST /api/auth/register`.
-   - Justificação: o frontend precisa de um contrato HTTP concreto.
-   - Como fazer (4.1): criar `AuthController`.
-   - Como fazer (4.2): devolver `201 Created` no caso válido e erro JSON nos casos inválidos.
-   - Ficheiro a rever: `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/auth.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // POST /api/auth/register
-     // body: { email, password, confirmPassword }
-     // 201: { id, email, role }
-     ```
-   - O que verificar: `password`, `confirmPassword` e `passwordHash` nunca aparecem na resposta.
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-5. **Objetivo (~45 min): criar página de registo no frontend**
-   - Descrição detalhada do objetivo: criar UI de registo simples, navegável a partir do login.
-   - Justificação: o mockup já mostra a ligação `Registar`; o aluno precisa de um caminho completo.
-   - Como fazer (5.1): criar `RegisterPage` com campos email, password e confirmação.
-   - Como fazer (5.2): mostrar estados `loading`, `error` e `success`.
-   - Ficheiro a rever: `mockup/thumbnail.png`.
-   - Ficheiro alvo: `apps/web/src/pages/auth/RegisterPage.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <form aria-label="Registo de aluno">
-       <input name="email" type="email" autoComplete="email" />
-       <input name="password" type="password" autoComplete="new-password" />
-       <button type="submit">Registar</button>
-     </form>
-     ```
-   - O que verificar: o formulário é utilizável por teclado e tem labels visíveis.
+4. Código completo, correto e integrado.
 
-6. **Objetivo (~30 min): criar cliente API mínimo**
-   - Descrição detalhada do objetivo: centralizar chamada ao backend em vez de espalhar `fetch`.
-   - Justificação: BKs seguintes reutilizam o mesmo padrão.
-   - Como fazer (6.1): criar função `registerStudent`.
-   - Como fazer (6.2): tratar erro HTTP sem expor mensagens técnicas ao utilizador.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/web/src/lib/apiClient.ts`.
-   - Snippet de referência:
-     ```ts
-     export async function registerStudent(payload: RegisterStudentDto) {
-       const response = await fetch("/api/auth/register", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify(payload),
-       });
-       if (!response.ok) throw new Error("Não foi possível criar a conta.");
-       return response.json();
-     }
-     ```
-   - O que verificar: erros do backend são tratados sem mostrar stack traces.
+```ts
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { HydratedDocument } from "mongoose";
 
-7. **Objetivo (~40 min): testar caminho feliz e negativos**
-   - Descrição detalhada do objetivo: provar que o registo funciona e falha de forma controlada.
-   - Justificação: P0 exige smoke, integração/e2e e 3 negativos.
-   - Como fazer (7.1): criar teste de service para registo válido.
-   - Como fazer (7.2): criar testes de API para email duplicado, password fraca e confirmação diferente.
-   - Ficheiro a rever: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/auth/auth.service.spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(result).toMatchObject({ email: "aluno@example.com", role: "STUDENT" });
-     expect(result).not.toHaveProperty("passwordHash");
-     ```
-   - O que verificar: os negativos devolvem `400` ou `409`, nunca `500`.
+export type UserDocument = HydratedDocument<User>;
+export type UserRole = "STUDENT" | "TEACHER" | "ADMIN";
+export type AuthProvider = "local" | "school_sso";
 
-8. **Objetivo (~20 min): preparar evidence e handoff**
-   - Descrição detalhada do objetivo: deixar prova clara para PR/defesa e para o BK-MF0-02.
-   - Justificação: o login depende de contas criadas neste BK.
-   - Como fazer (8.1): registar comando usado, payload válido e outputs dos negativos.
-   - Como fazer (8.2): documentar `TODO (BLOCKER)` do SSO escolar.
-   - Ficheiro a rever: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-   - Ficheiro alvo: descrição do PR ou relatório de evidence do BK.
-   - Snippet de referência: `POST /api/auth/register -> 201`.
-   - O que verificar: o próximo BK sabe qual email/password usar para testar login.
+@Schema({ timestamps: true, collection: "users" })
+export class User {
+    // O email é guardado em minúsculas para impedir contas duplicadas com maiúsculas diferentes.
+    @Prop({
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true,
+        index: true,
+    })
+    email!: string;
 
-## Checklist de validação (DERIVADO):
+    // Nunca guardamos a password original. Guardamos só o hash seguro.
+    @Prop({ required: true })
+    passwordHash!: string;
 
-- Smoke:
-  - Criar aluno com email novo e password válida.
-  - Confirmar resposta `201` com `id`, `email` e `role`.
-- Negativos:
-  - passo 7; input/ação: email sem `@`; resultado esperado: `400 Bad Request`; risco que cobre: dados inválidos entrarem na base.
-  - passo 7; input/ação: password com menos do mínimo definido; resultado esperado: `400 Bad Request`; risco que cobre: credenciais fracas.
-  - passo 7; input/ação: email já registado; resultado esperado: `409 Conflict`; risco que cobre: contas duplicadas.
-- Técnico:
-  - `passwordHash` existe na base de dados.
-  - `passwordHash` não aparece em respostas JSON.
-  - `role` é definido pelo backend como `STUDENT`.
-- Regressão das fases anteriores:
-  - Não aplicável, por ser o primeiro BK da macro.
-- UI/mockup:
-  - Login mantém ligação para registo.
-  - Registo usa linguagem em português de Portugal.
-- Segurança:
-  - Password nunca é guardada em texto puro.
-  - SSO real não é simulado com credenciais falsas.
+    // No registo público deste BK, o papel é sempre STUDENT.
+    @Prop({
+        required: true,
+        enum: ["STUDENT", "TEACHER", "ADMIN"],
+        default: "STUDENT",
+    })
+    role!: UserRole;
 
-## Critérios de aceite:
+    // O SSO fica apenas preparado como contrato. A integração real está bloqueada por falta de fornecedor.
+    @Prop({ required: true, enum: ["local", "school_sso"], default: "local" })
+    authProvider!: AuthProvider;
+}
+
+export const UserSchema = SchemaFactory.createForClass(User);
+```
+
+5. Explicação do código.
+
+Este ficheiro cria a coleção `users`. A decisão importante é separar `passwordHash` de `password`: a password escrita pelo aluno só existe durante o pedido HTTP e nunca é persistida.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Criar DTO de registo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar DTO de registo. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/auth/dto/register-student.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export class RegisterStudentDto {
+    email!: string;
+    password!: string;
+    confirmPassword!: string;
+}
+```
+
+5. Explicação do código.
+
+O DTO define o contrato de entrada. A validação principal fica no service para não depender de bibliotecas não documentadas além da stack NestJS/Mongoose.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar service de utilizadores
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service de utilizadores. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/users/users.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { User, UserDocument } from "../auth/schemas/user.schema";
+
+export type PublicUser = {
+    id: string;
+    email: string;
+    role: string;
+};
+
+@Injectable()
+export class UsersService {
+    constructor(
+        @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    ) {}
+
+    async findByEmail(email: string): Promise<UserDocument | null> {
+        return this.userModel
+            .findOne({ email: email.toLowerCase().trim() })
+            .exec();
+    }
+
+    async createStudent(
+        email: string,
+        passwordHash: string,
+    ): Promise<PublicUser> {
+        const created = await this.userModel.create({
+            email: email.toLowerCase().trim(),
+            passwordHash,
+            role: "STUDENT",
+            authProvider: "local",
+        });
+
+        return this.toPublicUser(created);
+    }
+
+    toPublicUser(user: UserDocument): PublicUser {
+        return {
+            id: user._id.toString(),
+            email: user.email,
+            role: user.role,
+        };
+    }
+}
+```
+
+5. Explicação do código.
+
+Este service centraliza o acesso à coleção `users`. A função `toPublicUser` é obrigatória para não devolver `passwordHash` ao frontend.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Criar lógica de registo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar lógica de registo. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/auth/auth.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+} from "@nestjs/common";
+import * as bcrypt from "bcrypt";
+import { RegisterStudentDto } from "./dto/register-student.dto";
+import { PublicUser, UsersService } from "../users/users.service";
+
+const PASSWORD_MIN_LENGTH = 10;
+const BCRYPT_COST = 12;
+
+@Injectable()
+export class AuthService {
+    constructor(private readonly usersService: UsersService) {}
+
+    async registerStudent(input: RegisterStudentDto): Promise<PublicUser> {
+        const email = this.normalizeEmail(input.email);
+
+        this.assertValidEmail(email);
+        this.assertValidPassword(input.password);
+
+        if (input.password !== input.confirmPassword) {
+            throw new BadRequestException({
+                code: "PASSWORD_CONFIRMATION_MISMATCH",
+                message: "A confirmação da password não coincide.",
+            });
+        }
+
+        const existingUser = await this.usersService.findByEmail(email);
+        if (existingUser) {
+            throw new ConflictException({
+                code: "EMAIL_ALREADY_REGISTERED",
+                message: "Já existe uma conta com este email.",
+            });
+        }
+
+        // O hash transforma a password num valor seguro para guardar na base de dados.
+        const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
+        return this.usersService.createStudent(email, passwordHash);
+    }
+
+    private normalizeEmail(email: string | undefined): string {
+        return String(email ?? "")
+            .trim()
+            .toLowerCase();
+    }
+
+    private assertValidEmail(email: string): void {
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(email)) {
+            throw new BadRequestException({
+                code: "INVALID_EMAIL",
+                message: "Indica um email válido.",
+            });
+        }
+    }
+
+    private assertValidPassword(password: string | undefined): void {
+        if (!password || password.length < PASSWORD_MIN_LENGTH) {
+            throw new BadRequestException({
+                code: "WEAK_PASSWORD",
+                message: `A password deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`,
+            });
+        }
+    }
+}
+```
+
+5. Explicação do código.
+
+Este código valida email, força password mínima, confirma que as passwords coincidem, rejeita duplicados com `409 Conflict` e guarda apenas o hash.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Criar controller de registo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller de registo. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/auth/auth.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Body, Controller, HttpCode, HttpStatus, Post } from "@nestjs/common";
+import { AuthService } from "./auth.service";
+import { RegisterStudentDto } from "./dto/register-student.dto";
+import { PublicUser } from "../users/users.service";
+
+@Controller("api/auth")
+export class AuthController {
+    constructor(private readonly authService: AuthService) {}
+
+    @Post("register")
+    @HttpCode(HttpStatus.CREATED)
+    async register(@Body() body: RegisterStudentDto): Promise<PublicUser> {
+        return this.authService.registerStudent(body);
+    }
+}
+```
+
+5. Explicação do código.
+
+O controller expõe `POST /api/auth/register`. Ele não contém regras de negócio; delega no service para manter o código testável.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 6 - Criar módulo de autenticação
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar módulo de autenticação. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/auth/auth.module.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { User, UserSchema } from "./schemas/user.schema";
+import { UsersService } from "../users/users.service";
+
+@Module({
+    imports: [
+        MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    ],
+    controllers: [AuthController],
+    providers: [AuthService, UsersService],
+    exports: [AuthService, UsersService],
+})
+export class AuthModule {}
+```
+
+5. Explicação do código.
+
+Este módulo liga schema, service e controller. O `exports` prepara o BK-MF0-02 para reutilizar `AuthService`/`UsersService` no login.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 7 - Criar cliente API de registo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar cliente API de registo. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export type RegisterStudentPayload = {
+    email: string;
+    password: string;
+    confirmPassword: string;
+};
+
+export type PublicUser = {
+    id: string;
+    email: string;
+    role: "STUDENT" | "TEACHER" | "ADMIN";
+};
+
+export async function registerStudent(
+    payload: RegisterStudentPayload,
+): Promise<PublicUser> {
+    const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        throw new Error(data?.message ?? "Não foi possível criar a conta.");
+    }
+
+    return data as PublicUser;
+}
+```
+
+5. Explicação do código.
+
+Este ficheiro evita espalhar `fetch` pela UI. A função devolve o utilizador público e transforma erros HTTP numa mensagem simples para o aluno.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 8 - Criar página de registo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar página de registo. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/pages/auth/RegisterPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```tsx
+import { FormEvent, useState } from "react";
+import { registerStudent } from "../../lib/apiClient";
+
+export function RegisterPage() {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError(null);
+        setSuccess(null);
+        setIsSubmitting(true);
+
+        try {
+            const user = await registerStudent({
+                email,
+                password,
+                confirmPassword,
+            });
+            setSuccess(
+                `Conta criada para ${user.email}. Já podes iniciar sessão.`,
+            );
+            setPassword("");
+            setConfirmPassword("");
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Erro inesperado ao criar conta.",
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <main className="min-h-screen bg-slate-50 px-4 py-10">
+            <form
+                aria-label="Registo de aluno"
+                className="mx-auto flex max-w-md flex-col gap-4 rounded-lg bg-white p-6 shadow"
+                onSubmit={handleSubmit}
+            >
+                <h1 className="text-2xl font-semibold text-slate-900">
+                    Criar conta StudyFlow
+                </h1>
+
+                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                    Email
+                    <input
+                        autoComplete="email"
+                        className="rounded border border-slate-300 px-3 py-2"
+                        name="email"
+                        onChange={(event) => setEmail(event.target.value)}
+                        required
+                        type="email"
+                        value={email}
+                    />
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                    Password
+                    <input
+                        autoComplete="new-password"
+                        className="rounded border border-slate-300 px-3 py-2"
+                        minLength={10}
+                        name="password"
+                        onChange={(event) => setPassword(event.target.value)}
+                        required
+                        type="password"
+                        value={password}
+                    />
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                    Confirmar password
+                    <input
+                        autoComplete="new-password"
+                        className="rounded border border-slate-300 px-3 py-2"
+                        minLength={10}
+                        name="confirmPassword"
+                        onChange={(event) =>
+                            setConfirmPassword(event.target.value)
+                        }
+                        required
+                        type="password"
+                        value={confirmPassword}
+                    />
+                </label>
+
+                {error && (
+                    <p className="rounded bg-red-50 p-3 text-sm text-red-700">
+                        {error}
+                    </p>
+                )}
+                {success && (
+                    <p className="rounded bg-green-50 p-3 text-sm text-green-700">
+                        {success}
+                    </p>
+                )}
+
+                <button
+                    className="rounded bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-60"
+                    disabled={isSubmitting}
+                    type="submit"
+                >
+                    {isSubmitting ? "A criar conta..." : "Registar"}
+                </button>
+            </form>
+        </main>
+    );
+}
+```
+
+5. Explicação do código.
+
+A página dá feedback de erro/sucesso e não guarda passwords em estado depois do registo com sucesso. A validação visual ajuda o aluno, mas a segurança continua no backend.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 9 - Teste mínimo do service
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais teste mínimo do service. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/auth/auth.service.spec.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { ConflictException } from "@nestjs/common";
+import { AuthService } from "./auth.service";
+import { UsersService } from "../users/users.service";
+
+describe("AuthService", () => {
+    const usersService = {
+        findByEmail: jest.fn(),
+        createStudent: jest.fn(),
+    } as unknown as jest.Mocked<UsersService>;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it("cria aluno e nunca devolve passwordHash", async () => {
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.createStudent.mockResolvedValue({
+            id: "u1",
+            email: "aluno@example.com",
+            role: "STUDENT",
+        });
+
+        const service = new AuthService(usersService);
+        const result = await service.registerStudent({
+            email: "Aluno@Example.com",
+            password: "password-segura",
+            confirmPassword: "password-segura",
+        });
+
+        expect(result).toEqual({
+            id: "u1",
+            email: "aluno@example.com",
+            role: "STUDENT",
+        });
+        expect(result).not.toHaveProperty("passwordHash");
+    });
+
+    it("rejeita email duplicado com 409", async () => {
+        usersService.findByEmail.mockResolvedValue({
+            email: "aluno@example.com",
+        } as never);
+
+        const service = new AuthService(usersService);
+
+        await expect(
+            service.registerStudent({
+                email: "aluno@example.com",
+                password: "password-segura",
+                confirmPassword: "password-segura",
+            }),
+        ).rejects.toBeInstanceOf(ConflictException);
+    });
+});
+```
+
+5. Explicação do código.
+
+O teste prova o caminho feliz e um negativo importante. Como é teste de service, não precisa de MongoDB real.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Schema Mongoose `User` criado.
-  - Endpoint `POST /api/auth/register` criado.
-  - Página de registo criada.
+    - Schema Mongoose `User` criado.
+    - Endpoint `POST /api/auth/register` criado.
+    - Página de registo criada.
 - Verificações:
-  - Registo válido responde `201`.
-  - Email inválido responde `400`.
-  - Email duplicado responde `409`.
+    - Registo válido responde `201`.
+    - Email inválido responde `400`.
+    - Email duplicado responde `409`.
 - Qualidade:
-  - Controller, service e DTO estão separados.
-  - Não há regra de negócio sensível apenas no frontend.
+    - Controller, service e DTO estão separados.
+    - Não há regra de negócio sensível apenas no frontend.
 - Continuidade:
-  - BK-MF0-02 consegue usar a conta criada para login.
-  - BK-MF0-03 consegue associar perfil ao `User`.
+    - BK-MF0-02 consegue usar a conta criada para login.
+    - BK-MF0-03 consegue associar perfil ao `User`.
 - Evidência:
-  - PR inclui payload válido, outputs negativos e screenshot ou vídeo curto da página de registo.
+    - PR inclui payload válido, outputs negativos e screenshot ou vídeo curto da página de registo.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `PR #1 - Implementação do Registo de Aluno (BK-MF0-01)`
-- `proof`: `POST /api/auth/register a responder 201 Created. Utilizador guardado no MongoDB com email em lowercase e role: 'STUDENT'.`
-- `neg`: `Testes negativos validados com sucesso: Email inválido (400), Password curta (400) e Email duplicado (409 Conflict).`
-- `files`: `apps/api/src/modules/auth/schemas/user.schema.ts`, `apps/api/src/modules/auth/auth.module.ts`, `apps/api/src/modules/auth/auth.controller.ts`, `apps/api/src/modules/auth/auth.service.ts`, `apps/api/src/modules/auth/dto/register-student.dto.ts`, `apps/api/src/modules/users/users.service.ts`, `apps/web/src/pages/auth/RegisterPage.tsx`, `apps/web/src/lib/apiClient.ts`
-- `commands`: `npm test (testes unitários do service passam a 100%)`
-- `screenshots`: `Anexado print do ecrã RegisterPage.tsx no browser e logs do terminal.`
-- `notes`: `SSO escolar ficou definido como TODO (BLOCKER) no código e na arquitetura. O fluxo está totalmente preparado para o BK-MF0-02 (Login) utilizando as credenciais criadas aqui.`
+### Requests e responses esperados
 
-## TODOs
+Registo válido:
 
-- TODO: confirmar convenção concreta de scaffold NestJS modular antes de implementar, mantendo NestJS + Mongoose como stack canónica.
-- TODO: definir biblioteca de hashing no `package.json` quando a app existir.
-- TODO (BLOCKER): definir fornecedor SSO escolar, protocolo, campos e ambiente de testes.
-- FOLLOW-UP: no BK-MF0-02, criar sessão segura para a conta registada.
-- Assunção a validar com o orientador: email/password é o caminho MVP principal de RF01.
-- Decisão dependente de mockup: desenho final do ecrã de registo ainda não existe.
-- Decisão dependente de app/código ainda inexistente: confirmar caminhos reais após scaffold.
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "email": "aluno@example.com",
+  "password": "password-segura",
+  "confirmPassword": "password-segura"
+}
+```
+
+Resposta esperada:
+
+```http
+201 Created
+
+{
+  "id": "665f0f1a2d2e6f001234abcd",
+  "email": "aluno@example.com",
+  "role": "STUDENT"
+}
+```
+
+Erros esperados:
+
+- `400 INVALID_EMAIL`: email sem formato válido.
+- `400 WEAK_PASSWORD`: password com menos de 10 caracteres.
+- `400 PASSWORD_CONFIRMATION_MISMATCH`: confirmação diferente.
+- `409 EMAIL_ALREADY_REGISTERED`: email já existe.
+
+### Como validar o BK
+
+- Criar uma conta com email novo e confirmar `201`.
+- Confirmar no MongoDB que existe `passwordHash` e não existe campo `password`.
+- Repetir o mesmo email e confirmar `409`.
+- Testar email inválido e confirmar `400`.
+- Confirmar que a resposta nunca inclui `password`, `confirmPassword` ou `passwordHash`.
+
+## Evidence para PR/defesa
+
+- Screenshot da página `Criar conta StudyFlow`.
+- Output do pedido `POST /api/auth/register -> 201`.
+- Output de email duplicado `409`.
+- Print/trecho controlado da base com `passwordHash` ocultando parte do valor.
+- Nota no PR: `SSO escolar não implementado por falta de fornecedor/protocolo documentado`.
+
+## Handoff para BK-MF0-02
+
+- O BK-MF0-02 deve reutilizar `UsersService.findByEmail`.
+- O login deve comparar `password` recebida com `passwordHash`.
+- O email/password de teste criado aqui deve ser usado para validar cookie HttpOnly.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para execução concreta, com contratos técnicos, passos P0 e validações negativas.
 - `2026-05-25`: persistência atualizada para MongoDB/Mongoose, substituindo a stack de dados anterior.

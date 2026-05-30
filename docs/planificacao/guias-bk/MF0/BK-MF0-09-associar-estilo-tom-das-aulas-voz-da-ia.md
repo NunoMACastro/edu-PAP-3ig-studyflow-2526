@@ -1,6 +1,7 @@
 # BK-MF0-09 - Associar estilo/tom das aulas → “voz” da IA.
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-09`
 - `bk_id`: `BK-MF0-09`
 - `macro`: `MF0`
@@ -38,13 +39,13 @@ Como ainda não há mockup para esta configuração, a UI deve ser discreta e pe
 
 - Estado esperado antes do BK: área de estudo criada.
 - Estado esperado depois do BK: área tem preferências de tom/estilo editáveis.
-- Ficheiros a criar/editar:
-  - `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`
-  - `apps/api/src/modules/study-areas/study-area-voice.controller.ts`
-  - `apps/api/src/modules/study-areas/study-area-voice.service.ts`
-  - `apps/api/src/modules/study-areas/dto/update-study-area-voice.dto.ts`
-  - `apps/web/src/components/study/StudyAreaVoiceForm.tsx`
-  - `apps/web/src/pages/student/StudyAreaDetailPage.tsx`
+- Ficheiros previstos neste BK:
+    - `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`
+    - `apps/api/src/modules/study-areas/study-area-voice.controller.ts`
+    - `apps/api/src/modules/study-areas/study-area-voice.service.ts`
+    - `apps/api/src/modules/study-areas/dto/update-study-area-voice.dto.ts`
+    - `apps/web/src/components/study/StudyAreaVoiceForm.tsx`
+    - `apps/web/src/pages/student/StudyAreaDetailPage.tsx`
 - Ficheiros a rever: BK-MF0-07, `docs/RF.md`, `docs/RNF.md`.
 - Dependências de BK anteriores: `BK-MF0-07`, para garantir área e ownership.
 - Impacto na arquitetura: adiciona configuração pedagógica ao domínio `study-areas`.
@@ -127,160 +128,444 @@ Como ainda não há mockup para esta configuração, a UI deve ser discreta e pe
 
 **Configuração por área.** A mesma pessoa pode querer tom simples em Matemática e tom mais formal em Português. Por isso a preferência pertence à área.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~15 min): clarificar significado de voz**
-   - Descrição detalhada do objetivo: documentar voz como estilo textual.
-   - Justificação: evita implementar áudio fora de escopo.
-   - Como fazer (0.1): rever RF09 e RF22.
-   - Como fazer (0.2): escrever nota técnica: `sem áudio/clonagem`.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: descrição do PR.
-   - Snippet de referência: `voiceProfile.kind = "pedagogical_style"`.
-   - O que verificar: não há dependência de TTS.
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~30 min): modelar preferências na área**
-   - Descrição detalhada do objetivo: guardar preset e notas curtas.
-   - Justificação: BK-MF0-10 precisa de ler estes dados.
-   - Como fazer (1.1): adicionar campos `voiceTone`, `voiceDetailLevel`, `voiceNotes`.
-   - Como fazer (1.2): manter valores opcionais e seguros.
-   - Ficheiro a rever: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/schemas/study-area.schema.ts`.
-   - Snippet de referência:
-     ```ts
-     @Prop({ enum: ['simple', 'rigorous', 'step_by_step', 'examples_first'] })
-     voiceTone?: string;
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-     @Prop({ enum: ['short', 'normal', 'detailed'], default: 'normal' })
-     voiceDetailLevel?: string;
+### Pré-requisitos concretos
 
-     @Prop({ trim: true, maxlength: 500 })
-     voiceNotes?: string;
-     ```
-   - O que verificar: não há dados biométricos/áudio.
+- BK-MF0-07 com `StudyAreaSchema` e `StudyAreasService`.
+- Campos `voiceTone`, `voiceDetailLevel` e `voiceNotes` já previstos no schema da área.
+- BK-MF0-10 vai consumir estes campos, mas ainda não há geração IA aqui.
 
-2. **Objetivo (~25 min): criar DTO com opções controladas**
-   - Descrição detalhada do objetivo: limitar valores aceites.
-   - Justificação: reduz prompt injection e inconsistência.
-   - Como fazer (2.1): criar presets de tom.
-   - Como fazer (2.2): limitar `voiceNotes` em tamanho.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/dto/update-study-area-voice.dto.ts`.
-   - Snippet de referência:
-     ```ts
-     export type VoiceTone = "simple" | "rigorous" | "step_by_step" | "examples_first";
-     ```
-   - O que verificar: texto livre não passa de limite definido.
+### Passo 1 - Criar DTO
 
-3. **Objetivo (~30 min): criar service com ownership**
-   - Descrição detalhada do objetivo: atualizar preferências só da área do aluno.
-   - Justificação: evita edição de área alheia.
-   - Como fazer (3.1): validar `getMyStudyArea`.
-   - Como fazer (3.2): sanitizar notas antes de guardar.
-   - Ficheiro a rever: BK-MF0-07.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/study-area-voice.service.ts`.
-   - Snippet de referência:
-     ```ts
-     if (!area) throw new Error("STUDY_AREA_NOT_FOUND");
-     ```
-   - O que verificar: área alheia falha.
+1. Explicação simples do objetivo.
 
-4. **Objetivo (~25 min): expor endpoint PATCH**
-   - Descrição detalhada do objetivo: permitir guardar configuração.
-   - Justificação: frontend precisa de contrato simples.
-   - Como fazer (4.1): criar `PATCH /api/study-areas/:id/voice`.
-   - Como fazer (4.2): devolver a área atualizada.
-   - Ficheiro a rever: `MATRIZ-CANONICA-BK.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/study-area-voice.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // PATCH /api/study-areas/:id/voice
-     ```
-   - O que verificar: sem sessão devolve `401`.
+    Neste passo vais criar DTO. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-5. **Objetivo (~40 min): criar formulário de voz**
-   - Descrição detalhada do objetivo: permitir escolhas simples ao aluno.
-   - Justificação: configuração deve ser compreensível.
-   - Como fazer (5.1): criar selector de tom e nível de detalhe.
-   - Como fazer (5.2): mostrar nota: “voz significa estilo de explicação”.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/web/src/components/study/StudyAreaVoiceForm.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <select name="voiceTone" aria-label="Tom da IA">
-       <option value="step_by_step">Passo a passo</option>
-     </select>
-     ```
-   - O que verificar: UI não promete áudio.
+2. Ficheiros envolvidos.
 
-6. **Objetivo (~35 min): testar e preparar perfil IA**
-   - Descrição detalhada do objetivo: provar edição e negativos.
-   - Justificação: BK-MF0-10 reutiliza estes campos.
-   - Como fazer (6.1): testar preset válido.
-   - Como fazer (6.2): testar área alheia e texto demasiado longo.
-   - Ficheiro a rever: `PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study-areas/study-area-voice.spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(area.voiceTone).toBe("step_by_step");
-     ```
-   - O que verificar: evidence inclui configuração que será usada no BK-MF0-10.
+- CRIAR: `apps/api/src/modules/study-areas/dto/update-study-area-voice.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-## Checklist de validação (DERIVADO):
+3. O que fazer.
 
-- Smoke:
-  - Guardar tom `step_by_step`.
-  - Reabrir área e ver tom persistido.
-- Negativos:
-  - passo 6; input/ação: tom fora da lista; resultado esperado: `400`; risco que cobre: valores incoerentes.
-  - passo 6; input/ação: editar área de outro aluno; resultado esperado: `404` ou `403`; risco que cobre: IDOR.
-- Técnico:
-  - “Voz” não cria áudio nem dados biométricos.
-  - Campos são lidos por `studyAreaId`.
-- Regressão das fases anteriores:
-  - Detalhe da área continua a abrir.
-- UI/mockup:
-  - Sem mockup específico; usar formulário simples.
-- Segurança:
-  - Notas livres têm limite e sanitização.
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-## Critérios de aceite:
+4. Código completo, correto e integrado.
+
+```ts
+export type VoiceTone =
+    | "simple"
+    | "rigorous"
+    | "step_by_step"
+    | "examples_first";
+export type VoiceDetailLevel = "short" | "normal" | "detailed";
+
+export class UpdateStudyAreaVoiceDto {
+    voiceTone?: VoiceTone;
+    voiceDetailLevel?: VoiceDetailLevel;
+    voiceNotes?: string;
+}
+```
+
+5. Explicação do código.
+
+O DTO usa presets controlados para evitar texto livre a controlar totalmente a IA.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Editar StudyAreasService
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais editar StudyAreasService. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/api/src/modules/study-areas/study-areas.service.ts`
+- LOCALIZAÇÃO: dentro da classe `StudyAreasService`, depois do método `updateStudyArea`.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+async updateVoiceFields(userId: string, areaId: string, input: {
+  voiceTone?: string;
+  voiceDetailLevel?: string;
+  voiceNotes?: string;
+}) {
+  const updated = await this.areaModel
+    .findOneAndUpdate(
+      { _id: areaId, userId: new Types.ObjectId(userId) },
+      { $set: input },
+      { new: true, runValidators: true },
+    )
+    .lean();
+
+  if (!updated) {
+    throw new NotFoundException({ code: 'STUDY_AREA_NOT_FOUND', message: 'Área de estudo não encontrada.' });
+  }
+
+  return updated;
+}
+```
+
+5. Explicação do código.
+
+Este método edita só campos de voz e mantém o filtro por `userId`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar service de voz
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service de voz. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study-areas/study-area-voice.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+} from "@nestjs/common";
+import { Types } from "mongoose";
+import { UpdateStudyAreaVoiceDto } from "./dto/update-study-area-voice.dto";
+import { StudyAreasService } from "./study-areas.service";
+
+const TONES = ["simple", "rigorous", "step_by_step", "examples_first"];
+const DETAIL_LEVELS = ["short", "normal", "detailed"];
+
+@Injectable()
+export class StudyAreaVoiceService {
+    constructor(private readonly studyAreasService: StudyAreasService) {}
+
+    async updateVoice(
+        userId: string,
+        areaId: string,
+        input: UpdateStudyAreaVoiceDto,
+    ) {
+        const area = await this.studyAreasService.getMyStudyArea(
+            userId,
+            areaId,
+        );
+        if (!area)
+            throw new NotFoundException({
+                code: "STUDY_AREA_NOT_FOUND",
+                message: "Área não encontrada.",
+            });
+
+        if (input.voiceTone && !TONES.includes(input.voiceTone)) {
+            throw new BadRequestException({
+                code: "INVALID_VOICE_TONE",
+                message: "Tom inválido.",
+            });
+        }
+        if (
+            input.voiceDetailLevel &&
+            !DETAIL_LEVELS.includes(input.voiceDetailLevel)
+        ) {
+            throw new BadRequestException({
+                code: "INVALID_DETAIL_LEVEL",
+                message: "Nível de detalhe inválido.",
+            });
+        }
+
+        return this.studyAreasService.updateVoiceFields(
+            userId,
+            new Types.ObjectId(area._id).toString(),
+            {
+                voiceTone: input.voiceTone,
+                voiceDetailLevel: input.voiceDetailLevel ?? "normal",
+                voiceNotes: this.sanitizeNotes(input.voiceNotes),
+            },
+        );
+    }
+
+    private sanitizeNotes(notes: string | undefined): string | undefined {
+        if (!notes) return undefined;
+        return notes.replace(/[<>]/g, "").trim().slice(0, 500);
+    }
+}
+```
+
+5. Explicação do código.
+
+O service valida ownership através de `StudyAreasService` e limita notas livres a 500 caracteres sem `<`/`>`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Criar controller
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study-areas/study-area-voice.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Body, Controller, Param, Patch, Req, UseGuards } from "@nestjs/common";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthenticatedRequest } from "../../common/types/authenticated-request";
+import { UpdateStudyAreaVoiceDto } from "./dto/update-study-area-voice.dto";
+import { StudyAreaVoiceService } from "./study-area-voice.service";
+
+@Controller("api/study-areas/:id/voice")
+@UseGuards(SessionGuard)
+export class StudyAreaVoiceController {
+    constructor(private readonly voiceService: StudyAreaVoiceService) {}
+
+    @Patch()
+    updateVoice(
+        @Req() request: AuthenticatedRequest,
+        @Param("id") id: string,
+        @Body() body: UpdateStudyAreaVoiceDto,
+    ) {
+        return this.voiceService.updateVoice(request.user!.id, id, body);
+    }
+}
+```
+
+5. Explicação do código.
+
+O endpoint edita apenas áreas do próprio aluno. Área alheia devolve `404`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Cliente API e formulário
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais cliente API e formulário. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: no fim do ficheiro.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export async function updateStudyAreaVoice(
+    studyAreaId: string,
+    payload: {
+        voiceTone: "simple" | "rigorous" | "step_by_step" | "examples_first";
+        voiceDetailLevel: "short" | "normal" | "detailed";
+        voiceNotes?: string;
+    },
+) {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/voice`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(
+            data?.message ?? "Não foi possível guardar a voz da IA.",
+        );
+    return data;
+}
+```
+
+- CRIAR: `apps/web/src/components/study/StudyAreaVoiceForm.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+```tsx
+import { FormEvent, useState } from "react";
+import { updateStudyAreaVoice } from "../../lib/apiClient";
+
+export function StudyAreaVoiceForm({ studyAreaId }: { studyAreaId: string }) {
+    const [voiceTone, setVoiceTone] = useState<
+        "simple" | "rigorous" | "step_by_step" | "examples_first"
+    >("step_by_step");
+    const [voiceDetailLevel, setVoiceDetailLevel] = useState<
+        "short" | "normal" | "detailed"
+    >("normal");
+    const [voiceNotes, setVoiceNotes] = useState("");
+    const [feedback, setFeedback] = useState<string | null>(null);
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        await updateStudyAreaVoice(studyAreaId, {
+            voiceTone,
+            voiceDetailLevel,
+            voiceNotes,
+        });
+        setFeedback("Estilo pedagógico guardado.");
+    }
+
+    return (
+        <form
+            className="space-y-3 rounded border bg-white p-4"
+            onSubmit={handleSubmit}
+        >
+            <p className="text-sm text-slate-600">
+                Voz significa estilo de explicação, não áudio.
+            </p>
+            <select
+                className="w-full rounded border px-3 py-2"
+                onChange={(event) =>
+                    setVoiceTone(event.target.value as typeof voiceTone)
+                }
+                value={voiceTone}
+            >
+                <option value="simple">Mais simples</option>
+                <option value="rigorous">Mais rigoroso</option>
+                <option value="step_by_step">Passo a passo</option>
+                <option value="examples_first">Com exemplos primeiro</option>
+            </select>
+            <select
+                className="w-full rounded border px-3 py-2"
+                onChange={(event) =>
+                    setVoiceDetailLevel(
+                        event.target.value as typeof voiceDetailLevel,
+                    )
+                }
+                value={voiceDetailLevel}
+            >
+                <option value="short">Curto</option>
+                <option value="normal">Normal</option>
+                <option value="detailed">Detalhado</option>
+            </select>
+            <textarea
+                className="w-full rounded border px-3 py-2"
+                maxLength={500}
+                onChange={(event) => setVoiceNotes(event.target.value)}
+                placeholder="Notas curtas sobre o estilo pretendido"
+                value={voiceNotes}
+            />
+            {feedback && (
+                <p className="rounded bg-green-50 p-3 text-green-700">
+                    {feedback}
+                </p>
+            )}
+            <button
+                className="rounded bg-slate-900 px-4 py-2 text-white"
+                type="submit"
+            >
+                Guardar estilo
+            </button>
+        </form>
+    );
+}
+```
+
+5. Explicação do código.
+
+A UI evita prometer áudio e usa presets claros para um aluno do 12.º ano.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Campos/preferências de voz por área.
-  - Endpoint `PATCH /voice`.
-  - Formulário de configuração.
+    - Campos/preferências de voz por área.
+    - Endpoint `PATCH /voice`.
+    - Formulário de configuração.
 - Verificações:
-  - Tom válido responde `200`.
-  - Tom inválido responde `400`.
+    - Tom válido responde `200`.
+    - Tom inválido responde `400`.
 - Qualidade:
-  - Presets controlados.
-  - Sem promessa de áudio.
+    - Presets controlados.
+    - Sem promessa de áudio.
 - Continuidade:
-  - BK-MF0-10 consegue gerar perfil IA com estas preferências.
+    - BK-MF0-10 consegue gerar perfil IA com estas preferências.
 - Evidência:
-  - PR inclui smoke e 2 negativos.
+    - PR inclui smoke e 2 negativos.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/study-areas/*voice*`, `apps/web/src/components/study/StudyAreaVoiceForm.tsx`
-- `commands`: `npm test`, `npm run lint`
-- `screenshots`: `A preencher com formulário de voz`
-- `notes`: `Voz = estilo textual/pedagógico, não áudio`
+### Requests e responses esperados
 
-## TODOs
+- `PATCH /api/study-areas/:id/voice -> 200` com área atualizada.
+- `400 INVALID_VOICE_TONE` para tom fora da lista.
+- `400 INVALID_DETAIL_LEVEL` para nível fora da lista.
+- `401 UNAUTHENTICATED` sem sessão.
+- `404 STUDY_AREA_NOT_FOUND` para área alheia.
 
-- TODO: confirmar lista final de presets com orientador.
-- FOLLOW-UP: manter sincronizados `BACKLOG-MVP.md`, `MATRIZ-CANONICA-BK.md`, `CONTRATO-CAMPOS-BK.md`, `ANEXO-BK-SPRINT-OWNER.md` e este guia se houver novo replaneamento de sprint.
-- FOLLOW-UP: BK-MF0-10 deve consumir estas preferências.
-- Assunção a validar com o orientador: texto livre deve ser curto e controlado.
-- Decisão dependente de mockup: ecrã de voz ainda não existe.
-- Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
+### Como validar o BK e cenários negativos
+
+- Guardar `step_by_step`: esperado `200`.
+- Enviar `voiceTone: "copy_teacher_voice"`: esperado `400`.
+- Enviar notas com `<script>`: esperado sem `<`/`>` guardados.
+- Editar área de outro aluno: esperado `404`.
+
+## Evidence para PR/defesa
+
+- Screenshot do formulário com texto “não áudio”.
+- Output `PATCH /voice -> 200`.
+- Output tom inválido `400`.
+- Output área alheia `404`.
+
+## Handoff para BK-MF0-10
+
+- O perfil IA deve ler `voiceTone`, `voiceDetailLevel` e `voiceNotes`.
+- Estes campos não substituem fontes nem guardrails.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para voz pedagógica por área, com presets, segurança e handoff para perfil IA.
 - `2026-05-25`: sprint normalizado de `S03` para `S02`, porque `PLANO-SPRINTS.md` define `S02` como MF0 e `S03` como MF1; `CONTRATO-CAMPOS-BK.md` e `ANEXO-BK-SPRINT-OWNER.md` ja estavam em `S02`.
 - `2026-05-25`: persistência ajustada para campos Mongoose no schema `StudyArea`.

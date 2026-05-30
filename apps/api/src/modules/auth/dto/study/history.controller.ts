@@ -1,0 +1,1 @@
+// GET /api/study/history?type=MATERIAL_SUBMITTED&limit=20

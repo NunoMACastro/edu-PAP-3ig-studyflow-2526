@@ -1,6 +1,7 @@
 # BK-MF0-04 - O aluno pode estudar sem turma.
 
 ## Header
+
 - `doc_id`: `GUIA-BK-MF0-04`
 - `bk_id`: `BK-MF0-04`
 - `macro`: `MF0`
@@ -38,13 +39,13 @@ Como não há mockup para o dashboard do aluno, este BK deve criar uma interface
 
 - Estado esperado antes do BK: aluno autenticado com perfil editável do BK-MF0-03.
 - Estado esperado depois do BK: aluno sem turma acede a `/app/estudo` e vê estado inicial do modo individual.
-- Ficheiros a criar/editar:
-  - `apps/api/src/modules/study/solo-study.controller.ts`
-  - `apps/api/src/modules/study/solo-study.service.ts`
-  - `apps/api/src/modules/study/dto/solo-study-state.dto.ts`
-  - `apps/web/src/pages/student/SoloStudyDashboard.tsx`
-  - `apps/web/src/routes/protectedRoutes.tsx`
-  - `apps/web/src/components/layout/AppShell.tsx`
+- Ficheiros previstos neste BK:
+    - `apps/api/src/modules/study/solo-study.controller.ts`
+    - `apps/api/src/modules/study/solo-study.service.ts`
+    - `apps/api/src/modules/study/dto/solo-study-state.dto.ts`
+    - `apps/web/src/pages/student/SoloStudyDashboard.tsx`
+    - `apps/web/src/routes/protectedRoutes.tsx`
+    - `apps/web/src/components/layout/AppShell.tsx`
 - Ficheiros a rever: `BK-MF0-02`, `BK-MF0-03`, `docs/RF.md`.
 - Dependências de BK anteriores: usa sessão do BK-MF0-02 e perfil do BK-MF0-03.
 - Impacto na arquitetura: cria domínio `study` para o modo individual.
@@ -127,179 +128,502 @@ Como não há mockup para o dashboard do aluno, este BK deve criar uma interface
 
 **Design extensível.** Mesmo sem mockup para dashboard, a estrutura deve ter componentes reaproveitáveis: `AppShell`, cards simples e links para funcionalidades futuras.
 
-## Guia de execução (passo-a-passo) (DERIVADO):
+## Guia linear de implementação
 
-0. **Objetivo (~15 min): confirmar regra de turma opcional**
-   - Descrição detalhada do objetivo: declarar que o modo individual não depende de turma.
-   - Justificação: RF04 existe exatamente para este comportamento.
-   - Como fazer (0.1): rever RF04 e BK-MF0-03.
-   - Como fazer (0.2): garantir que `className` ou `turmaId` é opcional.
-   - Ficheiro a rever: `docs/RF.md`.
-   - Ficheiro alvo: `apps/api/src/modules/students/schemas/student-profile.schema.ts`.
-   - Snippet de referência: `@Prop({ trim: true }) className?: string;`.
-   - O que verificar: nenhuma constraint obriga turma.
+Segue estes passos por ordem. Como ainda não existe scaffold real no repositório, os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência, Redis para sessões quando necessário e OpenAI API apenas atrás de provider isolado. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
 
-1. **Objetivo (~30 min): criar contrato SoloStudyState**
-   - Descrição detalhada do objetivo: definir resposta inicial do modo individual.
-   - Justificação: frontend e backend precisam de falar a mesma linguagem.
-   - Como fazer (1.1): incluir perfil resumido, contadores e próximos atalhos.
-   - Como fazer (1.2): manter listas vazias quando ainda não há dados.
-   - Ficheiro a rever: `BK-MF0-03`.
-   - Ficheiro alvo: `apps/api/src/modules/study/dto/solo-study-state.dto.ts`.
-   - Snippet de referência:
-     ```ts
-     export type SoloStudyStateDto = {
-       studentName: string;
-       hasClass: boolean;
-       studyAreasCount: number;
-       routinesCount: number;
-       materialsCount: number;
-     };
-     ```
-   - O que verificar: `hasClass` pode ser `false`.
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis na MF0.
 
-2. **Objetivo (~35 min): criar service do modo individual**
-   - Descrição detalhada do objetivo: compor estado inicial a partir do aluno autenticado.
-   - Justificação: centraliza regra de negócio fora do controller.
-   - Como fazer (2.1): criar `getSoloStudyState(userId)`.
-   - Como fazer (2.2): devolver contadores a zero se ainda não existirem registos.
-   - Ficheiro a rever: `apps/api/src/modules/students/student-profile.service.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/study/solo-study.service.ts`.
-   - Snippet de referência:
-     ```ts
-     return { studentName: profile.name, hasClass: Boolean(profile.className) };
-     ```
-   - O que verificar: não há consulta obrigatória à coleção de turmas.
+### Pré-requisitos concretos
 
-3. **Objetivo (~30 min): expor endpoint protegido**
-   - Descrição detalhada do objetivo: criar `GET /api/study/solo`.
-   - Justificação: o dashboard precisa de dados reais ou estado vazio.
-   - Como fazer (3.1): aplicar `SessionGuard`.
-   - Como fazer (3.2): usar `request.user.id`.
-   - Ficheiro a rever: `BK-MF0-02`.
-   - Ficheiro alvo: `apps/api/src/modules/study/solo-study.controller.ts`.
-   - Snippet de referência:
-     ```ts
-     // GET /api/study/solo -> SoloStudyStateDto
-     ```
-   - O que verificar: sem sessão devolve `401`.
+- BK-MF0-02 com `SessionGuard`.
+- BK-MF0-03 com `StudentProfileService`.
+- Perfil pode ter `className: null`.
+- Não existem ainda turmas oficiais; qualquer `classId`/`turmaId` é fora de escopo.
 
-4. **Objetivo (~45 min): criar dashboard individual**
-   - Descrição detalhada do objetivo: mostrar o estado do aluno e atalhos para próximos BKs.
-   - Justificação: a app fica utilizável depois do login.
-   - Como fazer (4.1): criar `SoloStudyDashboard`.
-   - Como fazer (4.2): mostrar cards para `Rotinas`, `Histórico`, `Áreas` e `Materiais`.
-   - Ficheiro a rever: `docs/RNF.md`.
-   - Ficheiro alvo: `apps/web/src/pages/student/SoloStudyDashboard.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <h1>O teu estudo</h1>
-     <p>Começa por criar uma área de estudo ou uma rotina.</p>
-     ```
-   - O que verificar: não aparece texto a pedir turma obrigatória.
+### Passo 1 - Criar DTO de estado individual
 
-5. **Objetivo (~30 min): ligar rotas protegidas**
-   - Descrição detalhada do objetivo: redirecionar aluno autenticado para `/app/estudo`.
-   - Justificação: depois do login tem de existir destino funcional.
-   - Como fazer (5.1): criar rota protegida.
-   - Como fazer (5.2): se `/me` falhar, voltar para login.
-   - Ficheiro a rever: `apps/web/src/hooks/useSession.ts`.
-   - Ficheiro alvo: `apps/web/src/routes/protectedRoutes.tsx`.
-   - Snippet de referência:
-     ```tsx
-     <ProtectedRoute path="/app/estudo" element={<SoloStudyDashboard />} />
-     ```
-   - O que verificar: aluno sem sessão não vê o dashboard.
+1. Explicação simples do objetivo.
 
-6. **Objetivo (~35 min): garantir isolamento de contexto**
-   - Descrição detalhada do objetivo: impedir dependência ou exposição de dados de turma.
-   - Justificação: turmas só chegam depois e têm regras próprias.
-   - Como fazer (6.1): procurar no código referências obrigatórias a `turmaId`.
-   - Como fazer (6.2): garantir que o endpoint só usa `userId`.
-   - Ficheiro a rever: `apps/api/src/modules/study/solo-study.service.ts`.
-   - Ficheiro alvo: `apps/api/src/modules/study/solo-study.service.ts`.
-   - Snippet de referência: `{ userId: request.user.id }`.
-   - O que verificar: não existe filtro obrigatório por `classId`.
+    Neste passo vais criar DTO de estado individual. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
 
-7. **Objetivo (~40 min): testar casos principais e negativos**
-   - Descrição detalhada do objetivo: validar aluno com e sem turma.
-   - Justificação: a regra crítica é funcionar sem turma.
-   - Como fazer (7.1): criar fixture de aluno com `className: null`.
-   - Como fazer (7.2): testar acesso sem sessão, com sessão inválida e tentativa de enviar `userId` manual.
-   - Ficheiro a rever: `PLANO-SPRINTS.md`.
-   - Ficheiro alvo: `apps/api/src/modules/study/solo-study.e2e-spec.ts`.
-   - Snippet de referência:
-     ```ts
-     expect(body.hasClass).toBe(false);
-     ```
-   - O que verificar: todos os negativos falham de forma controlada.
+2. Ficheiros envolvidos.
 
-8. **Objetivo (~20 min): preparar handoff para rotinas**
-   - Descrição detalhada do objetivo: indicar onde BK-MF0-05 deve encaixar.
-   - Justificação: rotinas aparecem no dashboard individual.
-   - Como fazer (8.1): documentar card/atalho `Rotinas`.
-   - Como fazer (8.2): anexar screenshot do dashboard vazio.
-   - Ficheiro a rever: `MF-VIEWS.md`.
-   - Ficheiro alvo: evidence do PR.
-   - Snippet de referência: `routinesCount: 0`.
-   - O que verificar: há local claro para rotinas no BK seguinte.
+- CRIAR: `apps/api/src/modules/study/dto/solo-study-state.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
 
-## Checklist de validação (DERIVADO):
+3. O que fazer.
 
-- Smoke:
-  - Aluno autenticado sem turma acede a `/app/estudo`.
-  - API devolve `hasClass: false`.
-- Negativos:
-  - passo 7; input/ação: pedido sem cookie; resultado esperado: `401`; risco que cobre: acesso público indevido.
-  - passo 7; input/ação: sessão de outro aluno e `userId` no query/body; resultado esperado: query/body ignorado; risco que cobre: IDOR.
-  - passo 7; input/ação: perfil sem turma; resultado esperado: `200`; risco que cobre: bloqueio indevido do estudo individual.
-- Técnico:
-  - Nenhuma rota individual exige `turmaId`.
-  - `SoloStudyStateDto` suporta contadores a zero.
-- Regressão das fases anteriores:
-  - Login e perfil continuam funcionais.
-- UI/mockup:
-  - Sem mockup específico; dashboard usa UI simples e extensível.
-- Segurança:
-  - Endpoint usa `request.user.id`, nunca `userId` recebido do cliente.
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
-## Critérios de aceite:
+4. Código completo, correto e integrado.
+
+```ts
+export type SoloStudyStateDto = {
+    studentName: string;
+    hasClass: boolean;
+    className: string | null;
+    studyAreasCount: number;
+    routinesCount: number;
+    materialsCount: number;
+};
+```
+
+5. Explicação do código.
+
+Este DTO é o contrato entre backend e dashboard. `hasClass: false` é um resultado válido.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 2 - Criar service do modo individual
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service do modo individual. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/solo-study.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Injectable } from "@nestjs/common";
+import { StudentProfileService } from "../students/student-profile.service";
+import { SoloStudyStateDto } from "./dto/solo-study-state.dto";
+
+@Injectable()
+export class SoloStudyService {
+    constructor(private readonly profileService: StudentProfileService) {}
+
+    async getSoloStudyState(userId: string): Promise<SoloStudyStateDto> {
+        const profile = await this.profileService.getMyProfile(userId);
+
+        return {
+            studentName: profile?.name ?? "Aluno",
+            hasClass: Boolean(profile?.className),
+            className: profile?.className ?? null,
+            // Estes contadores começam a zero e serão ligados aos BKs seguintes.
+            studyAreasCount: 0,
+            routinesCount: 0,
+            materialsCount: 0,
+        };
+    }
+}
+```
+
+5. Explicação do código.
+
+O service não procura turmas. Ele constrói um estado inicial útil mesmo para alunos sem turma ou sem dados.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 3 - Criar controller protegido
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller protegido. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/solo-study.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Controller, Get, Req, UseGuards } from "@nestjs/common";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthenticatedRequest } from "../../common/types/authenticated-request";
+import { SoloStudyService } from "./solo-study.service";
+
+@Controller("api/study/solo")
+@UseGuards(SessionGuard)
+export class SoloStudyController {
+    constructor(private readonly soloStudyService: SoloStudyService) {}
+
+    @Get()
+    async getSoloStudy(@Req() request: AuthenticatedRequest) {
+        return this.soloStudyService.getSoloStudyState(request.user!.id);
+    }
+}
+```
+
+5. Explicação do código.
+
+O endpoint usa apenas a sessão. Se alguém tentar enviar `userId` por query/body, isso é ignorado porque o controller não lê esses dados.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 4 - Criar módulo Study
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar módulo Study. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/study/study.module.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module";
+import { StudentsModule } from "../students/students.module";
+import { SoloStudyController } from "./solo-study.controller";
+import { SoloStudyService } from "./solo-study.service";
+
+@Module({
+    imports: [AuthModule, StudentsModule],
+    controllers: [SoloStudyController],
+    providers: [SoloStudyService],
+    exports: [SoloStudyService],
+})
+export class StudyModule {}
+```
+
+5. Explicação do código.
+
+O módulo importa `StudentsModule` para consultar perfil, mas não importa nenhum módulo de turmas.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 5 - Editar cliente API
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais editar cliente API. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/web/src/lib/apiClient.ts`
+- LOCALIZAÇÃO: no fim do ficheiro.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```ts
+export type SoloStudyState = {
+    studentName: string;
+    hasClass: boolean;
+    className: string | null;
+    studyAreasCount: number;
+    routinesCount: number;
+    materialsCount: number;
+};
+
+export async function getSoloStudyState(): Promise<SoloStudyState> {
+    const response = await fetch("/api/study/solo", { credentials: "include" });
+    if (response.status === 401)
+        throw new Error("Inicia sessão para aceder ao teu estudo.");
+    if (!response.ok)
+        throw new Error("Não foi possível carregar o estudo individual.");
+    return (await response.json()) as SoloStudyState;
+}
+```
+
+5. Explicação do código.
+
+Esta função carrega o estado do dashboard individual usando o cookie HttpOnly.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 6 - Criar AppShell
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar AppShell. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/components/layout/AppShell.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```tsx
+import { ReactNode } from "react";
+
+export function AppShell({ children }: { children: ReactNode }) {
+    return (
+        <div className="min-h-screen bg-slate-50">
+            <header className="border-b bg-white px-4 py-3">
+                <strong className="text-slate-900">StudyFlow</strong>
+            </header>
+            <div className="mx-auto max-w-5xl px-4 py-8">{children}</div>
+        </div>
+    );
+}
+```
+
+5. Explicação do código.
+
+O layout é simples porque não há mockup final do dashboard. Ele cria uma base reutilizável sem inventar navegação avançada.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 7 - Criar dashboard individual
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar dashboard individual. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/pages/student/SoloStudyDashboard.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```tsx
+import { useEffect, useState } from "react";
+import { AppShell } from "../../components/layout/AppShell";
+import { getSoloStudyState, SoloStudyState } from "../../lib/apiClient";
+
+export function SoloStudyDashboard() {
+    const [state, setState] = useState<SoloStudyState | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        getSoloStudyState()
+            .then(setState)
+            .catch((err) =>
+                setError(
+                    err instanceof Error
+                        ? err.message
+                        : "Erro ao carregar dashboard.",
+                ),
+            );
+    }, []);
+
+    if (error) {
+        return (
+            <AppShell>
+                <p className="rounded bg-red-50 p-3 text-red-700">{error}</p>
+            </AppShell>
+        );
+    }
+
+    if (!state) {
+        return (
+            <AppShell>
+                <p>A carregar o teu espaço de estudo...</p>
+            </AppShell>
+        );
+    }
+
+    return (
+        <AppShell>
+            <h1 className="text-2xl font-semibold text-slate-900">
+                O teu estudo
+            </h1>
+            <p className="mt-2 text-slate-600">
+                {state.hasClass
+                    ? `Turma: ${state.className}`
+                    : "Podes estudar mesmo sem turma associada."}
+            </p>
+            <section className="mt-6 grid gap-4 md:grid-cols-3">
+                <article className="rounded border bg-white p-4">
+                    <h2 className="font-semibold">Áreas de estudo</h2>
+                    <p>{state.studyAreasCount} criadas</p>
+                </article>
+                <article className="rounded border bg-white p-4">
+                    <h2 className="font-semibold">Rotinas</h2>
+                    <p>{state.routinesCount} ativas</p>
+                </article>
+                <article className="rounded border bg-white p-4">
+                    <h2 className="font-semibold">Materiais</h2>
+                    <p>{state.materialsCount} submetidos</p>
+                </article>
+            </section>
+        </AppShell>
+    );
+}
+```
+
+5. Explicação do código.
+
+O dashboard mostra empty states úteis. Ele não pede turma obrigatória e prepara espaço para BK-MF0-05, BK-MF0-07 e BK-MF0-08.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+### Passo 8 - Criar rota protegida
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar rota protegida. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/routes/protectedRoutes.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+```tsx
+import { ReactNode } from "react";
+import { useSession } from "../hooks/useSession";
+
+export function ProtectedRoute({ children }: { children: ReactNode }) {
+    const { isAuthenticated, isLoading } = useSession();
+
+    if (isLoading) return <p>A validar sessão...</p>;
+    if (!isAuthenticated) {
+        window.location.assign("/login");
+        return null;
+    }
+
+    return <>{children}</>;
+}
+```
+
+5. Explicação do código.
+
+Esta proteção é frontend apenas para experiência de navegação. A segurança real continua no backend com `SessionGuard`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados do aluno, valida sempre com uma sessão real e nunca com `userId` vindo do body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs enviados pelo frontend em vez de usar `request.user.id` da sessão.
+
+## Critérios de aceite
 
 - Outputs:
-  - Endpoint `GET /api/study/solo`.
-  - Dashboard individual protegido.
-  - Estado vazio para aluno novo.
+    - Endpoint `GET /api/study/solo`.
+    - Dashboard individual protegido.
+    - Estado vazio para aluno novo.
 - Verificações:
-  - Aluno sem turma recebe `200`.
-  - Sem sessão recebe `401`.
+    - Aluno sem turma recebe `200`.
+    - Sem sessão recebe `401`.
 - Qualidade:
-  - Não há dependência prematura de turmas.
-  - Componentes preparam rotinas, histórico e áreas.
+    - Não há dependência prematura de turmas.
+    - Componentes preparam rotinas, histórico e áreas.
 - Continuidade:
-  - BK-MF0-05 reutiliza dashboard para rotinas.
-  - BK-MF0-07 reutiliza contexto individual para áreas de estudo.
+    - BK-MF0-05 reutiliza dashboard para rotinas.
+    - BK-MF0-07 reutiliza contexto individual para áreas de estudo.
 - Evidência:
-  - Screenshot do dashboard vazio e output do teste com `hasClass: false`.
+    - Screenshot do dashboard vazio e output do teste com `hasClass: false`.
 
-## Evidence (para o PR/defesa):
+## Validação final
 
-- `pr`: `A preencher no fecho do BK`
-- `proof`: `A preencher apos validacao`
-- `neg`: `A preencher apos testes negativos`
-- `files`: `apps/api/src/modules/study/*`, `apps/web/src/pages/student/SoloStudyDashboard.tsx`
-- `commands`: `npm test`, `npm run test:e2e`, `npm run lint`
-- `screenshots`: `A preencher com dashboard individual sem turma`
-- `notes`: `Turma é opcional por contrato derivado de RF04`
+### Requests e responses esperados
 
-## TODOs
+```http
+GET /api/study/solo
+Cookie: sf_sid=<válido>
+```
 
-- TODO: confirmar nome final da rota frontend `/app/estudo`.
-- TODO: confirmar se dashboard inicial será página ou componente dentro de layout maior.
-- FOLLOW-UP: BK-MF0-05 deve preencher card de rotinas.
-- Assunção a validar com o orientador: aluno sem turma não vê funcionalidades de professor/turma.
-- Decisão dependente de mockup: dashboard não tem wireframe específico.
-- Decisão dependente de app/código ainda inexistente: confirmar paths após scaffold.
+```http
+200 OK
+
+{
+  "studentName": "Ana Silva",
+  "hasClass": false,
+  "className": null,
+  "studyAreasCount": 0,
+  "routinesCount": 0,
+  "materialsCount": 0
+}
+```
+
+Erros esperados:
+
+- `401 UNAUTHENTICATED`: sem cookie ou sessão inválida.
+- `200` com `hasClass: false`: aluno sem turma não é erro.
+
+### Como validar o BK e cenários negativos
+
+- Aluno autenticado com `className: null`: esperado `200`.
+- Pedido sem cookie: esperado `401`.
+- Pedido com `userId` no query: esperado ignorar query e devolver estado do dono da sessão.
+
+## Evidence para PR/defesa
+
+- Screenshot do dashboard com texto “Podes estudar mesmo sem turma associada.”
+- Output `GET /api/study/solo -> 200` com `hasClass: false`.
+- Output sem sessão `401`.
+
+## Handoff para BK-MF0-05
+
+- O card `Rotinas` passa de `0` para contador real quando BK-MF0-05 existir.
+- O endpoint não deve ganhar dependência de turma nos próximos BKs.
 
 ## Changelog
+
 - `2026-05-24`: guia refinado para modo individual sem turma, com endpoint, dashboard e negativos P0.
 - `2026-05-25`: linguagem de persistência ajustada para MongoDB/Mongoose e referências opcionais.
