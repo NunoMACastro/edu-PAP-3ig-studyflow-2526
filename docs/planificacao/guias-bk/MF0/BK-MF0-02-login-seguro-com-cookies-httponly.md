@@ -308,7 +308,7 @@ O mockup existente cobre diretamente este BK: ecrã central com marca `StudyFlow
 ## Evidence (para o PR/defesa):
 
 - `pr`: `PR #2 - Modelação de Autenticação Segura com Cookies HttpOnly (BK-MF0-02)`
-- `proof`: `Fluxo concebido para POST /api/auth/login injectetar cookie 'sid' com flags httpOnly e sameSite=lax. Rota GET /api/auth/me estruturada para devolver a sessão ativa.`
+ar="proof": `Fluxo concebido para POST /api/auth/login injetar cookie 'sid' com flags httpOnly e sameSite=lax. Rota GET /api/auth/me estruturada para devolver a sessão ativa.`
 - `neg`: `Erros genéricos controlados mapeados para a especificação: password errada (401), utilizador inexistente (401 sem revelação de email) e cookie inválido (401).`
 - `files`: `apps/api/src/modules/auth/*`, `apps/api/src/common/guards/session.guard.ts`, `apps/web/src/pages/auth/LoginPage.tsx`
 - `commands`: `N/A (Scaffold e dependências do Redis/NestJS ainda não injetados no repositório)`
