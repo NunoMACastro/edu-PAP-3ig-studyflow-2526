@@ -40,6 +40,26 @@ export class StudyAreasService {
             .lean();
     }
 
+    async updateVoiceFields(userId: string, areaId: string, input: {
+        voiceTone?: string;
+        voiceDetailLevel?: string;
+        voiceNotes?: string;
+    }) {
+        const updated = await this.areaModel
+            .findOneAndUpdate(
+            { _id: areaId, userId: new Types.ObjectId(userId) },
+            { $set: input },
+            { new: true, runValidators: true },
+          )
+          .lean();
+
+        if (!updated) {
+            throw new NotFoundException({ code: 'STUDY_AREA_NOT_FOUND', message: 'Área de estudo não encontrada.' });
+        }
+
+          return updated;
+        }
+
     async createStudyArea(userId: string, input: CreateStudyAreaDto) {
         const name = input.name?.trim();
         if (!name)
