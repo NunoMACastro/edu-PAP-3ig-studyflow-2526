@@ -54,7 +54,7 @@ BKs editados:
 - `BK-MF1-12`
 
 ## Critério aplicado
-Um BK foi considerado `OK` se passou a ter objectivo, importância, scope, scope-out, estado antes/depois, pré-requisitos, glossário, conceitos teóricos, arquitectura, passos lineares, ficheiros, código por localização, integração backend/frontend, cenários negativos, critérios de aceite, validação final, evidence, handoff e changelog.
+Um BK foi considerado `OK` se passou a ter objetivo, importância, scope, scope-out, estado antes/depois, pré-requisitos, glossário, conceitos teóricos, arquitectura, passos lineares, ficheiros, código por localização, integração backend/frontend, cenários negativos, critérios de aceite, validação final, evidence, handoff e changelog.
 
 Esta classificação é documental. A implementação real da aplicação não foi criada nesta execução; o que foi corrigido foram os guias de implementação.
 
@@ -80,6 +80,16 @@ Esta classificação é documental. A implementação real da aplicação não f
 - IA da sala usa apenas `RoomShare.usableByAi`.
 - IA adaptativa individual usa apenas materiais da área do aluno com `status: READY` e `contentText`.
 - Clientes frontend foram tipados por domínio e usam `credentials: 'include'`.
+
+## Correcção pedagógica adicional
+Depois da primeira correcção técnica, foi feita uma segunda passagem focada em alinhar a estrutura dos guias da `MF1` com o padrão pedagógico dos BKs da `MF0`.
+
+Alterações adicionadas aos 10 BKs da `MF1`:
+- Conceitos teóricos expandidos, com explicação de origem, destino e finalidade dos campos principais.
+- `Guia linear de implementação` reestruturado com `Pré-requisitos concretos`.
+- Cada passo passou a seguir o padrão numerado da `MF0`: explicação simples do objetivo, ficheiros envolvidos, o que fazer, código completo, explicação do código, validação e erros comuns.
+- Os blocos de código passaram a incluir comentários pedagógicos inline para explicar o que está a acontecer.
+- Explicação específica de termos que estavam pobres, incluindo `sourceIds`, `studentIds`, `memberIds`, `usableByAi`, `PROCESSED` e `REFERENCE_ONLY`.
 
 ## Mapa de integração da MF
 | BK | Módulo principal | Endpoints | DTOs | Schemas/models | Services/exports | Frontend | BKs seguintes dependentes |

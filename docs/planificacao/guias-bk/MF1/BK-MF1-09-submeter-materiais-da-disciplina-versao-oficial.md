@@ -58,7 +58,27 @@ Materiais oficiais são diferentes dos materiais privados do aluno. A IA docente
 - **REFERENCE_ONLY**: referência guardada, mas sem texto suficiente para resposta factual.
 
 ## Conceitos teóricos
-Uma URL não prova que o sistema conhece o seu conteúdo. Até existir extração e indexação, uma URL deve ser guardada como referência e não como fonte de resposta. Assim, a IA não inventa conteúdo com base num link.
+**Material oficial.** É conteúdo fornecido pelo professor para uma disciplina. O aluno pode confiar que este material representa a versão oficial usada pela turma.
+
+**Texto vs URL.** `textContent` guarda texto que o sistema pode ler directamente. `sourceUrl` guarda uma ligação. Uma ligação não é automaticamente conhecimento, por isso fica como referência até existir texto associado.
+
+**Estado do material.** `PROCESSED` significa que o material pode alimentar IA. `REFERENCE_ONLY` significa que o material aparece para consulta humana, mas não deve ser usado como base factual pela IA.
+
+**Ligação à disciplina e turma.** O material guarda `subjectId`, `classId` e `teacherId`. Assim, a IA limitada consegue procurar fontes por disciplina e ainda manter rasto da turma e do professor.
+
+**Guardrail contra invenção.** A IA de `BK-MF1-11` só consulta materiais `PROCESSED`. Esta regra reduz o risco de respostas baseadas em URLs que o sistema nunca leu.
+
+**Decorators do NestJS.** Decorators como `@Controller`, `@Post`, `@Get`, `@Put`, `@Module` e `@Injectable` dizem ao NestJS que papel cada classe tem. O controller recebe pedidos HTTP, o service contém regras de negócio e o módulo liga tudo.
+
+**DTOs e validação.** DTO significa Data Transfer Object. NestJS usa estes objetos, em conjunto com `class-validator`, para validar o que chega do frontend antes de executar regras de negócio.
+
+**Schemas Mongoose.** Um schema Mongoose descreve a forma dos documentos guardados em MongoDB. Campos com `Types.ObjectId` representam ligações entre coleções, como aluno, professor, turma, disciplina ou sala.
+
+**Injeção de dependências.** O constructor dos services recebe models e outros services. Isto evita criar dependências manualmente e torna o código mais fácil de testar.
+
+**React hooks.** `useState` guarda estado local da página, como loading, erro ou resposta. `useEffect` executa carregamentos quando a página abre ou quando um ID muda.
+
+**Fetch API e cookies.** O frontend usa `fetch` para chamar a API. A opção `credentials: 'include'` envia o cookie HttpOnly da sessão, sem expor tokens no JavaScript.
 
 ## Arquitetura do BK
 - `apps/api/src/modules/official-materials/schemas/official-material.schema.ts`
@@ -75,40 +95,79 @@ Endpoints:
 
 ## Guia linear de implementação
 
+Segue estes passos por ordem. Os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência e OpenAI API apenas atrás de provider isolado quando houver IA. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
+
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno ou do professor, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis e autorizadas.
+
+### Pré-requisitos concretos
+
+- `SubjectsModule` exporta `SubjectsService`.
+- `SessionGuard` funcional.
+- Validação global de DTOs ativa.
+
 ### Passo 1 - Criar schema
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar schema nos ficheiros `apps/api/src/modules/official-materials/schemas/official-material.schema.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/official-materials/schemas/official-material.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/official-materials/schemas/official-material.schema.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type OfficialMaterialDocument = HydratedDocument<OfficialMaterial>;
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type OfficialMaterialType = "TEXT" | "URL";
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type OfficialMaterialStatus = "PROCESSED" | "REFERENCE_ONLY";
 
+// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "official_materials" })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OfficialMaterial {
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "Subject", required: true, index: true })
     subjectId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
     classId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     teacherId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 160 })
     title!: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["TEXT", "URL"] })
     type!: OfficialMaterialType;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 20000 })
     textContent?: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 1000 })
     sourceUrl?: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["PROCESSED", "REFERENCE_ONLY"] })
     status!: OfficialMaterialStatus;
 }
@@ -118,10 +177,38 @@ OfficialMaterialSchema.index({ subjectId: 1, createdAt: -1 });
 OfficialMaterialSchema.index({ teacherId: 1, subjectId: 1 });
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 2 - Criar DTO
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar dto nos ficheiros `apps/api/src/modules/official-materials/dto/create-official-material.dto.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/official-materials/dto/create-official-material.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/official-materials/dto/create-official-material.dto.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     IsIn,
     IsOptional,
@@ -132,6 +219,7 @@ import {
     ValidateIf,
 } from "class-validator";
 
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateOfficialMaterialDto {
     @IsString()
     @MinLength(2)
@@ -159,10 +247,38 @@ export class CreateOfficialMaterialDto {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 3 - Criar service
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service nos ficheiros `apps/api/src/modules/official-materials/official-materials.service.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/official-materials/official-materials.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/official-materials/official-materials.service.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -176,13 +292,16 @@ import {
 } from "./schemas/official-material.schema";
 
 @Injectable()
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OfficialMaterialsService {
+    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(OfficialMaterial.name)
         private readonly materialModel: Model<OfficialMaterialDocument>,
         private readonly subjectsService: SubjectsService,
     ) {}
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, subjectId: string, dto: CreateOfficialMaterialDto) {
         this.assertTeacher(actor);
         const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
@@ -201,6 +320,7 @@ export class OfficialMaterialsService {
         return this.toView(material);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForTeacher(actor: AuthenticatedUser, subjectId: string) {
         this.assertTeacher(actor);
         const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
@@ -213,6 +333,7 @@ export class OfficialMaterialsService {
         return materials.map((material) => this.toView(material));
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async findProcessedBySubject(subject: Subject) {
         return this.materialModel
             .find({ subjectId: subject._id, status: "PROCESSED" })
@@ -220,7 +341,9 @@ export class OfficialMaterialsService {
     }
 
     private assertTeacher(actor: AuthenticatedUser) {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "TEACHER") {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas professores podem gerir materiais oficiais.");
         }
     }
@@ -241,10 +364,38 @@ export class OfficialMaterialsService {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 4 - Criar controller
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller nos ficheiros `apps/api/src/modules/official-materials/official-materials.controller.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/official-materials/official-materials.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/official-materials/official-materials.controller.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -256,7 +407,9 @@ import { OfficialMaterialsService } from "./official-materials.service";
 
 @Controller("api/teacher/subjects/:subjectId/materials")
 @UseGuards(SessionGuard)
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OfficialMaterialsController {
+    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly officialMaterialsService: OfficialMaterialsService) {}
 
     @Post()
@@ -282,10 +435,38 @@ export class OfficialMaterialsController {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 5 - Criar módulo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar módulo nos ficheiros `apps/api/src/modules/official-materials/official-materials.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/official-materials/official-materials.module.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/official-materials/official-materials.module.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { SubjectsModule } from "../subjects/subjects.module";
@@ -307,13 +488,43 @@ import {
     providers: [OfficialMaterialsService],
     exports: [OfficialMaterialsService, MongooseModule],
 })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OfficialMaterialsModule {}
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 6 - Criar cliente frontend
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar cliente frontend nos ficheiros `apps/web/src/lib/api/officialMaterials.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/lib/api/officialMaterials.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/web/src/lib/api/officialMaterials.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type OfficialMaterialView = {
     id: string;
     subjectId: string;
@@ -325,9 +536,12 @@ export type OfficialMaterialView = {
     status: "PROCESSED" | "REFERENCE_ONLY";
 };
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -338,6 +552,7 @@ export async function createOfficialMaterial(
     subjectId: string,
     input: { title: string; type: "TEXT" | "URL"; textContent?: string; sourceUrl?: string },
 ) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/subjects/${subjectId}/materials`, {
         method: "POST",
         credentials: "include",
@@ -349,6 +564,7 @@ export async function createOfficialMaterial(
 }
 
 export async function listOfficialMaterials(subjectId: string) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/subjects/${subjectId}/materials`, {
         credentials: "include",
     });
@@ -357,10 +573,38 @@ export async function listOfficialMaterials(subjectId: string) {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 7 - Criar página do professor
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar página do professor nos ficheiros `apps/web/src/pages/teacher/TeacherOfficialMaterialsPage.tsx`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/pages/teacher/TeacherOfficialMaterialsPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```tsx
 // apps/web/src/pages/teacher/TeacherOfficialMaterialsPage.tsx
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     OfficialMaterialView,
@@ -372,19 +616,27 @@ type Props = {
     subjectId: string;
 };
 
+// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [materials, setMaterials] = useState<OfficialMaterialView[]>([]);
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [type, setType] = useState<"TEXT" | "URL">("TEXT");
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setMaterials(await listOfficialMaterials(subjectId));
     }
 
+    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, [subjectId]);
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
+    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -405,6 +657,7 @@ export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
         }
     }
 
+    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Materiais oficiais</h1>
@@ -432,13 +685,53 @@ export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 8 - Validar comportamento
-- Professor dono da disciplina cria material `TEXT`.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais validar comportamento no fluxo de validação do BK. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- VALIDAR: este passo não cria ficheiros novos.
+- LOCALIZAÇÃO: executa os cenários indicados neste passo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+Não há código novo neste passo. Usa-o para confirmar que os passos anteriores funcionam em conjunto.
+
+5. Explicação do código.
+
+    - Professor dono da disciplina cria material `TEXT`.
 - Material `TEXT` fica `PROCESSED`.
 - Material `URL` fica `REFERENCE_ONLY`.
 - Professor sem ownership recebe `404`.
 - Aluno recebe `403`.
 - `BK-MF1-11` usa apenas materiais `PROCESSED`.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
 ## Critérios de aceite
 - Não existe campo duplicado para conteúdo.

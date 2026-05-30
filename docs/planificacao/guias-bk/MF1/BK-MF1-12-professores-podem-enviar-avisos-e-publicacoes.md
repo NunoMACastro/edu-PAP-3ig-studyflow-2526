@@ -58,7 +58,29 @@ Publicações docentes são comunicação oficial. A leitura por alunos tem de u
 - **Autor**: professor autenticado que criou o conteúdo.
 
 ## Conceitos teóricos
-A escrita e a leitura têm regras diferentes. O professor escreve se for dono da turma. O aluno lê se estiver em `studentIds`. Separar estas regras no service evita exposição acidental de informação.
+**Publicação oficial da turma.** Uma publicação é uma mensagem criada por professor para uma turma. Pode ser aviso curto (`NOTICE`) ou publicação mais geral (`POST`).
+
+**Diferença entre escrita e leitura.** A escrita pertence ao professor dono da turma. A leitura pertence aos alunos inscritos. Isto significa que a mesma entidade (`ClassPost`) tem duas regras de autorização diferentes.
+
+**Origem de `studentIds`.** A lista de alunos inscritos vem do `BK-MF1-07`. Quando o aluno pede `GET /api/student/classes/:classId/posts`, o backend confirma se `request.user.id` está em `studentIds` da turma.
+
+**Porque não basta conhecer o `classId`.** Um aluno pode copiar o ID de uma turma de outro contexto. O service não pode confiar no ID vindo da URL sem consultar a turma e confirmar a inscrição.
+
+**Separação de clientes frontend.** O cliente `createClassPost` é para professor. O cliente `listClassPostsForStudent` é para aluno. Separar chamadas evita confundir permissões e torna os fluxos mais fáceis de testar.
+
+**Auditoria simples.** Cada publicação guarda `teacherId`, `classId`, `type`, `title` e `body`. Com isto é possível responder: quem publicou, onde publicou e que tipo de comunicação foi feita.
+
+**Decorators do NestJS.** Decorators como `@Controller`, `@Post`, `@Get`, `@Put`, `@Module` e `@Injectable` dizem ao NestJS que papel cada classe tem. O controller recebe pedidos HTTP, o service contém regras de negócio e o módulo liga tudo.
+
+**DTOs e validação.** DTO significa Data Transfer Object. NestJS usa estes objetos, em conjunto com `class-validator`, para validar o que chega do frontend antes de executar regras de negócio.
+
+**Schemas Mongoose.** Um schema Mongoose descreve a forma dos documentos guardados em MongoDB. Campos com `Types.ObjectId` representam ligações entre coleções, como aluno, professor, turma, disciplina ou sala.
+
+**Injeção de dependências.** O constructor dos services recebe models e outros services. Isto evita criar dependências manualmente e torna o código mais fácil de testar.
+
+**React hooks.** `useState` guarda estado local da página, como loading, erro ou resposta. `useEffect` executa carregamentos quando a página abre ou quando um ID muda.
+
+**Fetch API e cookies.** O frontend usa `fetch` para chamar a API. A opção `credentials: 'include'` envia o cookie HttpOnly da sessão, sem expor tokens no JavaScript.
 
 ## Arquitetura do BK
 - `apps/api/src/modules/class-posts/schemas/class-post.schema.ts`
@@ -77,30 +99,65 @@ Endpoints:
 
 ## Guia linear de implementação
 
+Segue estes passos por ordem. Os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência e OpenAI API apenas atrás de provider isolado quando houver IA. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
+
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno ou do professor, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis e autorizadas.
+
+### Pré-requisitos concretos
+
+- `ClassesService.findOwnedClass`.
+- `ClassesService.ensureStudentEnrollment`.
+- `SessionGuard`.
+
 ### Passo 1 - Criar schema
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar schema nos ficheiros `apps/api/src/modules/class-posts/schemas/class-post.schema.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/class-posts/schemas/class-post.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/class-posts/schemas/class-post.schema.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type ClassPostDocument = HydratedDocument<ClassPost>;
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type ClassPostType = "NOTICE" | "POST";
 
+// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "class_posts" })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassPost {
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
     classId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     teacherId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["NOTICE", "POST"] })
     type!: ClassPostType;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 160 })
     title!: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 5, maxlength: 4000 })
     body!: string;
 }
@@ -109,12 +166,41 @@ export const ClassPostSchema = SchemaFactory.createForClass(ClassPost);
 ClassPostSchema.index({ classId: 1, createdAt: -1 });
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 2 - Criar DTO
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar dto nos ficheiros `apps/api/src/modules/class-posts/dto/create-class-post.dto.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/class-posts/dto/create-class-post.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/class-posts/dto/create-class-post.dto.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsIn, IsString, MaxLength, MinLength } from "class-validator";
 
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateClassPostDto {
     @IsIn(["NOTICE", "POST"])
     type!: "NOTICE" | "POST";
@@ -131,10 +217,38 @@ export class CreateClassPostDto {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 3 - Criar service
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service nos ficheiros `apps/api/src/modules/class-posts/class-posts.service.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/class-posts/class-posts.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/class-posts/class-posts.service.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -144,13 +258,16 @@ import { CreateClassPostDto } from "./dto/create-class-post.dto";
 import { ClassPost, ClassPostDocument } from "./schemas/class-post.schema";
 
 @Injectable()
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassPostsService {
+    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(ClassPost.name)
         private readonly postModel: Model<ClassPostDocument>,
         private readonly classesService: ClassesService,
     ) {}
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, classId: string, dto: CreateClassPostDto) {
         this.assertTeacher(actor);
         const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
@@ -166,6 +283,7 @@ export class ClassPostsService {
         return this.toView(post);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForTeacher(actor: AuthenticatedUser, classId: string) {
         this.assertTeacher(actor);
         const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
@@ -177,6 +295,7 @@ export class ClassPostsService {
         return posts.map((post) => this.toView(post));
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForStudent(actor: AuthenticatedUser, classId: string) {
         this.assertStudent(actor);
         const schoolClass = await this.classesService.ensureStudentEnrollment(actor.id, classId);
@@ -189,13 +308,17 @@ export class ClassPostsService {
     }
 
     private assertTeacher(actor: AuthenticatedUser) {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "TEACHER") {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas professores podem criar publicações.");
         }
     }
 
     private assertStudent(actor: AuthenticatedUser) {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "STUDENT") {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas alunos inscritos podem ler publicações.");
         }
     }
@@ -213,10 +336,38 @@ export class ClassPostsService {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 4 - Criar controller
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller nos ficheiros `apps/api/src/modules/class-posts/class-posts.controller.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/class-posts/class-posts.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/class-posts/class-posts.controller.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -228,7 +379,9 @@ import { CreateClassPostDto } from "./dto/create-class-post.dto";
 
 @Controller("api")
 @UseGuards(SessionGuard)
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassPostsController {
+    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly classPostsService: ClassPostsService) {}
 
     @Post("teacher/classes/:classId/posts")
@@ -252,10 +405,38 @@ export class ClassPostsController {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 5 - Criar módulo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar módulo nos ficheiros `apps/api/src/modules/class-posts/class-posts.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/class-posts/class-posts.module.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/class-posts/class-posts.module.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ClassesModule } from "../classes/classes.module";
@@ -271,13 +452,43 @@ import { ClassPost, ClassPostSchema } from "./schemas/class-post.schema";
     controllers: [ClassPostsController],
     providers: [ClassPostsService],
 })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassPostsModule {}
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 6 - Criar cliente frontend
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar cliente frontend nos ficheiros `apps/web/src/lib/api/classPosts.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/lib/api/classPosts.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/web/src/lib/api/classPosts.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type ClassPostView = {
     id: string;
     classId: string;
@@ -287,9 +498,12 @@ export type ClassPostView = {
     body: string;
 };
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -300,6 +514,7 @@ export async function createClassPost(
     classId: string,
     input: { type: "NOTICE" | "POST"; title: string; body: string },
 ) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/classes/${classId}/posts`, {
         method: "POST",
         credentials: "include",
@@ -311,6 +526,7 @@ export async function createClassPost(
 }
 
 export async function listTeacherClassPosts(classId: string) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/classes/${classId}/posts`, {
         credentials: "include",
     });
@@ -319,6 +535,7 @@ export async function listTeacherClassPosts(classId: string) {
 }
 
 export async function listClassPostsForStudent(classId: string) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/student/classes/${classId}/posts`, {
         credentials: "include",
     });
@@ -327,10 +544,38 @@ export async function listClassPostsForStudent(classId: string) {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 7 - Criar página do professor
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar página do professor nos ficheiros `apps/web/src/pages/teacher/TeacherClassPostsPage.tsx`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/pages/teacher/TeacherClassPostsPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```tsx
 // apps/web/src/pages/teacher/TeacherClassPostsPage.tsx
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     ClassPostView,
@@ -342,18 +587,25 @@ type Props = {
     classId: string;
 };
 
+// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function TeacherClassPostsPage({ classId }: Props) {
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [posts, setPosts] = useState<ClassPostView[]>([]);
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setPosts(await listTeacherClassPosts(classId));
     }
 
+    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, [classId]);
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
+    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -373,6 +625,7 @@ export function TeacherClassPostsPage({ classId }: Props) {
         }
     }
 
+    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Publicações da turma</h1>
@@ -398,10 +651,38 @@ export function TeacherClassPostsPage({ classId }: Props) {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 8 - Criar página do aluno e validar
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar página do aluno e validar nos ficheiros `apps/web/src/pages/student/StudentClassPostsPage.tsx`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- VALIDAR: `apps/web/src/pages/student/StudentClassPostsPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```tsx
 // apps/web/src/pages/student/StudentClassPostsPage.tsx
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { useEffect, useState } from "react";
 import { ClassPostView, listClassPostsForStudent } from "../../lib/api/classPosts";
 
@@ -409,16 +690,21 @@ type Props = {
     classId: string;
 };
 
+// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function StudentClassPostsPage({ classId }: Props) {
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [posts, setPosts] = useState<ClassPostView[]>([]);
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
+    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         listClassPostsForStudent(classId)
             .then(setPosts)
             .catch((reason: Error) => setError(reason.message));
     }, [classId]);
 
+    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Avisos e publicações</h1>
@@ -435,12 +721,22 @@ export function StudentClassPostsPage({ classId }: Props) {
 }
 ```
 
-Valida:
+5. Explicação do código.
+
+    Valida:
 - Professor dono cria publicação.
 - Professor sem ownership recebe `404`.
 - Aluno inscrito lê publicações.
 - Aluno não inscrito recebe `403`.
 - Aluno não consegue criar publicação.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
 ## Critérios de aceite
 - Escrita exige professor dono da turma.

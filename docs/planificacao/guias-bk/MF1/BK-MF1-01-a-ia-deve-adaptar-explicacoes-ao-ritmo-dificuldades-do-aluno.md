@@ -61,7 +61,27 @@ Adaptação pedagógica só é segura se continuar baseada em fontes. O perfil d
 - **Fonte processável**: material com texto guardado e pronto para IA.
 
 ## Conceitos teóricos
-A personalização tem limites. O sistema pode ajustar linguagem, passos e exemplos, mas a resposta continua presa às fontes. Se as fontes não existirem, a resposta correta é bloquear e explicar que faltam materiais processáveis.
+**Personalização pedagógica.** Personalizar uma explicação não significa mudar a verdade do conteúdo. Significa ajustar a forma: mais lenta, mais directa, com mais passos, com exemplos ou com linguagem mais simples. O conteúdo factual continua a vir dos materiais do aluno.
+
+**Perfil por área de estudo.** O perfil não é global porque um aluno pode estar confortável em Matemática e ter dificuldades em Física. Por isso, `LearningProfile` guarda `userId` e `studyAreaId`: a combinação destes dois campos diz “este perfil pertence a este aluno nesta área”.
+
+**Fontes processáveis.** Uma fonte processável é um material que já tem texto em `contentText` e estado `READY`. Um ficheiro enviado mas ainda sem texto extraído não pode ser usado pela IA, porque a aplicação não sabe realmente o que está lá dentro.
+
+**Bloqueio sem fontes.** Se a área não tiver materiais prontos, o service devolve `422`. Isto ensina uma regra importante: é melhor falhar com uma mensagem clara do que gerar uma resposta bonita mas sem base factual.
+
+**Fluxo de dados.** O aluno guarda o perfil no frontend, o controller recebe o pedido com a sessão, o service confirma que a área pertence ao aluno, recolhe materiais prontos, constrói o prompt, chama o provider IA e guarda a explicação com as fontes usadas.
+
+**Decorators do NestJS.** Decorators como `@Controller`, `@Post`, `@Get`, `@Put`, `@Module` e `@Injectable` dizem ao NestJS que papel cada classe tem. O controller recebe pedidos HTTP, o service contém regras de negócio e o módulo liga tudo.
+
+**DTOs e validação.** DTO significa Data Transfer Object. NestJS usa estes objetos, em conjunto com `class-validator`, para validar o que chega do frontend antes de executar regras de negócio.
+
+**Schemas Mongoose.** Um schema Mongoose descreve a forma dos documentos guardados em MongoDB. Campos com `Types.ObjectId` representam ligações entre coleções, como aluno, professor, turma, disciplina ou sala.
+
+**Injeção de dependências.** O constructor dos services recebe models e outros services. Isto evita criar dependências manualmente e torna o código mais fácil de testar.
+
+**React hooks.** `useState` guarda estado local da página, como loading, erro ou resposta. `useEffect` executa carregamentos quando a página abre ou quando um ID muda.
+
+**Fetch API e cookies.** O frontend usa `fetch` para chamar a API. A opção `credentials: 'include'` envia o cookie HttpOnly da sessão, sem expor tokens no JavaScript.
 
 ## Arquitetura do BK
 - `apps/api/src/modules/ai/schemas/learning-profile.schema.ts`
@@ -83,34 +103,72 @@ Endpoints:
 
 ## Guia linear de implementação
 
+Segue estes passos por ordem. Os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência e OpenAI API apenas atrás de provider isolado quando houver IA. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
+
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno ou do professor, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis e autorizadas.
+
+### Pré-requisitos concretos
+
+- `StudyAreasService.getMyStudyArea`.
+- `Material` com `status: "READY"` e `contentText`.
+- `SessionGuard`.
+- `AI_PROVIDER` isolado atrás do `AiModule`.
+
 ### Passo 1 - Criar schema do perfil
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar schema do perfil nos ficheiros `apps/api/src/modules/ai/schemas/learning-profile.schema.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/schemas/learning-profile.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/ai/schemas/learning-profile.schema.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type LearningProfileDocument = HydratedDocument<LearningProfile>;
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type LearningPace = "SLOW" | "BALANCED" | "FAST";
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type LearningLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 
+// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "learning_profiles" })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class LearningProfile {
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     userId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "StudyArea", required: true, index: true })
     studyAreaId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["SLOW", "BALANCED", "FAST"], default: "BALANCED" })
     pace!: LearningPace;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["BEGINNER", "INTERMEDIATE", "ADVANCED"], default: "BEGINNER" })
     level!: LearningLevel;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [String], default: [] })
     difficulties!: string[];
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 200 })
     preferredExplanationStyle?: string;
 }
@@ -119,32 +177,69 @@ export const LearningProfileSchema = SchemaFactory.createForClass(LearningProfil
 LearningProfileSchema.index({ userId: 1, studyAreaId: 1 }, { unique: true });
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 2 - Criar schema da explicação
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar schema da explicação nos ficheiros `apps/api/src/modules/ai/schemas/adaptive-explanation.schema.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/schemas/adaptive-explanation.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/ai/schemas/adaptive-explanation.schema.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type AdaptiveExplanationDocument = HydratedDocument<AdaptiveExplanation>;
 
+// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "adaptive_explanations" })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AdaptiveExplanation {
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     userId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "StudyArea", required: true, index: true })
     studyAreaId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, maxlength: 300 })
     topic!: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, maxlength: 12000 })
     answer!: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
     sources!: Array<{ materialId: string; title: string }>;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [String], default: [] })
     adaptationNotes!: string[];
 }
@@ -153,12 +248,43 @@ export const AdaptiveExplanationSchema = SchemaFactory.createForClass(AdaptiveEx
 AdaptiveExplanationSchema.index({ userId: 1, studyAreaId: 1, createdAt: -1 });
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 3 - Criar DTOs
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar dtos nos ficheiros `apps/api/src/modules/ai/dto/update-learning-profile.dto.ts`, `apps/api/src/modules/ai/dto/ask-adaptive-explanation.dto.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/dto/update-learning-profile.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+- CRIAR: `apps/api/src/modules/ai/dto/ask-adaptive-explanation.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/ai/dto/update-learning-profile.dto.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ArrayMaxSize, IsArray, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class UpdateLearningProfileDto {
     @IsIn(["SLOW", "BALANCED", "FAST"])
     pace!: "SLOW" | "BALANCED" | "FAST";
@@ -182,8 +308,10 @@ export class UpdateLearningProfileDto {
 
 ```ts
 // apps/api/src/modules/ai/dto/ask-adaptive-explanation.dto.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsString, MaxLength, MinLength } from "class-validator";
 
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AskAdaptiveExplanationDto {
     @IsString()
     @MinLength(3)
@@ -192,10 +320,38 @@ export class AskAdaptiveExplanationDto {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 4 - Criar prompt
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar prompt nos ficheiros `apps/api/src/modules/ai/prompts/adaptive-explanation.prompt.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/prompts/adaptive-explanation.prompt.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/ai/prompts/adaptive-explanation.prompt.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { MaterialDocument } from "../../materials/schemas/material.schema";
 import { LearningProfileDocument } from "../schemas/learning-profile.schema";
 
@@ -205,6 +361,7 @@ type BuildAdaptivePromptInput = {
     materials: MaterialDocument[];
 };
 
+// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function buildAdaptiveExplanationPrompt(input: BuildAdaptivePromptInput) {
     const sources = input.materials
         .map((material, index) => {
@@ -226,11 +383,38 @@ export function buildAdaptiveExplanationPrompt(input: BuildAdaptivePromptInput) 
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 5 - Alargar provider IA
-Este BK parte do provider criado na MF0 e acrescenta um método específico para explicações adaptadas.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais alargar provider ia nos ficheiros `apps/api/src/modules/ai/providers/ai-provider.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/api/src/modules/ai/providers/ai-provider.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/ai/providers/ai-provider.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     BadGatewayException,
     Injectable,
@@ -238,24 +422,28 @@ import {
 } from "@nestjs/common";
 import OpenAI from "openai";
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type AiSource = {
     materialId: string;
     title: string;
     contentText: string;
 };
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type SummaryResult = {
     title: string;
     bullets: string[];
     sourceMaterialIds: string[];
 };
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type AdaptiveExplanationResult = {
     answer: string;
     sourceMaterialIds: string[];
     adaptationNotes: string[];
 };
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type StudyToolType = "EXPLANATION" | "FLASHCARDS" | "QUIZ";
 
 export const AI_PROVIDER = Symbol("AI_PROVIDER");
@@ -270,15 +458,19 @@ export interface AiProvider {
 }
 
 @Injectable()
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OpenAiProvider implements AiProvider {
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async generateSummary(input: { prompt: string }): Promise<SummaryResult> {
         return this.createJsonResponse<SummaryResult>(input.prompt);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async generateAdaptiveExplanation(input: { prompt: string }): Promise<AdaptiveExplanationResult> {
         return this.createJsonResponse<AdaptiveExplanationResult>(input.prompt);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async generateStudyTool(input: {
         prompt: string;
         type: StudyToolType;
@@ -290,7 +482,9 @@ export class OpenAiProvider implements AiProvider {
         const apiKey = process.env.OPENAI_API_KEY;
         const model = process.env.OPENAI_MODEL;
 
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!apiKey || !model) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ServiceUnavailableException({
                 code: "AI_PROVIDER_NOT_CONFIGURED",
                 message: "O serviço de IA ainda não está configurado.",
@@ -306,6 +500,7 @@ export class OpenAiProvider implements AiProvider {
         try {
             return JSON.parse(response.output_text ?? "{}") as T;
         } catch {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new BadGatewayException({
                 code: "AI_PROVIDER_INVALID_JSON",
                 message: "A IA devolveu uma resposta inválida.",
@@ -315,10 +510,38 @@ export class OpenAiProvider implements AiProvider {
 }
 ```
 
+5. Explicação do código.
+
+    Este BK parte do provider criado na MF0 e acrescenta um método específico para explicações adaptadas.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 6 - Criar service
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service nos ficheiros `apps/api/src/modules/ai/adaptive-learning.service.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/ai/adaptive-learning.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/ai/adaptive-learning.service.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     Inject,
     Injectable,
@@ -341,7 +564,9 @@ import {
 import { LearningProfile, LearningProfileDocument } from "./schemas/learning-profile.schema";
 
 @Injectable()
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AdaptiveLearningService {
+    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(LearningProfile.name)
         private readonly profileModel: Model<LearningProfileDocument>,
@@ -354,6 +579,7 @@ export class AdaptiveLearningService {
         private readonly aiProvider: AiProvider,
     ) {}
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async getProfile(userId: string, studyAreaId: string) {
         await this.ensureStudyArea(userId, studyAreaId);
 
@@ -365,6 +591,7 @@ export class AdaptiveLearningService {
         return profile ? this.toProfileView(profile) : this.defaultProfile(studyAreaId);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async updateProfile(userId: string, studyAreaId: string, dto: UpdateLearningProfileDto) {
         await this.ensureStudyArea(userId, studyAreaId);
 
@@ -385,6 +612,7 @@ export class AdaptiveLearningService {
         return this.toProfileView(profile);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async explain(userId: string, studyAreaId: string, dto: AskAdaptiveExplanationDto) {
         await this.ensureStudyArea(userId, studyAreaId);
 
@@ -413,7 +641,9 @@ export class AdaptiveLearningService {
             .sort({ createdAt: -1 })
             .limit(8);
 
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (materials.length === 0) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new UnprocessableEntityException(
                 "Esta área ainda não tem materiais processáveis para gerar explicação.",
             );
@@ -429,6 +659,7 @@ export class AdaptiveLearningService {
         try {
             result = await this.aiProvider.generateAdaptiveExplanation({ prompt });
         } catch {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ServiceUnavailableException("A IA não está disponível neste momento.");
         }
 
@@ -458,7 +689,9 @@ export class AdaptiveLearningService {
     private async ensureStudyArea(userId: string, studyAreaId: string) {
         const studyArea = await this.studyAreasService.getMyStudyArea(userId, studyAreaId);
 
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!studyArea) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Área de estudo não encontrada.");
         }
 
@@ -493,10 +726,40 @@ export class AdaptiveLearningService {
 }
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 7 - Criar controller e atualizar módulo
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller e atualizar módulo nos ficheiros `apps/api/src/modules/ai/adaptive-learning.controller.ts`, `apps/api/src/modules/ai/ai.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- EDITAR: `apps/api/src/modules/ai/adaptive-learning.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+- EDITAR: `apps/api/src/modules/ai/ai.module.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/ai/adaptive-learning.controller.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { AuthenticatedRequest } from "../../common/types/authenticated-request";
 import { SessionGuard } from "../../common/guards/session.guard";
@@ -506,7 +769,9 @@ import { UpdateLearningProfileDto } from "./dto/update-learning-profile.dto";
 
 @Controller("api/study-areas/:studyAreaId")
 @UseGuards(SessionGuard)
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AdaptiveLearningController {
+    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly adaptiveLearningService: AdaptiveLearningService) {}
 
     @Get("learning-profile")
@@ -536,6 +801,7 @@ export class AdaptiveLearningController {
 
 ```ts
 // apps/api/src/modules/ai/ai.module.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { Material, MaterialSchema } from "../materials/schemas/material.schema";
@@ -570,13 +836,45 @@ import { SummariesService } from "./summaries.service";
     ],
     exports: [AI_PROVIDER],
 })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AiModule {}
 ```
 
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 8 - Criar cliente e página
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar cliente e página nos ficheiros `apps/web/src/lib/api/adaptiveLearning.ts`, `apps/web/src/pages/student/AdaptiveLearningPage.tsx`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/lib/api/adaptiveLearning.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+- CRIAR: `apps/web/src/pages/student/AdaptiveLearningPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/web/src/lib/api/adaptiveLearning.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type LearningProfileView = {
     id: string;
     studyAreaId: string;
@@ -586,6 +884,7 @@ export type LearningProfileView = {
     preferredExplanationStyle: string;
 };
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type AdaptiveExplanationView = {
     id: string;
     topic: string;
@@ -594,9 +893,12 @@ export type AdaptiveExplanationView = {
     adaptationNotes: string[];
 };
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -604,6 +906,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export async function getLearningProfile(studyAreaId: string) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-areas/${studyAreaId}/learning-profile`, {
         credentials: "include",
     });
@@ -615,6 +918,7 @@ export async function updateLearningProfile(
     studyAreaId: string,
     input: Omit<LearningProfileView, "id" | "studyAreaId">,
 ) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-areas/${studyAreaId}/learning-profile`, {
         method: "PUT",
         credentials: "include",
@@ -626,6 +930,7 @@ export async function updateLearningProfile(
 }
 
 export async function askAdaptiveExplanation(studyAreaId: string, topic: string) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-areas/${studyAreaId}/adaptive-explanations`, {
         method: "POST",
         credentials: "include",
@@ -639,6 +944,7 @@ export async function askAdaptiveExplanation(studyAreaId: string, topic: string)
 
 ```tsx
 // apps/web/src/pages/student/AdaptiveLearningPage.tsx
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     AdaptiveExplanationView,
@@ -652,17 +958,24 @@ type Props = {
     studyAreaId: string;
 };
 
+// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function AdaptiveLearningPage({ studyAreaId }: Props) {
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [profile, setProfile] = useState<LearningProfileView | null>(null);
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [explanation, setExplanation] = useState<AdaptiveExplanationView | null>(null);
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
+    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         getLearningProfile(studyAreaId)
             .then(setProfile)
             .catch((reason: Error) => setError(reason.message));
     }, [studyAreaId]);
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
+    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleProfile(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
@@ -681,6 +994,8 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
         setProfile(updated);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
+    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleQuestion(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -694,6 +1009,7 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
         }
     }
 
+    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Explicações adaptadas</h1>
@@ -739,6 +1055,18 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
     );
 }
 ```
+
+5. Explicação do código.
+
+    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
 ## Critérios de aceite
 - Perfil é único por aluno e área.

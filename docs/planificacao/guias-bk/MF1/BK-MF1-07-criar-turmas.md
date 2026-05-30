@@ -61,9 +61,27 @@ Turmas são a fronteira principal da área docente. Disciplinas, materiais ofici
 - **Decisão DERIVADO**: detalhe técnico não escrito literalmente em `RF19`, mas necessário para cumprir RFs seguintes sem inventar dados.
 
 ## Conceitos teóricos
-O backend é a autoridade de segurança. O frontend pode mostrar ou esconder botões, mas o service tem sempre de validar a sessão, o papel do utilizador e o ownership da turma.
+**Turma como fronteira oficial.** Uma turma representa um grupo formal criado por um professor. Ao contrário de uma sala de estudo, que é colaborativa entre alunos, a turma é o ponto de partida para disciplinas, materiais oficiais, IA docente e publicações.
 
-A inscrição por email é uma decisão pequena e verificável. Não cria utilizadores, não envia convite externo e não altera permissões globais: apenas associa um aluno já existente a uma turma do professor autenticado.
+**Ownership docente.** `teacherId` identifica o professor dono da turma. Este valor vem da sessão autenticada, não do body. Se o frontend pudesse enviar `teacherId`, qualquer utilizador poderia tentar criar turmas em nome de outro professor.
+
+**Inscrição de alunos.** `studentIds` guarda os IDs dos alunos que pertencem à turma. Esta lista é usada mais tarde para controlar quem pode ler publicações e usar a IA limitada da disciplina.
+
+**Associação por email.** O professor escreve o email do aluno, o backend procura esse utilizador e adiciona o seu `_id` a `studentIds`. O email é apenas uma forma humana de encontrar o aluno; a autorização final usa o ID persistido.
+
+**Decisão derivada.** `RF19` fala em criar turmas, mas `RF23` e `RF24` dependem de alunos inscritos. Por isso, este BK acrescenta o fluxo mínimo de inscrição para a cadeia seguinte ficar demonstrável sem mexer manualmente na base de dados.
+
+**Decorators do NestJS.** Decorators como `@Controller`, `@Post`, `@Get`, `@Put`, `@Module` e `@Injectable` dizem ao NestJS que papel cada classe tem. O controller recebe pedidos HTTP, o service contém regras de negócio e o módulo liga tudo.
+
+**DTOs e validação.** DTO significa Data Transfer Object. NestJS usa estes objetos, em conjunto com `class-validator`, para validar o que chega do frontend antes de executar regras de negócio.
+
+**Schemas Mongoose.** Um schema Mongoose descreve a forma dos documentos guardados em MongoDB. Campos com `Types.ObjectId` representam ligações entre coleções, como aluno, professor, turma, disciplina ou sala.
+
+**Injeção de dependências.** O constructor dos services recebe models e outros services. Isto evita criar dependências manualmente e torna o código mais fácil de testar.
+
+**React hooks.** `useState` guarda estado local da página, como loading, erro ou resposta. `useEffect` executa carregamentos quando a página abre ou quando um ID muda.
+
+**Fetch API e cookies.** O frontend usa `fetch` para chamar a API. A opção `credentials: 'include'` envia o cookie HttpOnly da sessão, sem expor tokens no JavaScript.
 
 ## Arquitetura do BK
 - `apps/api/src/modules/classes/schemas/school-class.schema.ts`
@@ -84,33 +102,68 @@ Endpoints:
 
 ## Guia linear de implementação
 
+Segue estes passos por ordem. Os caminhos indicados representam a estrutura final prevista pelos documentos canónicos: React/TypeScript/Tailwind no frontend, NestJS no backend, MongoDB/Mongoose na persistência e OpenAI API apenas atrás de provider isolado quando houver IA. Não alteres IDs BK, RF/RNF, owners, prioridades, sprints ou dependências.
+
+O código abaixo deve ser tratado como código final previsto, não como exemplo solto. Quando um passo usa dados do aluno ou do professor, o ownership vem sempre da sessão. Quando um passo usa IA ou materiais, a geração deve bloquear se não existirem fontes processáveis e autorizadas.
+
+### Pré-requisitos concretos
+
+- `BK-MF0-01` com `User`.
+- `BK-MF0-02` com `SessionGuard` e `AuthenticatedRequest`.
+- Mongoose configurado no backend.
+- Frontend a chamar endpoints privados com `credentials: 'include'`.
+
 ### Passo 1 - Criar schema da turma
-Cria a entidade persistente usada por todos os BKs docentes seguintes.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar schema da turma nos ficheiros `apps/api/src/modules/classes/schemas/school-class.schema.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/classes/schemas/school-class.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/classes/schemas/school-class.schema.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type SchoolClassDocument = HydratedDocument<SchoolClass>;
 
+// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "school_classes" })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class SchoolClass {
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     teacherId!: Types.ObjectId;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
     name!: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, uppercase: true, minlength: 2, maxlength: 24 })
     code!: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 4, maxlength: 20 })
     schoolYear!: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 500 })
     description?: string;
 
+    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [], index: true })
     studentIds!: Types.ObjectId[];
 }
@@ -120,15 +173,45 @@ SchoolClassSchema.index({ teacherId: 1, code: 1 }, { unique: true });
 SchoolClassSchema.index({ studentIds: 1, createdAt: -1 });
 ```
 
+5. Explicação do código.
+
+    Cria a entidade persistente usada por todos os BKs docentes seguintes.
+
 Valida que o índice único é por professor. Dois professores podem usar o mesmo código, mas o mesmo professor não deve duplicar a turma.
 
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 2 - Criar DTOs de entrada
-Os DTOs limitam campos aceites e impedem que o cliente envie ownership.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar dtos de entrada nos ficheiros `apps/api/src/modules/classes/dto/create-class.dto.ts`, `apps/api/src/modules/classes/dto/add-class-student.dto.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/classes/dto/create-class.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+- CRIAR: `apps/api/src/modules/classes/dto/add-class-student.dto.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/classes/dto/create-class.dto.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateClassDto {
     @IsString()
     @MinLength(2)
@@ -154,19 +237,48 @@ export class CreateClassDto {
 
 ```ts
 // apps/api/src/modules/classes/dto/add-class-student.dto.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsEmail } from "class-validator";
 
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AddClassStudentDto {
     @IsEmail()
     email!: string;
 }
 ```
 
+5. Explicação do código.
+
+    Os DTOs limitam campos aceites e impedem que o cliente envie ownership.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 3 - Criar service com regras de segurança
-O service valida papel, ownership e existência do aluno. Não aceita `teacherId` nem `studentIds` vindos do cliente.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar service com regras de segurança nos ficheiros `apps/api/src/modules/classes/classes.service.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/classes/classes.service.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/classes/classes.service.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     ConflictException,
     ForbiddenException,
@@ -182,7 +294,9 @@ import { CreateClassDto } from "./dto/create-class.dto";
 import { SchoolClass, SchoolClassDocument } from "./schemas/school-class.schema";
 
 @Injectable()
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassesService {
+    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(SchoolClass.name)
         private readonly classModel: Model<SchoolClassDocument>,
@@ -190,6 +304,7 @@ export class ClassesService {
         private readonly userModel: Model<UserDocument>,
     ) {}
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, dto: CreateClassDto) {
         this.assertTeacher(actor);
 
@@ -199,7 +314,9 @@ export class ClassesService {
             code,
         });
 
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (duplicate) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ConflictException("Já existe uma turma com este código.");
         }
 
@@ -215,6 +332,7 @@ export class ClassesService {
         return this.toView(schoolClass);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForTeacher(actor: AuthenticatedUser) {
         this.assertTeacher(actor);
 
@@ -226,6 +344,7 @@ export class ClassesService {
         return classes.map((schoolClass) => this.toView(schoolClass));
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async addStudent(actor: AuthenticatedUser, classId: string, dto: AddClassStudentDto) {
         this.assertTeacher(actor);
 
@@ -234,13 +353,16 @@ export class ClassesService {
             .findOne({ email: dto.email.toLowerCase().trim(), role: "STUDENT" })
             .lean();
 
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!student) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Aluno não encontrado.");
         }
 
         const studentId = new Types.ObjectId(student._id);
         const alreadyEnrolled = schoolClass.studentIds.some((id) => id.equals(studentId));
 
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!alreadyEnrolled) {
             schoolClass.studentIds.push(studentId);
             await schoolClass.save();
@@ -249,6 +371,7 @@ export class ClassesService {
         return this.toView(schoolClass);
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForStudent(actor: AuthenticatedUser) {
         this.assertStudent(actor);
 
@@ -260,8 +383,11 @@ export class ClassesService {
         return classes.map((schoolClass) => this.toView(schoolClass));
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async findOwnedClass(teacherId: string, classId: string) {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!Types.ObjectId.isValid(classId)) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Turma não encontrada.");
         }
 
@@ -270,15 +396,20 @@ export class ClassesService {
             teacherId: new Types.ObjectId(teacherId),
         });
 
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!schoolClass) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Turma não encontrada para este professor.");
         }
 
         return schoolClass;
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async ensureStudentEnrollment(studentId: string, classId: string) {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!Types.ObjectId.isValid(classId)) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Turma não encontrada.");
         }
 
@@ -287,7 +418,9 @@ export class ClassesService {
             studentIds: new Types.ObjectId(studentId),
         });
 
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!schoolClass) {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Aluno sem inscrição nesta turma.");
         }
 
@@ -295,13 +428,17 @@ export class ClassesService {
     }
 
     private assertTeacher(actor: AuthenticatedUser) {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "TEACHER") {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas professores podem gerir turmas.");
         }
     }
 
     private assertStudent(actor: AuthenticatedUser) {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "STUDENT") {
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas alunos podem consultar as suas turmas.");
         }
     }
@@ -320,11 +457,38 @@ export class ClassesService {
 }
 ```
 
+5. Explicação do código.
+
+    O service valida papel, ownership e existência do aluno. Não aceita `teacherId` nem `studentIds` vindos do cliente.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 4 - Criar controller
-O controller expõe rotas separadas para professor e aluno, mantendo o mesmo service.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar controller nos ficheiros `apps/api/src/modules/classes/classes.controller.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/classes/classes.controller.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/classes/classes.controller.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -337,7 +501,9 @@ import { CreateClassDto } from "./dto/create-class.dto";
 
 @Controller("api")
 @UseGuards(SessionGuard)
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassesController {
+    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly classesService: ClassesService) {}
 
     @Post("teacher/classes")
@@ -366,11 +532,38 @@ export class ClassesController {
 }
 ```
 
+5. Explicação do código.
+
+    O controller expõe rotas separadas para professor e aluno, mantendo o mesmo service.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 5 - Criar módulo
-O módulo exporta `ClassesService` para os BKs de disciplinas, IA limitada e publicações.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar módulo nos ficheiros `apps/api/src/modules/classes/classes.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/modules/classes/classes.module.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/api/src/modules/classes/classes.module.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { User, UserSchema } from "../auth/schemas/user.schema";
@@ -389,14 +582,43 @@ import { SchoolClass, SchoolClassSchema } from "./schemas/school-class.schema";
     providers: [ClassesService],
     exports: [ClassesService, MongooseModule],
 })
+// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassesModule {}
 ```
 
+5. Explicação do código.
+
+    O módulo exporta `ClassesService` para os BKs de disciplinas, IA limitada e publicações.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 6 - Criar cliente frontend
-O cliente centraliza as chamadas e envia sempre o cookie de sessão.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar cliente frontend nos ficheiros `apps/web/src/lib/api/classes.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/lib/api/classes.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```ts
 // apps/web/src/lib/api/classes.ts
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
+// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type SchoolClassView = {
     id: string;
     teacherId: string;
@@ -407,9 +629,12 @@ export type SchoolClassView = {
     studentIds: string[];
 };
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
+        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
+            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -422,6 +647,7 @@ export async function createClass(input: {
     schoolYear: string;
     description?: string;
 }) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch("/api/teacher/classes", {
         method: "POST",
         credentials: "include",
@@ -433,6 +659,7 @@ export async function createClass(input: {
 }
 
 export async function listTeacherClasses() {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch("/api/teacher/classes", {
         credentials: "include",
     });
@@ -441,6 +668,7 @@ export async function listTeacherClasses() {
 }
 
 export async function addClassStudent(classId: string, email: string) {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/classes/${classId}/students`, {
         method: "POST",
         credentials: "include",
@@ -452,6 +680,7 @@ export async function addClassStudent(classId: string, email: string) {
 }
 
 export async function listStudentClasses() {
+    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch("/api/student/classes", {
         credentials: "include",
     });
@@ -460,11 +689,40 @@ export async function listStudentClasses() {
 }
 ```
 
+5. Explicação do código.
+
+    O cliente centraliza as chamadas e envia sempre o cookie de sessão.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 7 - Criar páginas mínimas de utilização
-A página do professor deve permitir criar turma, ver lista e adicionar aluno por email.
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar páginas mínimas de utilização nos ficheiros `apps/web/src/pages/teacher/TeacherClassesPage.tsx`, `apps/web/src/pages/student/StudentClassesPage.tsx`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/web/src/pages/teacher/TeacherClassesPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+- CRIAR: `apps/web/src/pages/student/StudentClassesPage.tsx`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
 
 ```tsx
 // apps/web/src/pages/teacher/TeacherClassesPage.tsx
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     SchoolClassView,
@@ -473,19 +731,27 @@ import {
     listTeacherClasses,
 } from "../../lib/api/classes";
 
+// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function TeacherClassesPage() {
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [classes, setClasses] = useState<SchoolClassView[]>([]);
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [isSaving, setIsSaving] = useState(false);
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setClasses(await listTeacherClasses());
     }
 
+    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, []);
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
+    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleCreate(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsSaving(true);
@@ -509,12 +775,15 @@ export function TeacherClassesPage() {
         }
     }
 
+    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
+    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleAddStudent(classId: string, email: string) {
         setError("");
         await addClassStudent(classId, email);
         await refresh();
     }
 
+    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Turmas</h1>
@@ -559,19 +828,25 @@ export function TeacherClassesPage() {
 
 ```tsx
 // apps/web/src/pages/student/StudentClassesPage.tsx
+// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { useEffect, useState } from "react";
 import { SchoolClassView, listStudentClasses } from "../../lib/api/classes";
 
+// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function StudentClassesPage() {
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [classes, setClasses] = useState<SchoolClassView[]>([]);
+    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
+    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         listStudentClasses()
             .then(setClasses)
             .catch((reason: Error) => setError(reason.message));
     }, []);
 
+    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>As minhas turmas</h1>
@@ -588,8 +863,40 @@ export function StudentClassesPage() {
 }
 ```
 
+5. Explicação do código.
+
+    A página do professor deve permitir criar turma, ver lista e adicionar aluno por email.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
 ### Passo 8 - Validar comportamento e integração
-Valida estes cenários:
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais validar comportamento e integração no fluxo de validação do BK. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+
+2. Ficheiros envolvidos.
+
+- VALIDAR: este passo não cria ficheiros novos.
+- LOCALIZAÇÃO: executa os cenários indicados neste passo.
+
+3. O que fazer.
+
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+
+4. Código completo, correto e integrado.
+
+Não há código novo neste passo. Usa-o para confirmar que os passos anteriores funcionam em conjunto.
+
+5. Explicação do código.
+
+    Valida estes cenários:
 
 - Professor cria turma com `name`, `code` e `schoolYear`.
 - Professor não consegue duplicar `code` dentro das suas turmas.
@@ -597,6 +904,14 @@ Valida estes cenários:
 - Professor adiciona aluno existente por email.
 - Aluno inscrito vê a turma em `GET /api/student/classes`.
 - Aluno não inscrito não vê a turma.
+
+6. Como validar este passo.
+
+    Confirma que os ficheiros indicados existem, que os imports apontam para módulos reais da estrutura prevista e que o comportamento deste passo é coberto na validação final do BK. Quando o passo usa dados de aluno, professor, turma, sala ou disciplina, valida sempre com sessão real e nunca com IDs enviados livremente no body.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
 ## Critérios de aceite
 - `SchoolClass` existe com `teacherId`, `name`, `code`, `schoolYear` e `studentIds`.
