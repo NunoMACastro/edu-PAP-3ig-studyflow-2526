@@ -133,42 +133,30 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/ai/schemas/learning-profile.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type LearningProfileDocument = HydratedDocument<LearningProfile>;
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type LearningPace = "SLOW" | "BALANCED" | "FAST";
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type LearningLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "learning_profiles" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class LearningProfile {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     userId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "StudyArea", required: true, index: true })
     studyAreaId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["SLOW", "BALANCED", "FAST"], default: "BALANCED" })
     pace!: LearningPace;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["BEGINNER", "INTERMEDIATE", "ADVANCED"], default: "BEGINNER" })
     level!: LearningLevel;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [String], default: [] })
     difficulties!: string[];
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 200 })
     preferredExplanationStyle?: string;
 }
@@ -179,7 +167,7 @@ LearningProfileSchema.index({ userId: 1, studyAreaId: 1 }, { unique: true });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O prompt compõe apenas fontes `READY` do aluno e o perfil adaptativo validado para a área. A entrada é texto já autorizado pelo service; a saída esperada do provider é JSON com `answer`, `sourceMaterialIds` e `adaptationNotes`. O service valida esta saída antes de persistir, garantindo que a IA não responde sem fontes autorizadas.
 
 6. Como validar este passo.
 
@@ -208,38 +196,28 @@ LearningProfileSchema.index({ userId: 1, studyAreaId: 1 }, { unique: true });
 
 ```ts
 // apps/api/src/modules/ai/schemas/adaptive-explanation.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type AdaptiveExplanationDocument = HydratedDocument<AdaptiveExplanation>;
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "adaptive_explanations" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AdaptiveExplanation {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     userId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "StudyArea", required: true, index: true })
     studyAreaId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, maxlength: 300 })
     topic!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, maxlength: 12000 })
     answer!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
     sources!: Array<{ materialId: string; title: string }>;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [String], default: [] })
     adaptationNotes!: string[];
 }
@@ -250,7 +228,7 @@ AdaptiveExplanationSchema.index({ userId: 1, studyAreaId: 1, createdAt: -1 });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo individual adaptativo: recebe dados da sessão e da área do aluno, devolve perfil, explicação ou fontes normalizadas, e deve preservar ownership via `StudyAreasService`. As validações esperadas são `404` para área fora do aluno, `422` sem materiais `READY` e `503` quando a IA falha ou devolve conteúdo inválido. O resultado prepara a transição para a cadeia colaborativa sem misturar salas, turmas ou disciplinas.
 
 6. Como validar este passo.
 
@@ -281,10 +259,8 @@ AdaptiveExplanationSchema.index({ userId: 1, studyAreaId: 1, createdAt: -1 });
 
 ```ts
 // apps/api/src/modules/ai/dto/update-learning-profile.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ArrayMaxSize, IsArray, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class UpdateLearningProfileDto {
     @IsIn(["SLOW", "BALANCED", "FAST"])
     pace!: "SLOW" | "BALANCED" | "FAST";
@@ -308,10 +284,8 @@ export class UpdateLearningProfileDto {
 
 ```ts
 // apps/api/src/modules/ai/dto/ask-adaptive-explanation.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsString, MaxLength, MinLength } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AskAdaptiveExplanationDto {
     @IsString()
     @MinLength(3)
@@ -322,7 +296,7 @@ export class AskAdaptiveExplanationDto {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo individual adaptativo: recebe dados da sessão e da área do aluno, devolve perfil, explicação ou fontes normalizadas, e deve preservar ownership via `StudyAreasService`. As validações esperadas são `404` para área fora do aluno, `422` sem materiais `READY` e `503` quando a IA falha ou devolve conteúdo inválido. O resultado prepara a transição para a cadeia colaborativa sem misturar salas, turmas ou disciplinas.
 
 6. Como validar este passo.
 
@@ -351,7 +325,6 @@ export class AskAdaptiveExplanationDto {
 
 ```ts
 // apps/api/src/modules/ai/prompts/adaptive-explanation.prompt.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { MaterialDocument } from "../../materials/schemas/material.schema";
 import { LearningProfileDocument } from "../schemas/learning-profile.schema";
 
@@ -361,7 +334,6 @@ type BuildAdaptivePromptInput = {
     materials: MaterialDocument[];
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function buildAdaptiveExplanationPrompt(input: BuildAdaptivePromptInput) {
     const sources = input.materials
         .map((material, index) => {
@@ -385,7 +357,7 @@ export function buildAdaptiveExplanationPrompt(input: BuildAdaptivePromptInput) 
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo individual adaptativo: recebe dados da sessão e da área do aluno, devolve perfil, explicação ou fontes normalizadas, e deve preservar ownership via `StudyAreasService`. As validações esperadas são `404` para área fora do aluno, `422` sem materiais `READY` e `503` quando a IA falha ou devolve conteúdo inválido. O resultado prepara a transição para a cadeia colaborativa sem misturar salas, turmas ou disciplinas.
 
 6. Como validar este passo.
 
@@ -414,7 +386,6 @@ export function buildAdaptiveExplanationPrompt(input: BuildAdaptivePromptInput) 
 
 ```ts
 // apps/api/src/modules/ai/providers/ai-provider.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     BadGatewayException,
     Injectable,
@@ -422,28 +393,24 @@ import {
 } from "@nestjs/common";
 import OpenAI from "openai";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type AiSource = {
     materialId: string;
     title: string;
     contentText: string;
 };
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type SummaryResult = {
     title: string;
     bullets: string[];
     sourceMaterialIds: string[];
 };
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type AdaptiveExplanationResult = {
     answer: string;
     sourceMaterialIds: string[];
     adaptationNotes: string[];
 };
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type StudyToolType = "EXPLANATION" | "FLASHCARDS" | "QUIZ";
 
 export const AI_PROVIDER = Symbol("AI_PROVIDER");
@@ -458,19 +425,15 @@ export interface AiProvider {
 }
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OpenAiProvider implements AiProvider {
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async generateSummary(input: { prompt: string }): Promise<SummaryResult> {
         return this.createJsonResponse<SummaryResult>(input.prompt);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async generateAdaptiveExplanation(input: { prompt: string }): Promise<AdaptiveExplanationResult> {
         return this.createJsonResponse<AdaptiveExplanationResult>(input.prompt);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async generateStudyTool(input: {
         prompt: string;
         type: StudyToolType;
@@ -482,9 +445,7 @@ export class OpenAiProvider implements AiProvider {
         const apiKey = process.env.OPENAI_API_KEY;
         const model = process.env.OPENAI_MODEL;
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!apiKey || !model) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ServiceUnavailableException({
                 code: "AI_PROVIDER_NOT_CONFIGURED",
                 message: "O serviço de IA ainda não está configurado.",
@@ -500,7 +461,6 @@ export class OpenAiProvider implements AiProvider {
         try {
             return JSON.parse(response.output_text ?? "{}") as T;
         } catch {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new BadGatewayException({
                 code: "AI_PROVIDER_INVALID_JSON",
                 message: "A IA devolveu uma resposta inválida.",
@@ -541,7 +501,6 @@ export class OpenAiProvider implements AiProvider {
 
 ```ts
 // apps/api/src/modules/ai/adaptive-learning.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     Inject,
     Injectable,
@@ -564,9 +523,7 @@ import {
 import { LearningProfile, LearningProfileDocument } from "./schemas/learning-profile.schema";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AdaptiveLearningService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(LearningProfile.name)
         private readonly profileModel: Model<LearningProfileDocument>,
@@ -579,7 +536,6 @@ export class AdaptiveLearningService {
         private readonly aiProvider: AiProvider,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async getProfile(userId: string, studyAreaId: string) {
         await this.ensureStudyArea(userId, studyAreaId);
 
@@ -591,7 +547,6 @@ export class AdaptiveLearningService {
         return profile ? this.toProfileView(profile) : this.defaultProfile(studyAreaId);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async updateProfile(userId: string, studyAreaId: string, dto: UpdateLearningProfileDto) {
         await this.ensureStudyArea(userId, studyAreaId);
 
@@ -612,7 +567,6 @@ export class AdaptiveLearningService {
         return this.toProfileView(profile);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async explain(userId: string, studyAreaId: string, dto: AskAdaptiveExplanationDto) {
         await this.ensureStudyArea(userId, studyAreaId);
 
@@ -641,9 +595,7 @@ export class AdaptiveLearningService {
             .sort({ createdAt: -1 })
             .limit(8);
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (materials.length === 0) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new UnprocessableEntityException(
                 "Esta área ainda não tem materiais processáveis para gerar explicação.",
             );
@@ -655,26 +607,22 @@ export class AdaptiveLearningService {
             materials,
         });
 
-        let result;
+        let result: unknown;
         try {
             result = await this.aiProvider.generateAdaptiveExplanation({ prompt });
         } catch {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ServiceUnavailableException("A IA não está disponível neste momento.");
         }
 
-        const sources = materials.map((material) => ({
-            materialId: material._id.toString(),
-            title: material.title,
-        }));
+        const { answer, sources, adaptationNotes } = this.normalizeAdaptiveResult(result, materials);
 
         const explanation = await this.explanationModel.create({
             userId: new Types.ObjectId(userId),
             studyAreaId: new Types.ObjectId(studyAreaId),
             topic: dto.topic.trim(),
-            answer: result.answer,
+            answer,
             sources,
-            adaptationNotes: result.adaptationNotes,
+            adaptationNotes,
         });
 
         return {
@@ -689,9 +637,7 @@ export class AdaptiveLearningService {
     private async ensureStudyArea(userId: string, studyAreaId: string) {
         const studyArea = await this.studyAreasService.getMyStudyArea(userId, studyAreaId);
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!studyArea) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Área de estudo não encontrada.");
         }
 
@@ -700,6 +646,42 @@ export class AdaptiveLearningService {
 
     private cleanList(values: string[]) {
         return values.map((value) => value.trim()).filter(Boolean).slice(0, 8);
+    }
+
+    private normalizeAdaptiveResult(result: unknown, materials: MaterialDocument[]) {
+        if (!result || typeof result !== "object") {
+            throw new ServiceUnavailableException("A IA devolveu uma resposta inválida.");
+        }
+
+        const payload = result as Record<string, unknown>;
+        const answer = typeof payload.answer === "string" ? payload.answer.trim() : "";
+        if (!answer) {
+            throw new ServiceUnavailableException("A IA devolveu uma resposta vazia.");
+        }
+
+        const allowedSources = new Map(
+            materials.map((material) => [
+                material._id.toString(),
+                { materialId: material._id.toString(), title: material.title },
+            ]),
+        );
+        const rawSourceIds = Array.isArray(payload.sourceMaterialIds)
+            ? payload.sourceMaterialIds
+            : [];
+        const sources = rawSourceIds
+            .filter((sourceId): sourceId is string => typeof sourceId === "string")
+            .map((sourceId) => allowedSources.get(sourceId))
+            .filter((source): source is { materialId: string; title: string } => Boolean(source));
+
+        if (sources.length === 0) {
+            throw new ServiceUnavailableException("A IA devolveu fontes inválidas.");
+        }
+
+        const adaptationNotes = Array.isArray(payload.adaptationNotes)
+            ? payload.adaptationNotes.filter((note): note is string => typeof note === "string")
+            : [];
+
+        return { answer, sources, adaptationNotes };
     }
 
     private defaultProfile(studyAreaId: string) {
@@ -728,7 +710,7 @@ export class AdaptiveLearningService {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O service garante ownership da área, recolhe apenas materiais `READY` com `contentText`, bloqueia com `422` quando não há fontes e chama a IA só depois dessa validação. O resultado do provider é tratado como runtime não confiável: `answer` tem de ser texto não vazio e `sourceMaterialIds` têm de pertencer aos materiais autorizados. Falha do provider ou resposta inválida devolve `503`; área fora do aluno devolve `404`.
 
 6. Como validar este passo.
 
@@ -759,7 +741,6 @@ export class AdaptiveLearningService {
 
 ```ts
 // apps/api/src/modules/ai/adaptive-learning.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { AuthenticatedRequest } from "../../common/types/authenticated-request";
 import { SessionGuard } from "../../common/guards/session.guard";
@@ -769,9 +750,7 @@ import { UpdateLearningProfileDto } from "./dto/update-learning-profile.dto";
 
 @Controller("api/study-areas/:studyAreaId")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AdaptiveLearningController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly adaptiveLearningService: AdaptiveLearningService) {}
 
     @Get("learning-profile")
@@ -801,7 +780,6 @@ export class AdaptiveLearningController {
 
 ```ts
 // apps/api/src/modules/ai/ai.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { Material, MaterialSchema } from "../materials/schemas/material.schema";
@@ -836,13 +814,12 @@ import { SummariesService } from "./summaries.service";
     ],
     exports: [AI_PROVIDER],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AiModule {}
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    A página usa a sessão HttpOnly nas chamadas e mostra apenas a resposta já validada pelo backend. O frontend envia tópico e preferências, mas não escolhe fontes nem prova ownership. As fontes mostradas vêm dos materiais autorizados que o service aceitou antes da chamada à IA.
 
 6. Como validar este passo.
 
@@ -873,8 +850,6 @@ export class AiModule {}
 
 ```ts
 // apps/web/src/lib/api/adaptiveLearning.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type LearningProfileView = {
     id: string;
     studyAreaId: string;
@@ -884,7 +859,6 @@ export type LearningProfileView = {
     preferredExplanationStyle: string;
 };
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type AdaptiveExplanationView = {
     id: string;
     topic: string;
@@ -893,12 +867,9 @@ export type AdaptiveExplanationView = {
     adaptationNotes: string[];
 };
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -906,7 +877,6 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export async function getLearningProfile(studyAreaId: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-areas/${studyAreaId}/learning-profile`, {
         credentials: "include",
     });
@@ -918,7 +888,6 @@ export async function updateLearningProfile(
     studyAreaId: string,
     input: Omit<LearningProfileView, "id" | "studyAreaId">,
 ) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-areas/${studyAreaId}/learning-profile`, {
         method: "PUT",
         credentials: "include",
@@ -930,7 +899,6 @@ export async function updateLearningProfile(
 }
 
 export async function askAdaptiveExplanation(studyAreaId: string, topic: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-areas/${studyAreaId}/adaptive-explanations`, {
         method: "POST",
         credentials: "include",
@@ -944,7 +912,6 @@ export async function askAdaptiveExplanation(studyAreaId: string, topic: string)
 
 ```tsx
 // apps/web/src/pages/student/AdaptiveLearningPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     AdaptiveExplanationView,
@@ -958,24 +925,17 @@ type Props = {
     studyAreaId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function AdaptiveLearningPage({ studyAreaId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [profile, setProfile] = useState<LearningProfileView | null>(null);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [explanation, setExplanation] = useState<AdaptiveExplanationView | null>(null);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         getLearningProfile(studyAreaId)
             .then(setProfile)
             .catch((reason: Error) => setError(reason.message));
     }, [studyAreaId]);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleProfile(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
@@ -994,8 +954,6 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
         setProfile(updated);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleQuestion(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -1009,7 +967,6 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
         }
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Explicações adaptadas</h1>
@@ -1058,7 +1015,7 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo individual adaptativo: recebe dados da sessão e da área do aluno, devolve perfil, explicação ou fontes normalizadas, e deve preservar ownership via `StudyAreasService`. As validações esperadas são `404` para área fora do aluno, `422` sem materiais `READY` e `503` quando a IA falha ou devolve conteúdo inválido. O resultado prepara a transição para a cadeia colaborativa sem misturar salas, turmas ou disciplinas.
 
 6. Como validar este passo.
 
@@ -1068,11 +1025,19 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Expected results
+- `GET /api/study-areas/:studyAreaId/adaptive-learning/profile` devolve `200` com perfil existente ou defaults seguros.
+- `PUT /api/study-areas/:studyAreaId/adaptive-learning/profile` devolve `200` e guarda perfil apenas na área do aluno autenticado.
+- `POST /api/study-areas/:studyAreaId/adaptive-learning/explanations` sem materiais `READY` com `contentText` devolve `422`.
+- Provider indisponível, `answer` vazio ou `sourceMaterialIds` não autorizados devolvem `503` e não persistem explicação.
+- Área inexistente ou fora do aluno devolve `404`.
+
 ## Critérios de aceite
 - Perfil é único por aluno e área.
 - Área é validada por `StudyAreasService.getMyStudyArea`.
 - Só materiais `READY` com `contentText` entram no prompt.
 - Sem fontes há `422`.
+- Resultado do provider é validado em runtime antes de persistir.
 - Resposta guarda fontes e notas de adaptação.
 - Frontend usa `credentials: 'include'`.
 

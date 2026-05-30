@@ -28,7 +28,7 @@ Salas de estudo criam contexto colaborativo entre alunos. Tudo o que vem a segui
 - Criar `StudyRoom`.
 - Associar o criador como primeiro membro.
 - Criar sala `FREE` ou `SUBJECT`.
-- Validar existência de disciplina quando a sala é `SUBJECT`.
+- Guardar o nome livre da disciplina quando a sala é `SUBJECT`, sem depender ainda da entidade oficial de disciplinas.
 - Adicionar membro por email.
 - Listar apenas salas do aluno autenticado.
 
@@ -51,21 +51,21 @@ Salas de estudo criam contexto colaborativo entre alunos. Tudo o que vem a segui
 ## Pré-requisitos
 - `BK-MF0-02` com `SessionGuard`.
 - `BK-MF0-03` com perfil de aluno funcional.
-- `BK-MF1-08` pode existir para validar `subjectId`; sala livre não depende dele.
+- Decisão `DERIVADO`: antes de `BK-MF1-08`, a sala por disciplina usa `disciplineName?: string` em vez de um identificador oficial de disciplina.
 
 ## Glossário
 - **Sala livre**: sala sem disciplina associada.
-- **Sala por disciplina**: sala ligada a uma disciplina existente.
+- **Sala por disciplina**: sala etiquetada com o nome textual de uma disciplina, sem ligação à entidade oficial de disciplinas neste BK.
 - **Membro**: aluno autorizado a consultar e escrever na sala.
 
 ## Conceitos teóricos
-**Sala de estudo.** Uma sala é um espaço partilhado entre alunos. Pode ser livre, para estudar qualquer tema, ou associada a uma disciplina já existente. A associação à disciplina ajuda a organizar o contexto, mas a segurança da sala continua a depender dos membros.
+**Sala de estudo.** Uma sala é um espaço partilhado entre alunos. Pode ser livre, para estudar qualquer tema, ou marcada como sala por disciplina através de `disciplineName`. Esta decisão é `DERIVADO` porque a entidade oficial de disciplinas só nasce em `BK-MF1-08`; por isso, este BK não importa nem valida schemas de disciplinas oficiais.
 
 **Membership.** A lista `memberIds` guarda os IDs dos alunos que pertencem à sala. Esta lista vem da base de dados, não do frontend. Sempre que alguém tenta listar, convidar ou mais tarde usar a IA da sala, o backend confirma se `request.user.id` está dentro de `memberIds`.
 
 **Criador como primeiro membro.** Quando a sala é criada, o aluno autenticado entra automaticamente em `memberIds`. Sem isto, o próprio criador criaria uma sala onde não conseguiria entrar.
 
-**Sala por disciplina.** Quando `type` é `SUBJECT`, o frontend envia `subjectId`. Esse ID serve para ligar a sala a uma disciplina existente. O backend valida se a disciplina existe para evitar salas apontadas para contextos inexistentes.
+**Sala por disciplina.** Quando `type` é `SUBJECT`, o frontend envia `disciplineName`. O backend valida que o nome não vem vazio e guarda esse texto apenas como etiqueta organizacional. Não há importação nem validação da entidade oficial de disciplinas neste BK, evitando uma dependência futura antes de `BK-MF1-08`.
 
 **Convite por email.** Este BK não cria contas novas. O convite procura um utilizador existente com `role: "STUDENT"` e adiciona o seu `_id` a `memberIds`. Isto mantém o fluxo simples e verificável para os BKs seguintes.
 
@@ -106,7 +106,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 - `BK-MF0-02` com `SessionGuard`.
 - `BK-MF0-03` com perfil de aluno funcional.
-- `BK-MF1-08` pode existir para validar `subjectId`; sala livre não depende dele.
+- Decisão `DERIVADO`: salas `SUBJECT` usam `disciplineName?: string`; a associação a disciplinas oficiais só fica disponível a partir de `BK-MF1-08`.
 
 ### Passo 1 - Criar schema da sala
 
@@ -127,40 +127,30 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/study-rooms/schemas/study-room.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type StudyRoomDocument = HydratedDocument<StudyRoom>;
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type StudyRoomType = "FREE" | "SUBJECT";
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "study_rooms" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class StudyRoom {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     ownerStudentId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
     name!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["FREE", "SUBJECT"], default: "FREE" })
     type!: StudyRoomType;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
-    @Prop({ type: Types.ObjectId, ref: "Subject", index: true })
-    subjectId?: Types.ObjectId;
+    // `disciplineName` é textual para este BK não depender da entidade oficial de disciplinas, criada apenas em BK-MF1-08.
+    @Prop({ trim: true, maxlength: 120 })
+    disciplineName?: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 500 })
     description?: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [], index: true })
     memberIds!: Types.ObjectId[];
 }
@@ -171,7 +161,7 @@ StudyRoomSchema.index({ memberIds: 1, createdAt: -1 });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O schema define a responsabilidade persistente da sala: dono, nome, tipo, etiqueta textual de disciplina, descrição e membros. As entradas vêm sempre do aluno autenticado e do DTO validado; as saídas são documentos `StudyRoom` usados pelo service. A validação principal deste passo é estrutural: `memberIds` guarda membership real e `disciplineName` evita importar a entidade oficial de disciplinas antes de `BK-MF1-08`. O passo seguinte usa este contrato para validar criação e convites sem aceitar ownership vindo do body.
 
 6. Como validar este passo.
 
@@ -202,10 +192,8 @@ StudyRoomSchema.index({ memberIds: 1, createdAt: -1 });
 
 ```ts
 // apps/api/src/modules/study-rooms/dto/create-study-room.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-import { IsIn, IsMongoId, IsOptional, IsString, MaxLength, MinLength, ValidateIf } from "class-validator";
+import { IsIn, IsOptional, IsString, MaxLength, MinLength, ValidateIf } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateStudyRoomDto {
     @IsString()
     @MinLength(2)
@@ -216,8 +204,10 @@ export class CreateStudyRoomDto {
     type!: "FREE" | "SUBJECT";
 
     @ValidateIf((body: CreateStudyRoomDto) => body.type === "SUBJECT")
-    @IsMongoId()
-    subjectId?: string;
+    @IsString()
+    @MinLength(2)
+    @MaxLength(120)
+    disciplineName?: string;
 
     @IsOptional()
     @IsString()
@@ -228,10 +218,8 @@ export class CreateStudyRoomDto {
 
 ```ts
 // apps/api/src/modules/study-rooms/dto/add-room-member.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsEmail } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AddRoomMemberDto {
     @IsEmail()
     email!: string;
@@ -240,7 +228,7 @@ export class AddRoomMemberDto {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Os DTOs delimitam as entradas HTTP: criação de sala e convite por email. `CreateStudyRoomDto` aceita `disciplineName` apenas quando `type` é `SUBJECT`, mantendo a sala por disciplina sem identificador oficial; `AddRoomMemberDto` obriga a email válido. As validações devolvem `400` antes do service quando o payload é inválido, e o service continua responsável por ownership, membership e erros `403`/`404`.
 
 6. Como validar este passo.
 
@@ -269,7 +257,6 @@ export class AddRoomMemberDto {
 
 ```ts
 // apps/api/src/modules/study-rooms/study-rooms.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     BadRequestException,
     ForbiddenException,
@@ -280,34 +267,28 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
 import { User, UserDocument } from "../auth/schemas/user.schema";
-import { Subject, SubjectDocument } from "../subjects/schemas/subject.schema";
 import { AddRoomMemberDto } from "./dto/add-room-member.dto";
 import { CreateStudyRoomDto } from "./dto/create-study-room.dto";
 import { StudyRoom, StudyRoomDocument } from "./schemas/study-room.schema";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class StudyRoomsService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(StudyRoom.name)
         private readonly roomModel: Model<StudyRoomDocument>,
         @InjectModel(User.name)
         private readonly userModel: Model<UserDocument>,
-        @InjectModel(Subject.name)
-        private readonly subjectModel: Model<SubjectDocument>,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, dto: CreateStudyRoomDto) {
         this.assertStudent(actor);
 
-        const subjectId = await this.resolveSubjectId(dto);
+        const disciplineName = this.resolveDisciplineName(dto);
         const room = await this.roomModel.create({
             ownerStudentId: new Types.ObjectId(actor.id),
             name: dto.name.trim(),
             type: dto.type,
-            subjectId,
+            disciplineName,
             description: dto.description?.trim(),
             memberIds: [new Types.ObjectId(actor.id)],
         });
@@ -315,7 +296,6 @@ export class StudyRoomsService {
         return this.toView(room);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listMine(actor: AuthenticatedUser) {
         this.assertStudent(actor);
 
@@ -327,7 +307,6 @@ export class StudyRoomsService {
         return rooms.map((room) => this.toView(room));
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async addMember(actor: AuthenticatedUser, roomId: string, dto: AddRoomMemberDto) {
         this.assertStudent(actor);
         const room = await this.ensureMember(actor.id, roomId);
@@ -336,16 +315,13 @@ export class StudyRoomsService {
             .findOne({ email: dto.email.toLowerCase().trim(), role: "STUDENT" })
             .lean();
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!student) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Aluno não encontrado.");
         }
 
         const studentId = new Types.ObjectId(student._id);
         const exists = room.memberIds.some((id) => id.equals(studentId));
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!exists) {
             room.memberIds.push(studentId);
             await room.save();
@@ -354,11 +330,8 @@ export class StudyRoomsService {
         return this.toView(room);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async ensureMember(studentId: string, roomId: string) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!Types.ObjectId.isValid(roomId)) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Sala não encontrada.");
         }
 
@@ -367,42 +340,29 @@ export class StudyRoomsService {
             memberIds: new Types.ObjectId(studentId),
         });
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!room) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Só membros podem aceder a esta sala.");
         }
 
         return room;
     }
 
-    private async resolveSubjectId(dto: CreateStudyRoomDto) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
+    private resolveDisciplineName(dto: CreateStudyRoomDto) {
+        // Sala livre não fica presa a qualquer disciplina textual ou oficial.
         if (dto.type === "FREE") {
             return undefined;
         }
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
-        if (!dto.subjectId || !Types.ObjectId.isValid(dto.subjectId)) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
-            throw new BadRequestException("Disciplina inválida.");
+        const disciplineName = dto.disciplineName?.trim();
+        if (!disciplineName) {
+            throw new BadRequestException("Indica o nome da disciplina.");
         }
 
-        const subject = await this.subjectModel.exists({ _id: new Types.ObjectId(dto.subjectId) });
-
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
-        if (!subject) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
-            throw new BadRequestException("Disciplina inválida.");
-        }
-
-        return new Types.ObjectId(dto.subjectId);
+        return disciplineName;
     }
 
     private assertStudent(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "STUDENT") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas alunos podem gerir salas de estudo.");
         }
     }
@@ -413,7 +373,7 @@ export class StudyRoomsService {
             ownerStudentId: room.ownerStudentId.toString(),
             name: room.name,
             type: room.type,
-            subjectId: room.subjectId?.toString() ?? "",
+            disciplineName: room.disciplineName ?? "",
             description: room.description ?? "",
             memberIds: room.memberIds.map((id) => id.toString()),
         };
@@ -423,7 +383,7 @@ export class StudyRoomsService {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O service é a fronteira de negócio do BK: recebe a sessão autenticada, cria salas apenas para alunos, adiciona o criador como primeiro membro e só permite convites por membros existentes. `ensureMember` devolve `403` quando o aluno não pertence à sala e `404` quando o ID da sala é inválido. A entrada `disciplineName` é normalizada no backend e nunca cria dependência de disciplinas oficiais; os BKs seguintes reutilizam `ensureMember` para partilhas e IA.
 
 6. Como validar este passo.
 
@@ -452,7 +412,6 @@ export class StudyRoomsService {
 
 ```ts
 // apps/api/src/modules/study-rooms/study-rooms.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -465,9 +424,7 @@ import { StudyRoomsService } from "./study-rooms.service";
 
 @Controller("api/study-rooms")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class StudyRoomsController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly studyRoomsService: StudyRoomsService) {}
 
     @Post()
@@ -493,7 +450,7 @@ export class StudyRoomsController {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O controller expõe os três endpoints do BK e passa sempre `request.user` para o service. As entradas HTTP são DTOs validados e parâmetros de rota; as saídas são views normalizadas de sala. A segurança não depende de IDs enviados no body: a sessão decide quem cria, lista e convida, enquanto o service converte falhas em `400`, `403` ou `404`.
 
 6. Como validar este passo.
 
@@ -522,11 +479,9 @@ export class StudyRoomsController {
 
 ```ts
 // apps/api/src/modules/study-rooms/study-rooms.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { User, UserSchema } from "../auth/schemas/user.schema";
-import { Subject, SubjectSchema } from "../subjects/schemas/subject.schema";
 import { StudyRoom, StudyRoomSchema } from "./schemas/study-room.schema";
 import { StudyRoomsController } from "./study-rooms.controller";
 import { StudyRoomsService } from "./study-rooms.service";
@@ -536,20 +491,18 @@ import { StudyRoomsService } from "./study-rooms.service";
         MongooseModule.forFeature([
             { name: StudyRoom.name, schema: StudyRoomSchema },
             { name: User.name, schema: UserSchema },
-            { name: Subject.name, schema: SubjectSchema },
         ]),
     ],
     controllers: [StudyRoomsController],
     providers: [StudyRoomsService],
     exports: [StudyRoomsService, MongooseModule],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class StudyRoomsModule {}
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O módulo regista apenas os models que este BK possui ou já pode usar: `StudyRoom` e `User`. A ausência do schema de disciplinas oficiais é intencional e documenta a decisão `DERIVADO`. A exportação de `StudyRoomsService` permite que `BK-MF1-03` e `BK-MF1-04` validem membership antes de criarem partilhas ou chamadas de IA.
 
 6. Como validar este passo.
 
@@ -578,24 +531,19 @@ export class StudyRoomsModule {}
 
 ```ts
 // apps/web/src/lib/api/studyRooms.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type StudyRoomView = {
     id: string;
     ownerStudentId: string;
     name: string;
     type: "FREE" | "SUBJECT";
-    subjectId: string;
+    disciplineName: string;
     description: string;
     memberIds: string[];
 };
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -605,10 +553,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
 export async function createStudyRoom(input: {
     name: string;
     type: "FREE" | "SUBJECT";
-    subjectId?: string;
+    disciplineName?: string;
     description?: string;
 }) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch("/api/study-rooms", {
         method: "POST",
         credentials: "include",
@@ -620,7 +567,6 @@ export async function createStudyRoom(input: {
 }
 
 export async function listStudyRooms() {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch("/api/study-rooms", {
         credentials: "include",
     });
@@ -629,7 +575,6 @@ export async function listStudyRooms() {
 }
 
 export async function addRoomMember(roomId: string, email: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-rooms/${roomId}/members`, {
         method: "POST",
         credentials: "include",
@@ -643,7 +588,7 @@ export async function addRoomMember(roomId: string, email: string) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O cliente frontend define o contrato consumido pela página: cria salas, lista as salas do aluno e adiciona membros. Todas as chamadas usam `credentials: "include"` para transportar a sessão HttpOnly. A entrada `disciplineName` é só uma etiqueta textual; ownership e membership continuam a ser validados exclusivamente no backend.
 
 6. Como validar este passo.
 
@@ -672,7 +617,6 @@ export async function addRoomMember(roomId: string, email: string) {
 
 ```tsx
 // apps/web/src/pages/student/StudyRoomsPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     StudyRoomView,
@@ -681,25 +625,18 @@ import {
     listStudyRooms,
 } from "../../lib/api/studyRooms";
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function StudyRoomsPage() {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [rooms, setRooms] = useState<StudyRoomView[]>([]);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setRooms(await listStudyRooms());
     }
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, []);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleCreate(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -709,7 +646,7 @@ export function StudyRoomsPage() {
             await createStudyRoom({
                 name: String(form.get("name") ?? ""),
                 type: String(form.get("type") ?? "FREE") as "FREE" | "SUBJECT",
-                subjectId: String(form.get("subjectId") ?? "") || undefined,
+                disciplineName: String(form.get("disciplineName") ?? "") || undefined,
                 description: String(form.get("description") ?? ""),
             });
             event.currentTarget.reset();
@@ -719,14 +656,11 @@ export function StudyRoomsPage() {
         }
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleInvite(roomId: string, email: string) {
         await addRoomMember(roomId, email);
         await refresh();
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Salas de estudo</h1>
@@ -736,7 +670,7 @@ export function StudyRoomsPage() {
                     <option value="FREE">Livre</option>
                     <option value="SUBJECT">Disciplina</option>
                 </select>
-                <input name="subjectId" placeholder="ID da disciplina" />
+                <input name="disciplineName" placeholder="Nome da disciplina" />
                 <textarea name="description" placeholder="Descrição" />
                 <button type="submit">Criar sala</button>
             </form>
@@ -769,7 +703,7 @@ export function StudyRoomsPage() {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    A página do aluno recolhe nome, tipo, disciplina textual opcional e email de convite, mas não decide permissões. A saída visível é a lista de salas onde a API confirmou membership. O erro apresentado vem da resposta HTTP controlada pelo backend, permitindo testar `400` para disciplina textual em falta, `403` para utilizador não autorizado e `404` para aluno convidado inexistente.
 
 6. Como validar este passo.
 
@@ -801,8 +735,8 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 5. Explicação do código.
 
     - Aluno cria sala `FREE`.
-- Aluno cria sala `SUBJECT` com disciplina existente.
-- Sala `SUBJECT` sem disciplina válida devolve `400`.
+- Aluno cria sala `SUBJECT` com `disciplineName` preenchido.
+- Sala `SUBJECT` sem `disciplineName` válido devolve `400`.
 - Criador aparece em `memberIds`.
 - Membro adiciona outro aluno por email.
 - Não membro não consegue adicionar membros.
@@ -816,8 +750,15 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Expected results
+- `POST /api/study-rooms` com aluno autenticado e sala `FREE` devolve `201` com `memberIds` a incluir o criador.
+- `POST /api/study-rooms` com `type: "SUBJECT"` e `disciplineName` preenchido devolve `201` sem depender de disciplinas oficiais.
+- `POST /api/study-rooms` com `type: "SUBJECT"` sem `disciplineName` válido devolve `400`.
+- `GET /api/study-rooms` devolve apenas salas onde o aluno autenticado está em `memberIds`.
+- `POST /api/study-rooms/:roomId/members` devolve `403` para não membros, `404` para aluno inexistente e a sala atualizada quando o convite é válido.
+
 ## Critérios de aceite
-- `StudyRoom` guarda owner, tipo, disciplina opcional e membros.
+- `StudyRoom` guarda owner, tipo, `disciplineName` opcional e membros.
 - Todas as ações usam sessão autenticada.
 - `StudyRoomsService.ensureMember` fica exportável para BKs seguintes.
 - Frontend usa `credentials: 'include'`.

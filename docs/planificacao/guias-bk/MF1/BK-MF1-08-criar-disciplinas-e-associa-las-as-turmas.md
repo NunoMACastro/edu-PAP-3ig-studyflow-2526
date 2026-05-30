@@ -125,34 +125,25 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/subjects/schemas/subject.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type SubjectDocument = HydratedDocument<Subject>;
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "subjects" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class Subject {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
     classId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     teacherId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
     name!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 24 })
     code?: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 500 })
     description?: string;
 }
@@ -193,10 +184,8 @@ SubjectSchema.index({ teacherId: 1, createdAt: -1 });
 
 ```ts
 // apps/api/src/modules/subjects/dto/create-subject.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateSubjectDto {
     @IsString()
     @MinLength(2)
@@ -246,7 +235,6 @@ export class CreateSubjectDto {
 
 ```ts
 // apps/api/src/modules/subjects/subjects.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     ConflictException,
     ForbiddenException,
@@ -261,16 +249,13 @@ import { CreateSubjectDto } from "./dto/create-subject.dto";
 import { Subject, SubjectDocument } from "./schemas/subject.schema";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class SubjectsService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(Subject.name)
         private readonly subjectModel: Model<SubjectDocument>,
         private readonly classesService: ClassesService,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, classId: string, dto: CreateSubjectDto) {
         this.assertTeacher(actor);
         const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
@@ -280,9 +265,7 @@ export class SubjectsService {
             name: dto.name.trim(),
         });
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (duplicate) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ConflictException("Já existe uma disciplina com este nome nesta turma.");
         }
 
@@ -297,7 +280,6 @@ export class SubjectsService {
         return this.toView(subject);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForTeacher(actor: AuthenticatedUser, classId: string) {
         this.assertTeacher(actor);
         const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
@@ -310,11 +292,8 @@ export class SubjectsService {
         return subjects.map((subject) => this.toView(subject));
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async findOwnedSubject(teacherId: string, subjectId: string) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!Types.ObjectId.isValid(subjectId)) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Disciplina não encontrada.");
         }
 
@@ -323,28 +302,21 @@ export class SubjectsService {
             teacherId: new Types.ObjectId(teacherId),
         });
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!subject) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Disciplina não encontrada para este professor.");
         }
 
         return subject;
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async findSubjectForStudent(studentId: string, subjectId: string) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!Types.ObjectId.isValid(subjectId)) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Disciplina não encontrada.");
         }
 
         const subject = await this.subjectModel.findById(subjectId);
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!subject) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Disciplina não encontrada.");
         }
 
@@ -353,9 +325,7 @@ export class SubjectsService {
     }
 
     private assertTeacher(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "TEACHER") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas professores podem gerir disciplinas.");
         }
     }
@@ -404,7 +374,6 @@ export class SubjectsService {
 
 ```ts
 // apps/api/src/modules/subjects/subjects.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -416,9 +385,7 @@ import { SubjectsService } from "./subjects.service";
 
 @Controller("api/teacher/classes/:classId/subjects")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class SubjectsController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly subjectsService: SubjectsService) {}
 
     @Post()
@@ -468,7 +435,6 @@ export class SubjectsController {
 
 ```ts
 // apps/api/src/modules/subjects/subjects.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ClassesModule } from "../classes/classes.module";
@@ -485,7 +451,6 @@ import { SubjectsService } from "./subjects.service";
     providers: [SubjectsService],
     exports: [SubjectsService, MongooseModule],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class SubjectsModule {}
 ```
 
@@ -520,8 +485,6 @@ export class SubjectsModule {}
 
 ```ts
 // apps/web/src/lib/api/subjects.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type SubjectView = {
     id: string;
     classId: string;
@@ -531,12 +494,9 @@ export type SubjectView = {
     description: string;
 };
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -547,7 +507,6 @@ export async function createSubject(
     classId: string,
     input: { name: string; code?: string; description?: string },
 ) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/classes/${classId}/subjects`, {
         method: "POST",
         credentials: "include",
@@ -559,7 +518,6 @@ export async function createSubject(
 }
 
 export async function listSubjects(classId: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/classes/${classId}/subjects`, {
         credentials: "include",
     });
@@ -570,7 +528,7 @@ export async function listSubjects(classId: string) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de disciplinas oficiais: recebe `classId`, `subjectId` ou dados de criação, devolve entidades associadas à turma do professor e valida ownership com `ClassesService` ou `SubjectsService`. Erros esperados incluem `403` para papel errado, `404` para turma ou disciplina fora do professor e `409` para duplicados. O resultado alimenta materiais oficiais, voz docente e IA limitada dos BKs seguintes.
 
 6. Como validar este passo.
 
@@ -599,7 +557,6 @@ export async function listSubjects(classId: string) {
 
 ```tsx
 // apps/web/src/pages/teacher/TeacherSubjectsPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import { SubjectView, createSubject, listSubjects } from "../../lib/api/subjects";
 
@@ -607,25 +564,18 @@ type Props = {
     classId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function TeacherSubjectsPage({ classId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [subjects, setSubjects] = useState<SubjectView[]>([]);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setSubjects(await listSubjects(classId));
     }
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, [classId]);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -645,7 +595,6 @@ export function TeacherSubjectsPage({ classId }: Props) {
         }
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Disciplinas da turma</h1>
@@ -674,7 +623,7 @@ export function TeacherSubjectsPage({ classId }: Props) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de disciplinas oficiais: recebe `classId`, `subjectId` ou dados de criação, devolve entidades associadas à turma do professor e valida ownership com `ClassesService` ou `SubjectsService`. Erros esperados incluem `403` para papel errado, `404` para turma ou disciplina fora do professor e `409` para duplicados. O resultado alimenta materiais oficiais, voz docente e IA limitada dos BKs seguintes.
 
 6. Como validar este passo.
 
@@ -721,6 +670,13 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 7. Erros comuns ou cenário negativo.
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
+## Expected results
+- `POST /api/teacher/classes/:classId/subjects` com professor dono da turma devolve `201`.
+- Professor sem ownership da turma devolve `404`.
+- Aluno autenticado devolve `403`.
+- Nome duplicado na mesma turma devolve `409`.
+- `GET /api/teacher/classes/:classId/subjects` devolve `200` apenas com disciplinas da turma do professor autenticado.
 
 ## Critérios de aceite
 - A disciplina guarda `classId` e `teacherId`.

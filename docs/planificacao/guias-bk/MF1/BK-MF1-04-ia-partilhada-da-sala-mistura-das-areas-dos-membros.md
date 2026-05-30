@@ -51,6 +51,7 @@ A IA da sala mistura contribuições dos membros, mas não pode consultar materi
 - `StudyRoomsService.ensureMember`.
 - `RoomSharesService.findUsableSharesForRoom`.
 - `AiModule` com `AI_PROVIDER` exportado.
+- Decisão `DERIVADO`: apesar do header canónico depender de `BK-MF1-02`, este BK tem dependência técnica direta de `BK-MF1-03`, porque a IA só pode responder sobre `RoomShare` validado.
 
 ## Glossário
 - **Fonte da sala**: partilha textual com `usableByAi`.
@@ -60,6 +61,8 @@ A IA da sala mistura contribuições dos membros, mas não pode consultar materi
 ## Conceitos teóricos
 **IA partilhada da sala.** Esta IA responde com base nas partilhas textuais feitas pelos membros da sala. Ela não usa materiais privados do aluno, materiais oficiais de turma nem conteúdo de outras salas.
 
+**Dependência técnica de `BK-MF1-03`.** O header mantém a dependência canónica em `BK-MF1-02`, porque membership nasce nas salas. Tecnicamente, a execução depende também de `BK-MF1-03`: sem `RoomSharesService.findUsableSharesForRoom`, não existem fontes autorizadas para o prompt. Esta é uma decisão `DERIVADO`, registada para tornar a ordem atual executável sem alterar o contrato canónico.
+
 **O que são `sourceIds`.** `sourceIds` é uma lista opcional de IDs de partilhas que o aluno escolhe no frontend para focar a resposta. Por exemplo, a página pode mostrar três apontamentos partilhados e o aluno selecciona dois. Esses dois `_id` seguem no body do pedido como `sourceIds`.
 
 **De onde vêm e para onde vão os `sourceIds`.** Os IDs nascem nos registos `RoomShare` guardados em MongoDB, são apresentados pela UI, voltam para o backend no DTO `AskRoomAiDto`, e são usados pelo service apenas para filtrar fontes que já pertencem à sala. Eles nunca dão acesso directo a documentos.
@@ -67,6 +70,8 @@ A IA da sala mistura contribuições dos membros, mas não pode consultar materi
 **Porque `sourceIds` não são confiáveis.** Um aluno pode alterar o pedido no browser e enviar IDs de outra sala. Por isso, o backend cruza sempre os IDs recebidos com `roomId` e `usableByAi: true`. Se o ID não pertence à sala, não entra no prompt.
 
 **Resposta com fontes.** A resposta devolve `sources` com `shareId` e `title`. Isto permite ao aluno perceber que apontamentos sustentaram a explicação e ajuda a defender que a IA respeitou o contexto da sala.
+
+**Validação da resposta da IA.** O provider tem de devolver `answer` não vazia e `sourceShareIds` pertencentes às partilhas autorizadas da sala. Se o provider falhar ou devolver uma resposta inválida, o endpoint devolve `503`. Se não houver fontes processáveis antes da chamada, devolve `422`.
 
 **Bloqueio sem fontes.** Se a sala não tiver partilhas textuais, o endpoint devolve `422`. A IA não deve responder só porque recebeu uma pergunta; precisa de material partilhado e validado.
 
@@ -106,6 +111,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 - `StudyRoomsService.ensureMember`.
 - `RoomSharesService.findUsableSharesForRoom`.
 - `AiModule` com `AI_PROVIDER` exportado.
+- Decisão `DERIVADO`: este BK requer `BK-MF1-03` implementado para obter fontes `RoomShare.usableByAi`.
 
 ### Passo 1 - Criar schema da interação
 
@@ -126,34 +132,25 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/study-rooms/schemas/room-ai-interaction.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type RoomAiInteractionDocument = HydratedDocument<RoomAiInteraction>;
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "room_ai_interactions" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class RoomAiInteraction {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "StudyRoom", required: true, index: true })
     roomId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     studentId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, maxlength: 800 })
     question!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, maxlength: 12000 })
     answer!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
     sources!: Array<{ shareId: string; title: string }>;
 }
@@ -164,7 +161,7 @@ RoomAiInteractionSchema.index({ roomId: 1, createdAt: -1 });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O schema guarda a evidência da interação: sala, aluno, pergunta, resposta e fontes devolvidas. A entrada vem de uma chamada já autenticada e validada pelo service; a saída é usada pela API para mostrar a resposta e pelas validações para provar que as fontes pertencem à sala. Este schema não decide permissões, mas só deve receber dados depois de membership, fontes e runtime do provider serem validados.
 
 6. Como validar este passo.
 
@@ -193,10 +190,8 @@ RoomAiInteractionSchema.index({ roomId: 1, createdAt: -1 });
 
 ```ts
 // apps/api/src/modules/study-rooms/dto/ask-room-ai.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ArrayMaxSize, IsArray, IsMongoId, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AskRoomAiDto {
     @IsString()
     @MinLength(10)
@@ -213,7 +208,7 @@ export class AskRoomAiDto {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O DTO delimita a pergunta e a seleção opcional de fontes. `sourceIds` são tratados como input não confiável: mesmo válidos como ObjectId, só entram no prompt se `RoomSharesService.findUsableSharesForRoom` confirmar que pertencem à sala e são `usableByAi`. Payload inválido devolve `400`; sala sem fontes devolve `422` no service.
 
 6. Como validar este passo.
 
@@ -242,10 +237,8 @@ export class AskRoomAiDto {
 
 ```ts
 // apps/api/src/modules/study-rooms/prompts/room-ai.prompt.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { RoomShareDocument } from "../schemas/room-share.schema";
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function buildRoomAiPrompt(question: string, shares: RoomShareDocument[]) {
     const sources = shares
         .map((share, index) => {
@@ -265,7 +258,7 @@ export function buildRoomAiPrompt(question: string, shares: RoomShareDocument[])
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O prompt recebe apenas fontes já autorizadas pelo backend e pede JSON com `answer` e `sourceShareIds`. A responsabilidade desta função é compor texto; não valida membership, ownership nem chamadas externas. O service continua a validar o resultado antes de guardar, para evitar persistir respostas vazias ou fontes inventadas pelo provider.
 
 6. Como validar este passo.
 
@@ -294,7 +287,6 @@ export function buildRoomAiPrompt(question: string, shares: RoomShareDocument[])
 
 ```ts
 // apps/api/src/modules/study-rooms/room-ai.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     ForbiddenException,
     Inject,
@@ -313,9 +305,7 @@ import { RoomAiInteraction, RoomAiInteractionDocument } from "./schemas/room-ai-
 import { StudyRoomsService } from "./study-rooms.service";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class RoomAiService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(RoomAiInteraction.name)
         private readonly interactionModel: Model<RoomAiInteractionDocument>,
@@ -325,7 +315,6 @@ export class RoomAiService {
         private readonly aiProvider: AiProvider,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async answer(actor: AuthenticatedUser, roomId: string, dto: AskRoomAiDto) {
         this.assertStudent(actor);
         const room = await this.studyRoomsService.ensureMember(actor.id, roomId);
@@ -334,9 +323,7 @@ export class RoomAiService {
             dto.sourceIds ?? [],
         );
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (shares.length === 0) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new UnprocessableEntityException("A sala ainda não tem fontes textuais partilhadas.");
         }
 
@@ -349,15 +336,10 @@ export class RoomAiService {
                 type: "EXPLANATION",
             });
         } catch {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ServiceUnavailableException("A IA não está disponível neste momento.");
         }
 
-        const answer = typeof result.answer === "string" ? result.answer : "";
-        const sources = shares.map((share) => ({
-            shareId: share._id.toString(),
-            title: share.title,
-        }));
+        const { answer, sources } = this.normalizeAiResult(result, shares);
 
         const interaction = await this.interactionModel.create({
             roomId: room._id,
@@ -375,18 +357,41 @@ export class RoomAiService {
     }
 
     private assertStudent(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "STUDENT") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas alunos membros podem usar a IA da sala.");
         }
+    }
+
+    private normalizeAiResult(result: Record<string, unknown>, shares: Array<{ _id: Types.ObjectId; title: string }>) {
+        const answer = typeof result.answer === "string" ? result.answer.trim() : "";
+        if (!answer) {
+            throw new ServiceUnavailableException("A IA devolveu uma resposta inválida.");
+        }
+
+        const allowedSources = new Map(
+            shares.map((share) => [
+                share._id.toString(),
+                { shareId: share._id.toString(), title: share.title },
+            ]),
+        );
+        const rawSourceIds = Array.isArray(result.sourceShareIds) ? result.sourceShareIds : [];
+        const sources = rawSourceIds
+            .filter((sourceId): sourceId is string => typeof sourceId === "string")
+            .map((sourceId) => allowedSources.get(sourceId))
+            .filter((source): source is { shareId: string; title: string } => Boolean(source));
+
+        if (sources.length === 0) {
+            throw new ServiceUnavailableException("A IA devolveu fontes inválidas.");
+        }
+
+        return { answer, sources };
     }
 }
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O service é a barreira de segurança da IA da sala. Recebe sessão, `roomId`, pergunta e `sourceIds`; valida que o actor é aluno, membro da sala, e que existem fontes `RoomShare.usableByAi` da própria sala. Antes de guardar, valida o runtime do provider: `answer` tem de ser texto não vazio e `sourceShareIds` têm de corresponder às fontes autorizadas. Os erros esperados são `403` para não aluno/não membro, `422` sem fontes e `503` quando o provider falha ou devolve dados inválidos.
 
 6. Como validar este passo.
 
@@ -415,7 +420,6 @@ export class RoomAiService {
 
 ```ts
 // apps/api/src/modules/study-rooms/room-ai.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -427,9 +431,7 @@ import { RoomAiService } from "./room-ai.service";
 
 @Controller("api/study-rooms/:roomId/ai/answers")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class RoomAiController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly roomAiService: RoomAiService) {}
 
     @Post()
@@ -445,7 +447,7 @@ export class RoomAiController {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O controller mantém o contrato HTTP mínimo: rota da sala, body validado e sessão autenticada. Não recebe IDs de aluno no body e não tenta validar fontes na UI. A saída vem do service já normalizada com resposta e fontes autorizadas, ou com erros HTTP controlados.
 
 6. Como validar este passo.
 
@@ -474,12 +476,11 @@ export class RoomAiController {
 
 ```ts
 // apps/api/src/modules/study-rooms/study-rooms.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AiModule } from "../ai/ai.module";
 import { User, UserSchema } from "../auth/schemas/user.schema";
-import { Subject, SubjectSchema } from "../subjects/schemas/subject.schema";
+import { Material, MaterialSchema } from "../materials/schemas/material.schema";
 import { RoomAiController } from "./room-ai.controller";
 import { RoomAiService } from "./room-ai.service";
 import { RoomSharesController } from "./room-shares.controller";
@@ -498,20 +499,19 @@ import { StudyRoomsService } from "./study-rooms.service";
             { name: RoomShare.name, schema: RoomShareSchema },
             { name: RoomAiInteraction.name, schema: RoomAiInteractionSchema },
             { name: User.name, schema: UserSchema },
-            { name: Subject.name, schema: SubjectSchema },
+            { name: Material.name, schema: MaterialSchema },
         ]),
     ],
     controllers: [StudyRoomsController, RoomSharesController, RoomAiController],
     providers: [StudyRoomsService, RoomSharesService, RoomAiService],
     exports: [StudyRoomsService, RoomSharesService, MongooseModule],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class StudyRoomsModule {}
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O módulo integra o provider de IA, os schemas da cadeia colaborativa e o schema `Material` exigido por `RoomSharesService` desde `BK-MF1-03`. Não importa disciplinas oficiais. Assim, a IA da sala continua isolada da cadeia docente e só depende de salas, membros, partilhas validadas e provider.
 
 6. Como validar este passo.
 
@@ -542,8 +542,6 @@ export class StudyRoomsModule {}
 
 ```ts
 // apps/web/src/lib/api/roomAi.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type RoomAiAnswer = {
     id: string;
     answer: string;
@@ -551,7 +549,6 @@ export type RoomAiAnswer = {
 };
 
 export async function askRoomAi(roomId: string, input: { question: string; sourceIds?: string[] }) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-rooms/${roomId}/ai/answers`, {
         method: "POST",
         credentials: "include",
@@ -559,10 +556,8 @@ export async function askRoomAi(roomId: string, input: { question: string; sourc
         body: JSON.stringify(input),
     });
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -572,7 +567,6 @@ export async function askRoomAi(roomId: string, input: { question: string; sourc
 
 ```tsx
 // apps/web/src/pages/student/RoomAiPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useState } from "react";
 import { RoomAiAnswer, askRoomAi } from "../../lib/api/roomAi";
 
@@ -580,17 +574,11 @@ type Props = {
     roomId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function RoomAiPage({ roomId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [answer, setAnswer] = useState<RoomAiAnswer | null>(null);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [isLoading, setIsLoading] = useState(false);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -608,7 +596,6 @@ export function RoomAiPage({ roomId }: Props) {
         }
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>IA da sala</h1>
@@ -637,7 +624,7 @@ export function RoomAiPage({ roomId }: Props) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O cliente e a página enviam a pergunta com sessão HttpOnly e mostram resposta ou erro. A UI não decide fontes autorizadas: `sourceIds`, quando forem adicionados à interface, continuam a ser apenas uma preferência do aluno. O backend valida membership, fontes, resposta da IA e persistência da interação antes de devolver `200`.
 
 6. Como validar este passo.
 
@@ -668,10 +655,11 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 5. Explicação do código.
 
-    - Membro recebe resposta com fontes.
+- Membro recebe resposta com fontes.
 - Não membro recebe `403`.
 - Sala sem fontes textuais recebe `422`.
 - `sourceIds` de outra sala não entram nas fontes.
+- Provider sem `answer` não vazio ou sem fontes autorizadas recebe `503`.
 - A interação fica gravada.
 - A resposta mostra fontes usadas.
 
@@ -683,10 +671,18 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Expected results
+- `POST /api/study-rooms/:roomId/ai/answers` por membro com fontes válidas devolve `201` com `answer` não vazio e `sources` autorizadas.
+- `POST /api/study-rooms/:roomId/ai/answers` por não membro devolve `403`.
+- Sala sem `RoomShare.usableByAi` devolve `422` e não chama a IA.
+- Provider indisponível ou resposta sem `answer`/fontes autorizadas devolve `503` e não grava interação.
+- `sourceIds` de outra sala não entram no prompt nem nas fontes devolvidas.
+
 ## Critérios de aceite
 - Membership é validada antes da IA.
 - Só `RoomShare.usableByAi` entra no prompt.
 - Sem fontes há `422`.
+- Resposta do provider é validada antes de persistir.
 - Interação guarda pergunta, resposta e fontes.
 - Frontend usa `credentials: 'include'`.
 

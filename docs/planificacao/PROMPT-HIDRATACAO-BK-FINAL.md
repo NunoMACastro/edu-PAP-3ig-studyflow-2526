@@ -8,7 +8,7 @@ Trabalha como arquiteto de software sénior, professor de programação e reviso
 
 ```md
 MF_ALVO: MF1
-MODO: {escolher um dos modos possíveis}
+MODO: corrigir_apenas
 ```
 
 Valores possíveis para `MODO`:
@@ -106,10 +106,10 @@ Cada passo deve seguir exatamente esta estrutura, nesta ordem:
 
 1. Explicação simples do objetivo.
 2. Ficheiros envolvidos.
-   - CRIAR: `caminho`
-   - EDITAR: `caminho`
-   - REVER: `caminho`
-   - LOCALIZAÇÃO: ficheiro completo, função completa, classe completa ou zona exata.
+    - CRIAR: `caminho`
+    - EDITAR: `caminho`
+    - REVER: `caminho`
+    - LOCALIZAÇÃO: ficheiro completo, função completa, classe completa ou zona exata.
 3. O que fazer.
 4. Código completo, correto e integrado.
 5. Explicação do código.

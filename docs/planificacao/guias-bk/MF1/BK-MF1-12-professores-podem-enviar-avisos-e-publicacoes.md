@@ -128,36 +128,26 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/class-posts/schemas/class-post.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type ClassPostDocument = HydratedDocument<ClassPost>;
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type ClassPostType = "NOTICE" | "POST";
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "class_posts" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassPost {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
     classId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     teacherId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["NOTICE", "POST"] })
     type!: ClassPostType;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 160 })
     title!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 5, maxlength: 4000 })
     body!: string;
 }
@@ -168,7 +158,7 @@ ClassPostSchema.index({ classId: 1, createdAt: -1 });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
 
 6. Como validar este passo.
 
@@ -197,10 +187,8 @@ ClassPostSchema.index({ classId: 1, createdAt: -1 });
 
 ```ts
 // apps/api/src/modules/class-posts/dto/create-class-post.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsIn, IsString, MaxLength, MinLength } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateClassPostDto {
     @IsIn(["NOTICE", "POST"])
     type!: "NOTICE" | "POST";
@@ -219,7 +207,7 @@ export class CreateClassPostDto {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
 
 6. Como validar este passo.
 
@@ -248,7 +236,6 @@ export class CreateClassPostDto {
 
 ```ts
 // apps/api/src/modules/class-posts/class-posts.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -258,16 +245,13 @@ import { CreateClassPostDto } from "./dto/create-class-post.dto";
 import { ClassPost, ClassPostDocument } from "./schemas/class-post.schema";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassPostsService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(ClassPost.name)
         private readonly postModel: Model<ClassPostDocument>,
         private readonly classesService: ClassesService,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, classId: string, dto: CreateClassPostDto) {
         this.assertTeacher(actor);
         const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
@@ -283,7 +267,6 @@ export class ClassPostsService {
         return this.toView(post);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForTeacher(actor: AuthenticatedUser, classId: string) {
         this.assertTeacher(actor);
         const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
@@ -295,7 +278,6 @@ export class ClassPostsService {
         return posts.map((post) => this.toView(post));
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForStudent(actor: AuthenticatedUser, classId: string) {
         this.assertStudent(actor);
         const schoolClass = await this.classesService.ensureStudentEnrollment(actor.id, classId);
@@ -308,17 +290,13 @@ export class ClassPostsService {
     }
 
     private assertTeacher(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "TEACHER") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas professores podem criar publicações.");
         }
     }
 
     private assertStudent(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "STUDENT") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas alunos inscritos podem ler publicações.");
         }
     }
@@ -338,7 +316,7 @@ export class ClassPostsService {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
 
 6. Como validar este passo.
 
@@ -367,7 +345,6 @@ export class ClassPostsService {
 
 ```ts
 // apps/api/src/modules/class-posts/class-posts.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -379,9 +356,7 @@ import { CreateClassPostDto } from "./dto/create-class-post.dto";
 
 @Controller("api")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassPostsController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly classPostsService: ClassPostsService) {}
 
     @Post("teacher/classes/:classId/posts")
@@ -407,7 +382,7 @@ export class ClassPostsController {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
 
 6. Como validar este passo.
 
@@ -436,7 +411,6 @@ export class ClassPostsController {
 
 ```ts
 // apps/api/src/modules/class-posts/class-posts.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ClassesModule } from "../classes/classes.module";
@@ -452,13 +426,12 @@ import { ClassPost, ClassPostSchema } from "./schemas/class-post.schema";
     controllers: [ClassPostsController],
     providers: [ClassPostsService],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassPostsModule {}
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
 
 6. Como validar este passo.
 
@@ -487,8 +460,6 @@ export class ClassPostsModule {}
 
 ```ts
 // apps/web/src/lib/api/classPosts.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type ClassPostView = {
     id: string;
     classId: string;
@@ -498,12 +469,9 @@ export type ClassPostView = {
     body: string;
 };
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -514,7 +482,6 @@ export async function createClassPost(
     classId: string,
     input: { type: "NOTICE" | "POST"; title: string; body: string },
 ) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/classes/${classId}/posts`, {
         method: "POST",
         credentials: "include",
@@ -526,7 +493,6 @@ export async function createClassPost(
 }
 
 export async function listTeacherClassPosts(classId: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/classes/${classId}/posts`, {
         credentials: "include",
     });
@@ -535,7 +501,6 @@ export async function listTeacherClassPosts(classId: string) {
 }
 
 export async function listClassPostsForStudent(classId: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/student/classes/${classId}/posts`, {
         credentials: "include",
     });
@@ -546,7 +511,7 @@ export async function listClassPostsForStudent(classId: string) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
 
 6. Como validar este passo.
 
@@ -575,7 +540,6 @@ export async function listClassPostsForStudent(classId: string) {
 
 ```tsx
 // apps/web/src/pages/teacher/TeacherClassPostsPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     ClassPostView,
@@ -587,25 +551,18 @@ type Props = {
     classId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function TeacherClassPostsPage({ classId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [posts, setPosts] = useState<ClassPostView[]>([]);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setPosts(await listTeacherClassPosts(classId));
     }
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, [classId]);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -625,7 +582,6 @@ export function TeacherClassPostsPage({ classId }: Props) {
         }
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Publicações da turma</h1>
@@ -653,7 +609,7 @@ export function TeacherClassPostsPage({ classId }: Props) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
 
 6. Como validar este passo.
 
@@ -682,7 +638,6 @@ export function TeacherClassPostsPage({ classId }: Props) {
 
 ```tsx
 // apps/web/src/pages/student/StudentClassPostsPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { useEffect, useState } from "react";
 import { ClassPostView, listClassPostsForStudent } from "../../lib/api/classPosts";
 
@@ -690,21 +645,16 @@ type Props = {
     classId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function StudentClassPostsPage({ classId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [posts, setPosts] = useState<ClassPostView[]>([]);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         listClassPostsForStudent(classId)
             .then(setPosts)
             .catch((reason: Error) => setError(reason.message));
     }, [classId]);
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Avisos e publicações</h1>
@@ -737,6 +687,13 @@ export function StudentClassPostsPage({ classId }: Props) {
 7. Erros comuns ou cenário negativo.
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
+## Expected results
+- `POST /api/teacher/classes/:classId/posts` com professor dono devolve `201`.
+- Professor sem ownership da turma devolve `404`.
+- Aluno autenticado a criar publicação devolve `403`.
+- `GET /api/student/classes/:classId/posts` devolve `200` para aluno inscrito.
+- Aluno não inscrito devolve `403` e não recebe publicações da turma.
 
 ## Critérios de aceite
 - Escrita exige professor dono da turma.

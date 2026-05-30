@@ -28,6 +28,7 @@ A partilha é a fonte colaborativa para a IA da sala. O sistema precisa de guard
 - Criar `RoomShare`.
 - Permitir tipos `NOTE`, `URL` e `MATERIAL_REF`.
 - Validar que o autor é membro da sala.
+- Validar que `MATERIAL_REF` aponta para material do próprio aluno criado na MF0.
 - Listar partilhas apenas para membros.
 - Expor partilhas textuais para `BK-MF1-04`.
 
@@ -49,6 +50,7 @@ A partilha é a fonte colaborativa para a IA da sala. O sistema precisa de guard
 
 ## Pré-requisitos
 - `StudyRoomsModule` exporta `StudyRoomsService`.
+- `BK-MF0-08` criou `Material` com `userId`, `status` e `contentText`.
 - `SessionGuard`.
 - Validação global de DTOs.
 
@@ -56,16 +58,18 @@ A partilha é a fonte colaborativa para a IA da sala. O sistema precisa de guard
 - **Partilha**: conteúdo colocado numa sala por um membro.
 - **NOTE**: apontamento textual escrito diretamente.
 - **URL**: ligação guardada como referência.
-- **MATERIAL_REF**: referência a material já existente.
+- **MATERIAL_REF**: referência a material já existente do próprio aluno autenticado.
 
 ## Conceitos teóricos
 **Partilha dentro da sala.** Uma partilha é qualquer conteúdo que um membro coloca no espaço comum: apontamento escrito, URL ou referência a material. A partilha pertence à sala através de `roomId` e pertence ao aluno através de `authorStudentId`.
 
 **Diferença entre referência e fonte.** Uma URL guardada não significa que o sistema leu a página. Enquanto não houver texto copiado ou extraído, a URL é apenas referência visual. A IA só pode usar texto que está guardado em `textContent`.
 
-**`usableByAi`.** Este booleano indica se a partilha tem texto suficiente para alimentar a IA da sala. Ele é calculado no backend a partir de `textContent` ou `copiedText`; o frontend não decide sozinho se uma partilha é segura para IA.
+**`usableByAi`.** Este booleano indica se a partilha tem texto suficiente para alimentar a IA da sala. Ele é calculado no backend a partir de texto escrito no apontamento, texto copiado de uma URL ou `contentText` de um material próprio já processável. O frontend não decide sozinho se uma partilha é segura para IA.
 
-**`copiedText`.** Este campo permite ao aluno colar um excerto textual quando partilha uma URL ou referência. O texto copiado fica em `textContent` e pode tornar a partilha elegível para IA, desde que passe a validação mínima.
+**`MATERIAL_REF` e ownership.** Uma referência de material nunca prova ownership por texto colado. O backend consulta a coleção `materials` da MF0 com `_id` e `userId` do aluno autenticado. Se o material não existir para esse aluno, a partilha é rejeitada. Se existir mas não estiver `READY` ou não tiver `contentText`, a referência pode ser guardada, mas não alimenta IA.
+
+**`copiedText`.** Este campo permite ao aluno colar um excerto textual quando partilha uma URL. O texto copiado fica em `textContent` e pode tornar a partilha elegível para IA, desde que passe a validação mínima. Para `MATERIAL_REF`, o texto usado pela IA vem sempre do material validado na base de dados.
 
 **Membership antes de conteúdo.** Antes de criar ou listar partilhas, o service chama `StudyRoomsService.ensureMember`. Isto impede que um aluno coloque conteúdo numa sala onde não participa.
 
@@ -103,6 +107,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 ### Pré-requisitos concretos
 
 - `StudyRoomsModule` exporta `StudyRoomsService`.
+- `BK-MF0-08` criou `Material` com `userId`, `status` e `contentText`.
 - `SessionGuard`.
 - Validação global de DTOs.
 
@@ -125,48 +130,35 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/study-rooms/schemas/room-share.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type RoomShareDocument = HydratedDocument<RoomShare>;
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type RoomShareType = "NOTE" | "URL" | "MATERIAL_REF";
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "room_shares" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class RoomShare {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "StudyRoom", required: true, index: true })
     roomId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     authorStudentId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["NOTE", "URL", "MATERIAL_REF"] })
     type!: RoomShareType;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 160 })
     title!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 12000 })
     textContent?: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 1000 })
     sourceUrl?: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "Material" })
     materialId?: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, default: false })
     usableByAi!: boolean;
 }
@@ -178,7 +170,7 @@ RoomShareSchema.index({ roomId: 1, usableByAi: 1 });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O schema define a persistência da partilha: sala, autor, tipo, título, texto, URL, material referenciado e elegibilidade para IA. As entradas chegam pelo DTO e pela sessão; as saídas são views usadas pela listagem e pelo `BK-MF1-04`. A validação de ownership não vive no schema, mas o campo `materialId` só pode ser preenchido depois de o service confirmar que o material pertence ao aluno autenticado.
 
 6. Como validar este passo.
 
@@ -207,7 +199,6 @@ RoomShareSchema.index({ roomId: 1, usableByAi: 1 });
 
 ```ts
 // apps/api/src/modules/study-rooms/dto/create-room-share.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     IsIn,
     IsMongoId,
@@ -219,7 +210,6 @@ import {
     ValidateIf,
 } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateRoomShareDto {
     @IsIn(["NOTE", "URL", "MATERIAL_REF"])
     type!: "NOTE" | "URL" | "MATERIAL_REF";
@@ -244,7 +234,7 @@ export class CreateRoomShareDto {
     @IsMongoId()
     materialId?: string;
 
-    @IsOptional()
+    @ValidateIf((body: CreateRoomShareDto) => body.type === "URL")
     @IsString()
     @MaxLength(12000)
     copiedText?: string;
@@ -253,7 +243,7 @@ export class CreateRoomShareDto {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O DTO valida a forma externa da partilha. `NOTE` exige texto próprio, `URL` exige URL com protocolo e pode receber `copiedText`, e `MATERIAL_REF` exige `materialId`. Esta validação devolve `400` para payloads mal formados, mas não substitui ownership: o service continua a confirmar membership da sala e pertença real do material ao aluno.
 
 6. Como validar este passo.
 
@@ -282,30 +272,35 @@ export class CreateRoomShareDto {
 
 ```ts
 // apps/api/src/modules/study-rooms/room-shares.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { Material, MaterialDocument } from "../materials/schemas/material.schema";
 import { CreateRoomShareDto } from "./dto/create-room-share.dto";
 import { RoomShare, RoomShareDocument } from "./schemas/room-share.schema";
 import { StudyRoomsService } from "./study-rooms.service";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class RoomSharesService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(RoomShare.name)
         private readonly shareModel: Model<RoomShareDocument>,
+        @InjectModel(Material.name)
+        private readonly materialModel: Model<MaterialDocument>,
         private readonly studyRoomsService: StudyRoomsService,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, roomId: string, dto: CreateRoomShareDto) {
         this.assertStudent(actor);
         const room = await this.studyRoomsService.ensureMember(actor.id, roomId);
-        const textContent = dto.type === "NOTE" ? dto.textContent?.trim() : dto.copiedText?.trim();
+        const material = await this.resolveOwnedMaterial(actor.id, dto);
+        const textContent = this.resolveTextContent(dto, material);
         const usableByAi = Boolean(textContent && textContent.length >= 10);
 
         const share = await this.shareModel.create({
@@ -315,14 +310,13 @@ export class RoomSharesService {
             title: dto.title.trim(),
             textContent,
             sourceUrl: dto.type === "URL" ? dto.sourceUrl?.trim() : undefined,
-            materialId: dto.materialId ? new Types.ObjectId(dto.materialId) : undefined,
+            materialId: material?._id,
             usableByAi,
         });
 
         return this.toView(share);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async list(actor: AuthenticatedUser, roomId: string) {
         this.assertStudent(actor);
         const room = await this.studyRoomsService.ensureMember(actor.id, roomId);
@@ -335,25 +329,60 @@ export class RoomSharesService {
         return shares.map((share) => this.toView(share));
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async findUsableSharesForRoom(roomId: string, sourceIds: string[] = []) {
         const filter: Record<string, unknown> = {
             roomId: new Types.ObjectId(roomId),
             usableByAi: true,
         };
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (sourceIds.length > 0) {
-            filter._id = { $in: sourceIds.map((id) => new Types.ObjectId(id)) };
+            const validIds = sourceIds.filter((id) => Types.ObjectId.isValid(id));
+            filter._id = { $in: validIds.map((id) => new Types.ObjectId(id)) };
         }
 
         return this.shareModel.find(filter).sort({ createdAt: -1 });
     }
 
+    private async resolveOwnedMaterial(studentId: string, dto: CreateRoomShareDto) {
+        if (dto.type !== "MATERIAL_REF") {
+            return undefined;
+        }
+
+        if (!dto.materialId || !Types.ObjectId.isValid(dto.materialId)) {
+            throw new BadRequestException("Material inválido.");
+        }
+
+        const material = await this.materialModel
+            .findOne({
+                _id: new Types.ObjectId(dto.materialId),
+                userId: new Types.ObjectId(studentId),
+            });
+
+        if (!material) {
+            throw new NotFoundException("Material não encontrado para este aluno.");
+        }
+
+        return material;
+    }
+
+    private resolveTextContent(dto: CreateRoomShareDto, material?: MaterialDocument) {
+        if (dto.type === "NOTE") {
+            return dto.textContent?.trim();
+        }
+
+        if (dto.type === "URL") {
+            return dto.copiedText?.trim();
+        }
+
+        if (material?.status === "READY" && material.contentText?.trim()) {
+            return material.contentText.trim();
+        }
+
+        return undefined;
+    }
+
     private assertStudent(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "STUDENT") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas alunos podem partilhar na sala.");
         }
     }
@@ -376,7 +405,7 @@ export class RoomSharesService {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O service aplica as regras críticas do BK. Primeiro confirma que o actor é aluno e membro da sala; depois valida `MATERIAL_REF` contra `materials.userId`, usando a sessão como fonte de ownership. As entradas são `roomId`, DTO e `request.user`; as saídas são partilhas normalizadas. Erros esperados: `400` para material inválido, `403` para professor/não membro e `404` para material que não pertence ao aluno. O `BK-MF1-04` consome apenas `findUsableSharesForRoom`, que filtra por sala, IDs válidos e `usableByAi`.
 
 6. Como validar este passo.
 
@@ -405,7 +434,6 @@ export class RoomSharesService {
 
 ```ts
 // apps/api/src/modules/study-rooms/room-shares.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -417,9 +445,7 @@ import { RoomSharesService } from "./room-shares.service";
 
 @Controller("api/study-rooms/:roomId/shares")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class RoomSharesController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly roomSharesService: RoomSharesService) {}
 
     @Post()
@@ -440,7 +466,7 @@ export class RoomSharesController {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O controller liga HTTP ao service sem aceitar ownership vindo do body. `roomId` vem da rota, o conteúdo vem do DTO e o aluno vem da sessão autenticada. Criar e listar partilhas devolvem `403` quando `StudyRoomsService.ensureMember` bloqueia acesso, mantendo o mesmo contrato de membership definido em `BK-MF1-02`.
 
 6. Como validar este passo.
 
@@ -469,11 +495,10 @@ export class RoomSharesController {
 
 ```ts
 // apps/api/src/modules/study-rooms/study-rooms.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { Material, MaterialSchema } from "../materials/schemas/material.schema";
 import { User, UserSchema } from "../auth/schemas/user.schema";
-import { Subject, SubjectSchema } from "../subjects/schemas/subject.schema";
 import { RoomSharesController } from "./room-shares.controller";
 import { RoomSharesService } from "./room-shares.service";
 import { RoomShare, RoomShareSchema } from "./schemas/room-share.schema";
@@ -487,20 +512,19 @@ import { StudyRoomsService } from "./study-rooms.service";
             { name: StudyRoom.name, schema: StudyRoomSchema },
             { name: RoomShare.name, schema: RoomShareSchema },
             { name: User.name, schema: UserSchema },
-            { name: Subject.name, schema: SubjectSchema },
+            { name: Material.name, schema: MaterialSchema },
         ]),
     ],
     controllers: [StudyRoomsController, RoomSharesController],
     providers: [StudyRoomsService, RoomSharesService],
     exports: [StudyRoomsService, RoomSharesService, MongooseModule],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class StudyRoomsModule {}
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O módulo junta o contrato de salas com o contrato de materiais da MF0. Regista `MaterialSchema` para validar referências do próprio aluno e mantém `StudyRoomsService` exportado para membership. Não importa módulos de disciplinas oficiais, porque a cadeia `BK-MF1-02` a `BK-MF1-04` ainda não depende de disciplinas formais.
 
 6. Como validar este passo.
 
@@ -529,8 +553,6 @@ export class StudyRoomsModule {}
 
 ```ts
 // apps/web/src/lib/api/roomShares.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type RoomShareView = {
     id: string;
     roomId: string;
@@ -543,12 +565,9 @@ export type RoomShareView = {
     usableByAi: boolean;
 };
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -566,7 +585,6 @@ export async function createRoomShare(
         copiedText?: string;
     },
 ) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-rooms/${roomId}/shares`, {
         method: "POST",
         credentials: "include",
@@ -578,7 +596,6 @@ export async function createRoomShare(
 }
 
 export async function listRoomShares(roomId: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/study-rooms/${roomId}/shares`, {
         credentials: "include",
     });
@@ -589,7 +606,7 @@ export async function listRoomShares(roomId: string) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O cliente frontend envia apenas dados de criação e transporta a sessão por cookie. `materialId` identifica o material escolhido, mas não prova ownership; essa prova acontece no backend contra `materials.userId`. `copiedText` serve para URLs, não para legitimar referências a materiais.
 
 6. Como validar este passo.
 
@@ -618,7 +635,6 @@ export async function listRoomShares(roomId: string) {
 
 ```tsx
 // apps/web/src/pages/student/RoomSharesPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import { RoomShareView, createRoomShare, listRoomShares } from "../../lib/api/roomShares";
 
@@ -626,25 +642,18 @@ type Props = {
     roomId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function RoomSharesPage({ roomId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [shares, setShares] = useState<RoomShareView[]>([]);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setShares(await listRoomShares(roomId));
     }
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, [roomId]);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -667,7 +676,6 @@ export function RoomSharesPage({ roomId }: Props) {
         }
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Partilhas da sala</h1>
@@ -681,7 +689,7 @@ export function RoomSharesPage({ roomId }: Props) {
                 <textarea name="textContent" placeholder="Texto do apontamento" />
                 <input name="sourceUrl" type="url" placeholder="URL" />
                 <input name="materialId" placeholder="ID do material" />
-                <textarea name="copiedText" placeholder="Texto copiado para a IA" />
+                <textarea name="copiedText" placeholder="Texto copiado da URL para a IA" />
                 <button type="submit">Partilhar</button>
             </form>
             {error ? <p role="alert">{error}</p> : null}
@@ -698,7 +706,7 @@ export function RoomSharesPage({ roomId }: Props) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    A página permite criar apontamentos, URLs e referências a materiais, mas a UI é apenas uma camada de entrada. A saída mostra se a partilha ficou elegível para IA. O teste decisivo é backend: uma referência a material de outro aluno deve falhar, mesmo que o utilizador tente enviar texto copiado no formulário.
 
 6. Como validar este passo.
 
@@ -729,8 +737,10 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 5. Explicação do código.
 
-    - Membro cria `NOTE` com texto e `usableByAi` fica verdadeiro.
+- Membro cria `NOTE` com texto e `usableByAi` fica verdadeiro.
 - Membro cria `URL` e `usableByAi` fica falso sem texto copiado.
+- Membro cria `MATERIAL_REF` para material próprio `READY` e `usableByAi` fica verdadeiro quando existe `contentText`.
+- `MATERIAL_REF` para material de outro aluno devolve `404`.
 - Não membro recebe `403`.
 - Professor recebe `403`.
 - Listagem só funciona para membros.
@@ -744,9 +754,17 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Expected results
+- `POST /api/study-rooms/:roomId/shares` com `NOTE` válida devolve `201` e `usableByAi: true`.
+- `POST /api/study-rooms/:roomId/shares` com `URL` sem `copiedText` devolve `201` e `usableByAi: false`.
+- `POST /api/study-rooms/:roomId/shares` com `MATERIAL_REF` próprio e `READY` devolve `201` com `materialId` e texto derivado do material.
+- `POST /api/study-rooms/:roomId/shares` com material de outro aluno devolve `404` e não cria partilha.
+- `GET /api/study-rooms/:roomId/shares` devolve `403` para não membros e lista apenas para membros.
+
 ## Critérios de aceite
 - `RoomShare` guarda autor, sala, tipo e conteúdo.
 - Membership é validada antes de criar e listar.
+- `MATERIAL_REF` é validado contra materiais do próprio aluno criados na MF0.
 - Partilhas sem texto não alimentam IA.
 - `StudyRoomsModule` exporta `RoomSharesService`.
 - Frontend usa `credentials: 'include'`.

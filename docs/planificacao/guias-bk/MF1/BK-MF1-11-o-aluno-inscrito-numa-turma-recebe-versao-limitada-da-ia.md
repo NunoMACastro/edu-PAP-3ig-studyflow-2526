@@ -131,38 +131,28 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/class-ai/schemas/class-ai-interaction.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type ClassAiInteractionDocument = HydratedDocument<ClassAiInteraction>;
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "class_ai_interactions" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassAiInteraction {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     studentId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
     classId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "Subject", required: true, index: true })
     subjectId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, maxlength: 800 })
     question!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, maxlength: 12000 })
     answer!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
     sources!: Array<{ materialId: string; title: string }>;
 }
@@ -173,7 +163,7 @@ ClassAiInteractionSchema.index({ studentId: 1, subjectId: 1, createdAt: -1 });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
 
 6. Como validar este passo.
 
@@ -202,10 +192,8 @@ ClassAiInteractionSchema.index({ studentId: 1, subjectId: 1, createdAt: -1 });
 
 ```ts
 // apps/api/src/modules/class-ai/dto/ask-class-ai.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsString, MaxLength, MinLength } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AskClassAiDto {
     @IsString()
     @MinLength(10)
@@ -216,7 +204,7 @@ export class AskClassAiDto {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
 
 6. Como validar este passo.
 
@@ -245,7 +233,6 @@ export class AskClassAiDto {
 
 ```ts
 // apps/api/src/modules/class-ai/prompts/class-ai.prompt.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { OfficialMaterialDocument } from "../../official-materials/schemas/official-material.schema";
 import { TeacherAiVoiceDocument } from "../../teacher-ai/schemas/teacher-ai-voice.schema";
 
@@ -255,7 +242,6 @@ type BuildClassAiPromptInput = {
     voice: TeacherAiVoiceDocument | null;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function buildClassAiPrompt(input: BuildClassAiPromptInput) {
     const tone = input.voice?.tone ?? "CALM";
     const detailLevel = input.voice?.detailLevel ?? "BALANCED";
@@ -281,7 +267,7 @@ export function buildClassAiPrompt(input: BuildClassAiPromptInput) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
 
 6. Como validar este passo.
 
@@ -310,7 +296,6 @@ export function buildClassAiPrompt(input: BuildClassAiPromptInput) {
 
 ```ts
 // apps/api/src/modules/class-ai/class-ai.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     ForbiddenException,
     Inject,
@@ -333,9 +318,7 @@ import {
 } from "./schemas/class-ai-interaction.schema";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassAiService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(ClassAiInteraction.name)
         private readonly interactionModel: Model<ClassAiInteractionDocument>,
@@ -346,16 +329,13 @@ export class ClassAiService {
         private readonly aiProvider: AiProvider,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async answer(actor: AuthenticatedUser, subjectId: string, dto: AskClassAiDto) {
         this.assertStudent(actor);
 
         const subject = await this.subjectsService.findSubjectForStudent(actor.id, subjectId);
         const materials = await this.officialMaterialsService.findProcessedBySubject(subject);
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (materials.length === 0) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new UnprocessableEntityException(
                 "Esta disciplina ainda não tem materiais oficiais processados.",
             );
@@ -375,15 +355,10 @@ export class ClassAiService {
                 type: "EXPLANATION",
             });
         } catch {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ServiceUnavailableException("A IA não está disponível neste momento.");
         }
 
-        const answer = typeof result.answer === "string" ? result.answer : "";
-        const sources = materials.map((material) => ({
-            materialId: material._id.toString(),
-            title: material.title,
-        }));
+        const { answer, sources } = this.normalizeAiResult(result, materials);
 
         const interaction = await this.interactionModel.create({
             studentId: new Types.ObjectId(actor.id),
@@ -402,18 +377,43 @@ export class ClassAiService {
     }
 
     private assertStudent(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "STUDENT") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas alunos inscritos podem usar a IA da disciplina.");
         }
+    }
+
+    private normalizeAiResult(result: Record<string, unknown>, materials: Array<{ _id: Types.ObjectId; title: string }>) {
+        const answer = typeof result.answer === "string" ? result.answer.trim() : "";
+        if (!answer) {
+            throw new ServiceUnavailableException("A IA devolveu uma resposta inválida.");
+        }
+
+        const allowedSources = new Map(
+            materials.map((material) => [
+                material._id.toString(),
+                { materialId: material._id.toString(), title: material.title },
+            ]),
+        );
+        const rawSourceIds = Array.isArray(result.sourceMaterialIds)
+            ? result.sourceMaterialIds
+            : [];
+        const sources = rawSourceIds
+            .filter((sourceId): sourceId is string => typeof sourceId === "string")
+            .map((sourceId) => allowedSources.get(sourceId))
+            .filter((source): source is { materialId: string; title: string } => Boolean(source));
+
+        if (sources.length === 0) {
+            throw new ServiceUnavailableException("A IA devolveu fontes inválidas.");
+        }
+
+        return { answer, sources };
     }
 }
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O service valida a cadeia docente inteira antes de chamar IA: `SubjectsService.findSubjectForStudent` confirma inscrição, `OfficialMaterialsService.findProcessedBySubject` limita fontes a materiais oficiais processados e `TeacherAiVoiceService.findForSubject` aplica a voz textual do professor. A resposta do provider é runtime não confiável: `answer` tem de ser não vazio e `sourceMaterialIds` têm de pertencer aos materiais autorizados. Sem fontes há `422`; falha ou resposta inválida do provider devolve `503`.
 
 6. Como validar este passo.
 
@@ -442,7 +442,6 @@ export class ClassAiService {
 
 ```ts
 // apps/api/src/modules/class-ai/class-ai.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -454,9 +453,7 @@ import { AskClassAiDto } from "./dto/ask-class-ai.dto";
 
 @Controller("api/student/subjects/:subjectId/ai/answers")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassAiController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly classAiService: ClassAiService) {}
 
     @Post()
@@ -472,7 +469,7 @@ export class ClassAiController {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
 
 6. Como validar este passo.
 
@@ -501,7 +498,6 @@ export class ClassAiController {
 
 ```ts
 // apps/api/src/modules/class-ai/class-ai.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AiModule } from "../ai/ai.module";
@@ -528,13 +524,12 @@ import {
     controllers: [ClassAiController],
     providers: [ClassAiService],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassAiModule {}
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
 
 6. Como validar este passo.
 
@@ -565,8 +560,6 @@ export class ClassAiModule {}
 
 ```ts
 // apps/web/src/lib/api/classAi.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type ClassAiAnswer = {
     id: string;
     answer: string;
@@ -574,7 +567,6 @@ export type ClassAiAnswer = {
 };
 
 export async function askClassAi(subjectId: string, question: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/student/subjects/${subjectId}/ai/answers`, {
         method: "POST",
         credentials: "include",
@@ -582,10 +574,8 @@ export async function askClassAi(subjectId: string, question: string) {
         body: JSON.stringify({ question }),
     });
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -595,7 +585,6 @@ export async function askClassAi(subjectId: string, question: string) {
 
 ```tsx
 // apps/web/src/pages/student/StudentClassAiPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useState } from "react";
 import { ClassAiAnswer, askClassAi } from "../../lib/api/classAi";
 
@@ -603,17 +592,11 @@ type Props = {
     subjectId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function StudentClassAiPage({ subjectId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [answer, setAnswer] = useState<ClassAiAnswer | null>(null);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [isLoading, setIsLoading] = useState(false);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -631,7 +614,6 @@ export function StudentClassAiPage({ subjectId }: Props) {
         }
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>IA da disciplina</h1>
@@ -660,7 +642,7 @@ export function StudentClassAiPage({ subjectId }: Props) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
 
 6. Como validar este passo.
 
@@ -695,6 +677,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Aluno não inscrito recebe `403`.
 - Professor recebe `403`.
 - Disciplina sem materiais `PROCESSED` devolve `422`.
+- Provider sem `answer` não vazio ou sem fontes oficiais autorizadas devolve `503`.
 - A resposta guarda interação com `studentId`, `classId` e `subjectId`.
 - A IA não usa materiais `REFERENCE_ONLY`.
 
@@ -706,11 +689,19 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Expected results
+- `POST /api/student/subjects/:subjectId/ai/answers` por aluno inscrito devolve `201` com `answer` não vazio e fontes oficiais autorizadas.
+- Aluno não inscrito ou professor devolve `403`.
+- Disciplina sem materiais oficiais `PROCESSED` devolve `422` e não chama a IA.
+- Provider indisponível, resposta vazia ou fontes não autorizadas devolvem `503` e não persistem interação.
+- A interação gravada contém `studentId`, `classId`, `subjectId`, pergunta, resposta e fontes oficiais usadas.
+
 ## Critérios de aceite
 - Inscrição é validada via `SchoolClass.studentIds`.
 - Fontes oficiais vêm de `OfficialMaterialsService`.
 - Voz docente vem de `TeacherAiVoiceService`.
 - Sem materiais processados há `422`.
+- Resultado do provider é validado em runtime antes de persistir.
 - Resposta mostra fontes usadas.
 
 ## Validação final

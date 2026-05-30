@@ -123,38 +123,27 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/teacher-ai/schemas/teacher-ai-voice.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type TeacherAiVoiceDocument = HydratedDocument<TeacherAiVoice>;
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type TeacherAiTone = "CALM" | "DIRECT" | "SOCRATIC";
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type TeacherAiDetailLevel = "SHORT" | "BALANCED" | "DETAILED";
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "teacher_ai_voices" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class TeacherAiVoice {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "Subject", required: true, unique: true, index: true })
     subjectId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     teacherId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["CALM", "DIRECT", "SOCRATIC"], default: "CALM" })
     tone!: TeacherAiTone;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["SHORT", "BALANCED", "DETAILED"], default: "BALANCED" })
     detailLevel!: TeacherAiDetailLevel;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [String], default: [] })
     rules!: string[];
 }
@@ -165,7 +154,7 @@ TeacherAiVoiceSchema.index({ teacherId: 1, subjectId: 1 });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
 
 6. Como validar este passo.
 
@@ -194,10 +183,8 @@ TeacherAiVoiceSchema.index({ teacherId: 1, subjectId: 1 });
 
 ```ts
 // apps/api/src/modules/teacher-ai/dto/update-teacher-ai-voice.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ArrayMaxSize, IsArray, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class UpdateTeacherAiVoiceDto {
     @IsIn(["CALM", "DIRECT", "SOCRATIC"])
     tone!: "CALM" | "DIRECT" | "SOCRATIC";
@@ -216,7 +203,7 @@ export class UpdateTeacherAiVoiceDto {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
 
 6. Como validar este passo.
 
@@ -245,7 +232,6 @@ export class UpdateTeacherAiVoiceDto {
 
 ```ts
 // apps/api/src/modules/teacher-ai/teacher-ai-voice.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -256,16 +242,13 @@ import { UpdateTeacherAiVoiceDto } from "./dto/update-teacher-ai-voice.dto";
 import { TeacherAiVoice, TeacherAiVoiceDocument } from "./schemas/teacher-ai-voice.schema";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class TeacherAiVoiceService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(TeacherAiVoice.name)
         private readonly voiceModel: Model<TeacherAiVoiceDocument>,
         private readonly subjectsService: SubjectsService,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async upsert(actor: AuthenticatedUser, subjectId: string, dto: UpdateTeacherAiVoiceDto) {
         this.assertTeacher(actor);
         const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
@@ -285,7 +268,6 @@ export class TeacherAiVoiceService {
         return this.toView(voice);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async getForTeacher(actor: AuthenticatedUser, subjectId: string) {
         this.assertTeacher(actor);
         const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
@@ -293,7 +275,6 @@ export class TeacherAiVoiceService {
         return voice ? this.toView(voice) : this.defaultVoice(subject);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async findForSubject(subject: Subject) {
         return this.voiceModel.findOne({ subjectId: subject._id }).lean();
     }
@@ -306,9 +287,7 @@ export class TeacherAiVoiceService {
     }
 
     private assertTeacher(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "TEACHER") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas professores podem configurar a voz da IA.");
         }
     }
@@ -339,7 +318,7 @@ export class TeacherAiVoiceService {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
 
 6. Como validar este passo.
 
@@ -368,7 +347,6 @@ export class TeacherAiVoiceService {
 
 ```ts
 // apps/api/src/modules/teacher-ai/teacher-ai-voice.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -380,9 +358,7 @@ import { TeacherAiVoiceService } from "./teacher-ai-voice.service";
 
 @Controller("api/teacher/subjects/:subjectId/ai-voice")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class TeacherAiVoiceController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly teacherAiVoiceService: TeacherAiVoiceService) {}
 
     @Put()
@@ -410,7 +386,7 @@ export class TeacherAiVoiceController {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
 
 6. Como validar este passo.
 
@@ -439,7 +415,6 @@ export class TeacherAiVoiceController {
 
 ```ts
 // apps/api/src/modules/teacher-ai/teacher-ai.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { SubjectsModule } from "../subjects/subjects.module";
@@ -458,13 +433,12 @@ import { TeacherAiVoiceService } from "./teacher-ai-voice.service";
     providers: [TeacherAiVoiceService],
     exports: [TeacherAiVoiceService, MongooseModule],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class TeacherAiModule {}
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
 
 6. Como validar este passo.
 
@@ -493,8 +467,6 @@ export class TeacherAiModule {}
 
 ```ts
 // apps/web/src/lib/api/teacherAiVoice.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type TeacherAiVoiceView = {
     id: string;
     subjectId: string;
@@ -504,12 +476,9 @@ export type TeacherAiVoiceView = {
     rules: string[];
 };
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -520,7 +489,6 @@ export async function updateTeacherAiVoice(
     subjectId: string,
     input: Pick<TeacherAiVoiceView, "tone" | "detailLevel" | "rules">,
 ) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/subjects/${subjectId}/ai-voice`, {
         method: "PUT",
         credentials: "include",
@@ -532,7 +500,6 @@ export async function updateTeacherAiVoice(
 }
 
 export async function getTeacherAiVoice(subjectId: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/subjects/${subjectId}/ai-voice`, {
         credentials: "include",
     });
@@ -543,7 +510,7 @@ export async function getTeacherAiVoice(subjectId: string) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
 
 6. Como validar este passo.
 
@@ -572,7 +539,6 @@ export async function getTeacherAiVoice(subjectId: string) {
 
 ```tsx
 // apps/web/src/pages/teacher/TeacherAiVoicePage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     TeacherAiVoiceView,
@@ -584,22 +550,16 @@ type Props = {
     subjectId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function TeacherAiVoicePage({ subjectId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [voice, setVoice] = useState<TeacherAiVoiceView | null>(null);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         getTeacherAiVoice(subjectId)
             .then(setVoice)
             .catch((reason: Error) => setError(reason.message));
     }, [subjectId]);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -622,7 +582,6 @@ export function TeacherAiVoicePage({ subjectId }: Props) {
         }
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Voz da IA docente</h1>
@@ -648,7 +607,7 @@ export function TeacherAiVoicePage({ subjectId }: Props) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
 
 6. Como validar este passo.
 
@@ -693,6 +652,13 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 7. Erros comuns ou cenário negativo.
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
+## Expected results
+- `PUT /api/teacher/subjects/:subjectId/ai-voice` com professor dono devolve `200` e cria ou atualiza uma única configuração.
+- Segundo `PUT` para a mesma disciplina atualiza o mesmo registo, sem duplicar.
+- Regras vazias são removidas antes de persistir.
+- Aluno autenticado devolve `403`.
+- Professor sem ownership da disciplina devolve `404`.
 
 ## Critérios de aceite
 - Uma configuração por disciplina.

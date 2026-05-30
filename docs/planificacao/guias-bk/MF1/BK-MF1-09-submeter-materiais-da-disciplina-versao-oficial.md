@@ -124,50 +124,36 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/official-materials/schemas/official-material.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type OfficialMaterialDocument = HydratedDocument<OfficialMaterial>;
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type OfficialMaterialType = "TEXT" | "URL";
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type OfficialMaterialStatus = "PROCESSED" | "REFERENCE_ONLY";
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "official_materials" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OfficialMaterial {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "Subject", required: true, index: true })
     subjectId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "SchoolClass", required: true, index: true })
     classId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     teacherId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 160 })
     title!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["TEXT", "URL"] })
     type!: OfficialMaterialType;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 20000 })
     textContent?: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 1000 })
     sourceUrl?: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, enum: ["PROCESSED", "REFERENCE_ONLY"] })
     status!: OfficialMaterialStatus;
 }
@@ -179,7 +165,7 @@ OfficialMaterialSchema.index({ teacherId: 1, subjectId: 1 });
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de materiais oficiais: recebe sessão de professor, `subjectId` e conteúdo validado, devolve material ligado a `subjectId`, `classId` e `teacherId`, e separa texto processado de URL de referência. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e exclusão de campos não persistidos. O resultado é a fonte oficial que `BK-MF1-11` pode consultar.
 
 6. Como validar este passo.
 
@@ -208,10 +194,8 @@ OfficialMaterialSchema.index({ teacherId: 1, subjectId: 1 });
 
 ```ts
 // apps/api/src/modules/official-materials/dto/create-official-material.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     IsIn,
-    IsOptional,
     IsString,
     IsUrl,
     MaxLength,
@@ -219,7 +203,6 @@ import {
     ValidateIf,
 } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateOfficialMaterialDto {
     @IsString()
     @MinLength(2)
@@ -239,17 +222,12 @@ export class CreateOfficialMaterialDto {
     @IsUrl({ require_protocol: true })
     @MaxLength(1000)
     sourceUrl?: string;
-
-    @IsOptional()
-    @IsString()
-    @MaxLength(300)
-    notes?: string;
 }
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    O DTO aceita apenas os campos persistidos e justificados pelo RF: título, tipo, texto ou URL. O campo livre de notas foi removido porque não era guardado no schema nem usado por `BK-MF1-11`, criando drift silencioso entre frontend e backend. Payload inválido devolve `400`; ownership da disciplina continua a ser validado no service.
 
 6. Como validar este passo.
 
@@ -278,7 +256,6 @@ export class CreateOfficialMaterialDto {
 
 ```ts
 // apps/api/src/modules/official-materials/official-materials.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -292,16 +269,13 @@ import {
 } from "./schemas/official-material.schema";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OfficialMaterialsService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(OfficialMaterial.name)
         private readonly materialModel: Model<OfficialMaterialDocument>,
         private readonly subjectsService: SubjectsService,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, subjectId: string, dto: CreateOfficialMaterialDto) {
         this.assertTeacher(actor);
         const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
@@ -320,7 +294,6 @@ export class OfficialMaterialsService {
         return this.toView(material);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForTeacher(actor: AuthenticatedUser, subjectId: string) {
         this.assertTeacher(actor);
         const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
@@ -333,7 +306,6 @@ export class OfficialMaterialsService {
         return materials.map((material) => this.toView(material));
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async findProcessedBySubject(subject: Subject) {
         return this.materialModel
             .find({ subjectId: subject._id, status: "PROCESSED" })
@@ -341,9 +313,7 @@ export class OfficialMaterialsService {
     }
 
     private assertTeacher(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "TEACHER") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas professores podem gerir materiais oficiais.");
         }
     }
@@ -366,7 +336,7 @@ export class OfficialMaterialsService {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    A página do professor envia apenas o contrato suportado pelo backend. Para `TEXT`, envia `textContent`; para `URL`, envia `sourceUrl`. Não existe campo livre de notas no formulário, evitando prometer metadados que a API não persiste. A sessão e o `subjectId` da rota continuam a ser validados pelo backend.
 
 6. Como validar este passo.
 
@@ -395,7 +365,6 @@ export class OfficialMaterialsService {
 
 ```ts
 // apps/api/src/modules/official-materials/official-materials.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -407,9 +376,7 @@ import { OfficialMaterialsService } from "./official-materials.service";
 
 @Controller("api/teacher/subjects/:subjectId/materials")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OfficialMaterialsController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly officialMaterialsService: OfficialMaterialsService) {}
 
     @Post()
@@ -437,7 +404,7 @@ export class OfficialMaterialsController {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de materiais oficiais: recebe sessão de professor, `subjectId` e conteúdo validado, devolve material ligado a `subjectId`, `classId` e `teacherId`, e separa texto processado de URL de referência. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e exclusão de campos não persistidos. O resultado é a fonte oficial que `BK-MF1-11` pode consultar.
 
 6. Como validar este passo.
 
@@ -466,7 +433,6 @@ export class OfficialMaterialsController {
 
 ```ts
 // apps/api/src/modules/official-materials/official-materials.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { SubjectsModule } from "../subjects/subjects.module";
@@ -488,13 +454,12 @@ import {
     providers: [OfficialMaterialsService],
     exports: [OfficialMaterialsService, MongooseModule],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class OfficialMaterialsModule {}
 ```
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de materiais oficiais: recebe sessão de professor, `subjectId` e conteúdo validado, devolve material ligado a `subjectId`, `classId` e `teacherId`, e separa texto processado de URL de referência. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e exclusão de campos não persistidos. O resultado é a fonte oficial que `BK-MF1-11` pode consultar.
 
 6. Como validar este passo.
 
@@ -523,8 +488,6 @@ export class OfficialMaterialsModule {}
 
 ```ts
 // apps/web/src/lib/api/officialMaterials.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type OfficialMaterialView = {
     id: string;
     subjectId: string;
@@ -536,12 +499,9 @@ export type OfficialMaterialView = {
     status: "PROCESSED" | "REFERENCE_ONLY";
 };
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -552,7 +512,6 @@ export async function createOfficialMaterial(
     subjectId: string,
     input: { title: string; type: "TEXT" | "URL"; textContent?: string; sourceUrl?: string },
 ) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/subjects/${subjectId}/materials`, {
         method: "POST",
         credentials: "include",
@@ -564,7 +523,6 @@ export async function createOfficialMaterial(
 }
 
 export async function listOfficialMaterials(subjectId: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/subjects/${subjectId}/materials`, {
         credentials: "include",
     });
@@ -575,7 +533,7 @@ export async function listOfficialMaterials(subjectId: string) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de materiais oficiais: recebe sessão de professor, `subjectId` e conteúdo validado, devolve material ligado a `subjectId`, `classId` e `teacherId`, e separa texto processado de URL de referência. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e exclusão de campos não persistidos. O resultado é a fonte oficial que `BK-MF1-11` pode consultar.
 
 6. Como validar este passo.
 
@@ -604,7 +562,6 @@ export async function listOfficialMaterials(subjectId: string) {
 
 ```tsx
 // apps/web/src/pages/teacher/TeacherOfficialMaterialsPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     OfficialMaterialView,
@@ -616,27 +573,19 @@ type Props = {
     subjectId: string;
 };
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [materials, setMaterials] = useState<OfficialMaterialView[]>([]);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [type, setType] = useState<"TEXT" | "URL">("TEXT");
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setMaterials(await listOfficialMaterials(subjectId));
     }
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, [subjectId]);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
@@ -657,7 +606,6 @@ export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
         }
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Materiais oficiais</h1>
@@ -687,7 +635,7 @@ export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
 
 5. Explicação do código.
 
-    Confirma que a peça criada neste passo está ligada ao fluxo principal do BK.
+    Este passo pertence ao fluxo de materiais oficiais: recebe sessão de professor, `subjectId` e conteúdo validado, devolve material ligado a `subjectId`, `classId` e `teacherId`, e separa texto processado de URL de referência. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e exclusão de campos não persistidos. O resultado é a fonte oficial que `BK-MF1-11` pode consultar.
 
 6. Como validar este passo.
 
@@ -733,8 +681,16 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Expected results
+- `POST /api/teacher/subjects/:subjectId/materials` com professor dono e `TEXT` válido devolve `201` com `status: "PROCESSED"`.
+- `POST /api/teacher/subjects/:subjectId/materials` com `URL` válido devolve `201` com `status: "REFERENCE_ONLY"`.
+- Professor sem ownership da disciplina devolve `404`; aluno devolve `403`.
+- Payload com campo livre de notas não faz parte do contrato e não é enviado pelo frontend.
+- `GET /api/teacher/subjects/:subjectId/materials` lista apenas materiais da disciplina do professor autenticado.
+
 ## Critérios de aceite
 - Não existe campo duplicado para conteúdo.
+- Não existe campo livre de notas no DTO nem no frontend.
 - `textContent` e `sourceUrl` têm responsabilidades separadas.
 - O material guarda `subjectId`, `classId` e `teacherId`.
 - `OfficialMaterialsModule` exporta service e schema.

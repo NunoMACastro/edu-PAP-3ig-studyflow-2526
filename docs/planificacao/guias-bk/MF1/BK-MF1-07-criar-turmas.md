@@ -132,38 +132,28 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 ```ts
 // apps/api/src/modules/classes/schemas/school-class.schema.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type SchoolClassDocument = HydratedDocument<SchoolClass>;
 
-// Comentário pedagógico: @Schema transforma a classe num modelo persistido pelo Mongoose.
 @Schema({ timestamps: true, collection: "school_classes" })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class SchoolClass {
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
     teacherId!: Types.ObjectId;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
     name!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, uppercase: true, minlength: 2, maxlength: 24 })
     code!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ required: true, trim: true, minlength: 4, maxlength: 20 })
     schoolYear!: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ trim: true, maxlength: 500 })
     description?: string;
 
-    // Comentário pedagógico: @Prop define um campo guardado no documento MongoDB.
     @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [], index: true })
     studentIds!: Types.ObjectId[];
 }
@@ -208,10 +198,8 @@ Valida que o índice único é por professor. Dois professores podem usar o mesm
 
 ```ts
 // apps/api/src/modules/classes/dto/create-class.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class CreateClassDto {
     @IsString()
     @MinLength(2)
@@ -237,10 +225,8 @@ export class CreateClassDto {
 
 ```ts
 // apps/api/src/modules/classes/dto/add-class-student.dto.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { IsEmail } from "class-validator";
 
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class AddClassStudentDto {
     @IsEmail()
     email!: string;
@@ -278,7 +264,6 @@ export class AddClassStudentDto {
 
 ```ts
 // apps/api/src/modules/classes/classes.service.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import {
     ConflictException,
     ForbiddenException,
@@ -294,9 +279,7 @@ import { CreateClassDto } from "./dto/create-class.dto";
 import { SchoolClass, SchoolClassDocument } from "./schemas/school-class.schema";
 
 @Injectable()
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassesService {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(
         @InjectModel(SchoolClass.name)
         private readonly classModel: Model<SchoolClassDocument>,
@@ -304,7 +287,6 @@ export class ClassesService {
         private readonly userModel: Model<UserDocument>,
     ) {}
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async create(actor: AuthenticatedUser, dto: CreateClassDto) {
         this.assertTeacher(actor);
 
@@ -314,9 +296,7 @@ export class ClassesService {
             code,
         });
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (duplicate) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ConflictException("Já existe uma turma com este código.");
         }
 
@@ -332,7 +312,6 @@ export class ClassesService {
         return this.toView(schoolClass);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForTeacher(actor: AuthenticatedUser) {
         this.assertTeacher(actor);
 
@@ -344,7 +323,6 @@ export class ClassesService {
         return classes.map((schoolClass) => this.toView(schoolClass));
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async addStudent(actor: AuthenticatedUser, classId: string, dto: AddClassStudentDto) {
         this.assertTeacher(actor);
 
@@ -353,16 +331,13 @@ export class ClassesService {
             .findOne({ email: dto.email.toLowerCase().trim(), role: "STUDENT" })
             .lean();
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!student) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Aluno não encontrado.");
         }
 
         const studentId = new Types.ObjectId(student._id);
         const alreadyEnrolled = schoolClass.studentIds.some((id) => id.equals(studentId));
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!alreadyEnrolled) {
             schoolClass.studentIds.push(studentId);
             await schoolClass.save();
@@ -371,7 +346,6 @@ export class ClassesService {
         return this.toView(schoolClass);
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async listForStudent(actor: AuthenticatedUser) {
         this.assertStudent(actor);
 
@@ -383,11 +357,8 @@ export class ClassesService {
         return classes.map((schoolClass) => this.toView(schoolClass));
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async findOwnedClass(teacherId: string, classId: string) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!Types.ObjectId.isValid(classId)) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Turma não encontrada.");
         }
 
@@ -396,20 +367,15 @@ export class ClassesService {
             teacherId: new Types.ObjectId(teacherId),
         });
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!schoolClass) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Turma não encontrada para este professor.");
         }
 
         return schoolClass;
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async ensureStudentEnrollment(studentId: string, classId: string) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!Types.ObjectId.isValid(classId)) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new NotFoundException("Turma não encontrada.");
         }
 
@@ -418,9 +384,7 @@ export class ClassesService {
             studentIds: new Types.ObjectId(studentId),
         });
 
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (!schoolClass) {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Aluno sem inscrição nesta turma.");
         }
 
@@ -428,17 +392,13 @@ export class ClassesService {
     }
 
     private assertTeacher(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "TEACHER") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas professores podem gerir turmas.");
         }
     }
 
     private assertStudent(actor: AuthenticatedUser) {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
         if (actor.role !== "STUDENT") {
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
             throw new ForbiddenException("Apenas alunos podem consultar as suas turmas.");
         }
     }
@@ -488,7 +448,6 @@ export class ClassesService {
 
 ```ts
 // apps/api/src/modules/classes/classes.controller.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
     AuthenticatedRequest,
@@ -501,9 +460,7 @@ import { CreateClassDto } from "./dto/create-class.dto";
 
 @Controller("api")
 @UseGuards(SessionGuard)
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassesController {
-    // Comentário pedagógico: o constructor recebe dependências por injeção do NestJS.
     constructor(private readonly classesService: ClassesService) {}
 
     @Post("teacher/classes")
@@ -563,7 +520,6 @@ export class ClassesController {
 
 ```ts
 // apps/api/src/modules/classes/classes.module.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { User, UserSchema } from "../auth/schemas/user.schema";
@@ -582,7 +538,6 @@ import { SchoolClass, SchoolClassSchema } from "./schemas/school-class.schema";
     providers: [ClassesService],
     exports: [ClassesService, MongooseModule],
 })
-// Comentário pedagógico: a classe exportada é a peça principal deste ficheiro.
 export class ClassesModule {}
 ```
 
@@ -617,8 +572,6 @@ export class ClassesModule {}
 
 ```ts
 // apps/web/src/lib/api/classes.ts
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
-// Comentário pedagógico: este type dá nome TypeScript à estrutura usada noutros ficheiros.
 export type SchoolClassView = {
     id: string;
     teacherId: string;
@@ -629,12 +582,9 @@ export type SchoolClassView = {
     studentIds: string[];
 };
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
 async function parseResponse<T>(response: Response): Promise<T> {
-        // Comentário pedagógico: esta validação bloqueia dados inválidos ou acesso sem permissão.
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Pedido inválido." }));
-            // Comentário pedagógico: esta exceção devolve um erro controlado ao cliente.
         throw new Error(error.message ?? "Pedido inválido.");
     }
 
@@ -647,7 +597,6 @@ export async function createClass(input: {
     schoolYear: string;
     description?: string;
 }) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch("/api/teacher/classes", {
         method: "POST",
         credentials: "include",
@@ -659,7 +608,6 @@ export async function createClass(input: {
 }
 
 export async function listTeacherClasses() {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch("/api/teacher/classes", {
         credentials: "include",
     });
@@ -668,7 +616,6 @@ export async function listTeacherClasses() {
 }
 
 export async function addClassStudent(classId: string, email: string) {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch(`/api/teacher/classes/${classId}/students`, {
         method: "POST",
         credentials: "include",
@@ -680,7 +627,6 @@ export async function addClassStudent(classId: string, email: string) {
 }
 
 export async function listStudentClasses() {
-    // Comentário pedagógico: fetch chama a API; credentials envia o cookie HttpOnly da sessão.
     const response = await fetch("/api/student/classes", {
         credentials: "include",
     });
@@ -722,7 +668,6 @@ export async function listStudentClasses() {
 
 ```tsx
 // apps/web/src/pages/teacher/TeacherClassesPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { FormEvent, useEffect, useState } from "react";
 import {
     SchoolClassView,
@@ -731,27 +676,19 @@ import {
     listTeacherClasses,
 } from "../../lib/api/classes";
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function TeacherClassesPage() {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [classes, setClasses] = useState<SchoolClassView[]>([]);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [isSaving, setIsSaving] = useState(false);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
     async function refresh() {
         setClasses(await listTeacherClasses());
     }
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         refresh().catch((reason: Error) => setError(reason.message));
     }, []);
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleCreate(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsSaving(true);
@@ -775,15 +712,12 @@ export function TeacherClassesPage() {
         }
     }
 
-    // Comentário pedagógico: este método é assíncrono porque consulta BD, API ou outro service.
-    // Comentário pedagógico: esta função trata o formulário sem recarregar a página.
     async function handleAddStudent(classId: string, email: string) {
         setError("");
         await addClassStudent(classId, email);
         await refresh();
     }
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>Turmas</h1>
@@ -828,25 +762,19 @@ export function TeacherClassesPage() {
 
 ```tsx
 // apps/web/src/pages/student/StudentClassesPage.tsx
-// Comentário pedagógico: este comentário identifica o ficheiro exacto onde este bloco deve ser colocado.
 import { useEffect, useState } from "react";
 import { SchoolClassView, listStudentClasses } from "../../lib/api/classes";
 
-// Comentário pedagógico: esta função isola uma transformação para o service não ficar sobrecarregado.
 export function StudentClassesPage() {
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [classes, setClasses] = useState<SchoolClassView[]>([]);
-    // Comentário pedagógico: useState guarda estado local que altera a interface.
     const [error, setError] = useState("");
 
-    // Comentário pedagógico: useEffect carrega dados quando a página abre ou quando um ID muda.
     useEffect(() => {
         listStudentClasses()
             .then(setClasses)
             .catch((reason: Error) => setError(reason.message));
     }, []);
 
-    // Comentário pedagógico: o JSX abaixo define o que aparece no browser.
     return (
         <main>
             <h1>As minhas turmas</h1>
@@ -912,6 +840,13 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 7. Erros comuns ou cenário negativo.
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
+
+## Expected results
+- `POST /api/teacher/classes` com professor autenticado devolve `201` com `teacherId` vindo da sessão.
+- `POST /api/teacher/classes` com aluno autenticado devolve `403`.
+- Criação duplicada de `code` dentro das turmas do mesmo professor devolve `409`.
+- `POST /api/teacher/classes/:classId/students` adiciona aluno existente por email e devolve a turma atualizada.
+- `GET /api/student/classes` devolve `200` apenas com turmas onde o aluno autenticado está em `studentIds`.
 
 ## Critérios de aceite
 - `SchoolClass` existe com `teacherId`, `name`, `code`, `schoolYear` e `studentIds`.
