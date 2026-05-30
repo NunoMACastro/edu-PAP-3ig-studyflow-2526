@@ -16,105 +16,227 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF1-02`
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md`
-- `last_updated`: `2026-04-19`
+- `last_updated`: `2026-05-30`
 
-## Contexto do BK
-- Entrega alvo: `A IA deve adaptar explicações ao ritmo/dificuldades do aluno.` com rastreabilidade direta para `RF13`.
-- Foco da macro `MF1`: Nucleo funcional I.
-- Dominio semântico aplicado: `learning_foundation`.
+## O que vamos fazer neste BK
+Este BK implementa `RF13`: A IA deve adaptar explicações ao ritmo/dificuldades do aluno. Vamos construir a funcionalidade de ponta a ponta, com contrato de dados, validação, permissões, endpoint NestJS e chamada frontend.
 
-## Bloco pedagogico
-### Objetivo
-Construir o fluxo base de aluno (identidade, perfil e estudo individual) com comportamento previsivel.
+O guia é autocontido para o aluno: inclui o código necessário para este BK, explica o objetivo de cada bloco e define resultados esperados para sucesso e falha.
 
-### Pre-requisitos
-- Ler o requisito de origem em `docs/RF.md` ou `docs/RNF.md`.
-- Rever `MATRIZ-CANONICA-BK.md`, `BACKLOG-MVP.md` e `PLANO-SPRINTS.md`.
-- Confirmar dependencias: `BK-MF0-11`.
+## Porque é que isto é importante
+A `MF1` liga o estudo individual da `MF0` a contextos com salas, turmas, disciplinas e professores. Estes contextos aumentam o risco de fuga de dados se o backend confiar em IDs enviados pelo cliente.
 
-### Erros comuns
-- Nao validar duplicados de conta/perfil.
-- Misturar regras de aluno sem turma com turma inscrita.
-- Fechar BK sem validar negativos obrigatórios.
+A regra base deste BK é simples: a sessão identifica o ator, o service confirma o contexto, e só depois a aplicação lê, escreve ou chama IA.
 
-### Check de compreensao
-- [ ] Sei explicar como `RF13` se traduz em comportamento implementável.
-- [ ] Sei indicar o principal risco técnico deste BK e como o mitigar.
-- [ ] Sei demonstrar evidência objetiva de sucesso e falha controlada.
+## O que entra (scope)
+- Criar perfil pedagógico por aluno e área de estudo.
+- Aplicar ritmo, nível e dificuldades ao prompt.
+- Usar apenas materiais processáveis da área do aluno.
+- Bloquear resposta se não existirem fontes.
 
-### Tempo estimado
-- `Core`: `45-75 min`
-- `Reforco`: `n/a`
+## O que não entra (scope-out)
+- Diagnóstico psicológico.
+- IA de turma ou sala.
+- Novo motor de embeddings/RAG.
 
-## Bloco operacional
-### Entrada
-- BK: `BK-MF1-01`
-- Requisito: `RF13`
-- Dependencias: `BK-MF0-11`
-- Artefactos obrigatorios: `MATRIZ-CANONICA-BK.md`, `BACKLOG-MVP.md`, `MF-VIEWS.md`, `PLANO-SPRINTS.md`
+## Como saber que isto ficou bem
+- Aluno atualiza perfil.
+- Explicação adapta linguagem e ritmo.
+- Sem fontes devolve `422`.
+- Outro aluno não acede ao perfil.
 
-### Passos
-1. Confirmar no backlog e na matriz o escopo de `BK-MF1-01` e do requisito `RF13`.
-2. Validar pre-condicoes técnicas e dependencias declaradas: `BK-MF0-11`.
-3. Modelar contratos de dados e estados para `fluxo de conta/perfil em estado consistente`.
-4. Implementar o caminho principal de `fluxo de conta/perfil em estado consistente`.
-5. Aplicar controlos para `regras de sessão/papel e transições de estado`.
-6. Preparar evidencia operacional: `mapa de estados (novo, ativo, bloqueado)`.
-7. Executar smoke test completo do fluxo principal e registar o resultado.
-8. Executar cenarios negativos obrigatorios (minimo 2) e validar erro controlado.
+## Metadados do BK (CANONICO/DERIVADO)
+- BK: `BK-MF1-01` (CANONICO)
+- Requisito: `RF13` (CANONICO)
+- Ator principal: aluno autenticado (DERIVADO)
+- Endpoint principal: `POST /api/ai/adapted-explanations` (DERIVADO)
+- Persistência principal: `student_learning_profiles` (DERIVADO)
+- Fonte de verdade: `docs/RF.md` e `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md` (CANONICO)
 
-### Cenarios negativos recomendados
-- entrada obrigatória em falta
-- estado inválido de negócio
+## Pre-leitura mínima
+- `README.md`
+- `docs/RF.md`
+- `docs/RNF.md`
+- `docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`
+- `docs/planificacao/backlogs/CONTRATO-CAMPOS-BK.md`
+- `BK-MF0-07` para áreas de estudo.
+- `BK-MF0-11` e `BK-MF0-12` para IA individual baseada em fontes.
 
-### Validacao
-- [ ] Smoke: minimo `1` execucao completa do fluxo principal.
-- [ ] Negativos: minimo `2` cenarios com resultado controlado.
-- [ ] Tecnico: metadados alinhados entre matriz/backlog/guia.
-- [ ] Fluxo do requisito cumpre contrato de entrada/saída.
-- [ ] Persistência e leitura dos dados mantêm consistência.
+## Glossário rápido
+- `Ownership`: regra que limita acesso ao dono ou ao contexto autorizado.
+- `Membership`: pertença a turma ou sala usada para autorizar acesso.
+- `DTO`: validação de entrada antes do service.
+- `Fonte oficial/processável`: conteúdo permitido para fundamentar resposta da IA.
+- `Guardrail`: regra que impede a IA de responder fora do contexto autorizado.
 
-### Matriz minima de testes por prioridade
-- `P0`: unit + integration + e2e + 3 negativos.
-- `P1`: unit/integration + 2 negativos.
-- `P2`: teste focal + 1 negativo.
+## Conceitos teóricos essenciais
+- Adaptar não significa inventar. A IA muda forma, exemplos e ritmo, mas os factos vêm das fontes.
+- Dificuldades do aluno são dados sensíveis e devem ficar limitadas ao próprio aluno.
+- O ownership da área de estudo é obrigatório antes de carregar materiais.
 
-### Handoff
-- Proximo BK recomendado: `BK-MF1-02`
-- Registar bloqueios, decisão técnica e risco residual.
-- Escalar no scorecard se bloqueio >48h.
+## Arquitetura final deste BK
+### Ficheiros a criar ou editar
+```text
+apps/api/src/modules/ai/schemas/student-learning-profile.schema.ts
+apps/api/src/modules/ai/dto/update-learning-profile.dto.ts
+apps/api/src/modules/ai/dto/adapted-explanation.dto.ts
+apps/api/src/modules/ai/services/adaptive-learning.service.ts
+apps/api/src/modules/ai/controllers/adaptive-learning.controller.ts
+apps/web/src/lib/adaptiveLearningApi.ts
+```
 
-## Snippet tecnico aplicavel
-**Handler de registo e sessão**
-- BK vinculado: `BK-MF1-01`.
+### Sequência do fluxo
+1. Aluno escolhe área, ritmo, nível e dificuldades.
+2. Service confirma que a área pertence ao aluno.
+3. Perfil é guardado por `userId + studyAreaId`.
+4. Service carrega materiais processáveis da área.
+5. Provider responde com fontes e perfil pedagógico.
 
+### Riscos técnicos a controlar
+- Expor dificuldades do aluno a outros utilizadores.
+- Responder sem fontes.
+- Aceitar `userId` no body.
+
+## Guia linear de implementação
+
+### Passo 1 - Confirmar contrato e dependências
+Relê o requisito funcional e confirma que as dependências do header estão concluídas. Se uma dependência não existir, este BK não deve inventar outro caminho; deve aguardar ou implementar primeiro a dependência.
+
+Validação deste passo:
+- O endpoint pertence ao ator correto.
+- O service consegue confirmar ownership ou membership sem confiar no body.
+- A funcionalidade não altera RFs de outras macro-features.
+
+### Passo 2 - Criar modelo e DTO
 ```ts
-type Credenciais = { email: string; password: string };
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+import { ArrayMaxSize, IsArray, IsEnum, IsMongoId, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+export type StudentLearningProfileDocument = HydratedDocument<StudentLearningProfile>;
+@Schema({ timestamps: true, collection: 'student_learning_profiles' })
+export class StudentLearningProfile {
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true }) userId!: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'StudyArea', required: true, index: true }) studyAreaId!: Types.ObjectId;
+  @Prop({ enum: ['SLOW', 'NORMAL', 'FAST'], default: 'NORMAL' }) pace!: 'SLOW' | 'NORMAL' | 'FAST';
+  @Prop({ enum: ['BASIC', 'INTERMEDIATE', 'ADVANCED'], default: 'INTERMEDIATE' }) level!: 'BASIC' | 'INTERMEDIATE' | 'ADVANCED';
+  @Prop({ type: [String], default: [] }) difficulties!: string[];
+}
+export const StudentLearningProfileSchema = SchemaFactory.createForClass(StudentLearningProfile);
+StudentLearningProfileSchema.index({ userId: 1, studyAreaId: 1 }, { unique: true });
+export class UpdateLearningProfileDto {
+  @IsMongoId() studyAreaId!: string;
+  @IsEnum(['SLOW', 'NORMAL', 'FAST']) pace!: 'SLOW' | 'NORMAL' | 'FAST';
+  @IsEnum(['BASIC', 'INTERMEDIATE', 'ADVANCED']) level!: 'BASIC' | 'INTERMEDIATE' | 'ADVANCED';
+  @IsOptional() @IsArray() @ArrayMaxSize(8) @IsString({ each: true }) @MaxLength(80, { each: true }) difficulties?: string[];
+}
+export class AdaptedExplanationDto { @IsMongoId() studyAreaId!: string; @IsString() @MinLength(3) @MaxLength(1000) question!: string; }
+```
 
-export async function registarAluno(input: Credenciais) {
-  if (!input.email.includes('@')) throw new Error('Email invalido');
-  if (input.password.length < 12) throw new Error('Password fraca');
-  return { bkId: 'BK-MF1-01', req: 'RF13', estado: 'REGISTADO' };
+Explicação do código:
+- O schema guarda apenas o estado necessário ao requisito.
+- O DTO permite só os campos que o cliente pode realmente escolher.
+- Campos de identidade vêm da sessão ou de relações já persistidas.
+- Os índices refletem as queries usadas pelo service.
+
+### Passo 3 - Criar service completo
+```ts
+import { ForbiddenException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import { StudyArea, StudyAreaDocument } from '../../study-areas/schemas/study-area.schema';
+import { StudyMaterial, StudyMaterialDocument } from '../../study-materials/schemas/study-material.schema';
+import { AiProvider } from '../providers/ai.provider';
+import { AdaptedExplanationDto, UpdateLearningProfileDto, StudentLearningProfile, StudentLearningProfileDocument } from '../schemas/student-learning-profile.schema';
+@Injectable()
+export class AdaptiveLearningService {
+  constructor(@InjectModel(StudentLearningProfile.name) private readonly profileModel: Model<StudentLearningProfileDocument>, @InjectModel(StudyArea.name) private readonly areaModel: Model<StudyAreaDocument>, @InjectModel(StudyMaterial.name) private readonly materialModel: Model<StudyMaterialDocument>, private readonly aiProvider: AiProvider) {}
+  async updateProfile(actor: AuthenticatedUser, dto: UpdateLearningProfileDto) { this.assertStudent(actor); await this.findOwnedArea(actor.id, dto.studyAreaId); const profile = await this.profileModel.findOneAndUpdate({ userId: new Types.ObjectId(actor.id), studyAreaId: new Types.ObjectId(dto.studyAreaId) }, { pace: dto.pace, level: dto.level, difficulties: (dto.difficulties ?? []).map((d) => d.trim()).filter(Boolean) }, { new: true, upsert: true, setDefaultsOnInsert: true }); return { id: profile._id.toString(), pace: profile.pace, level: profile.level, difficulties: profile.difficulties }; }
+  async explain(actor: AuthenticatedUser, dto: AdaptedExplanationDto) { this.assertStudent(actor); await this.findOwnedArea(actor.id, dto.studyAreaId); const profile = await this.profileModel.findOne({ userId: new Types.ObjectId(actor.id), studyAreaId: new Types.ObjectId(dto.studyAreaId) }); const sources = await this.materialModel.find({ studyAreaId: new Types.ObjectId(dto.studyAreaId), ownerId: new Types.ObjectId(actor.id), status: 'PROCESSED' }).limit(6).lean(); if (!sources.length) throw new UnprocessableEntityException('Adiciona materiais processáveis antes de pedir uma explicação.'); const answer = await this.aiProvider.answer({ system: this.prompt(profile), user: dto.question.trim(), sources: sources.map((s) => ({ id: s._id.toString(), title: s.title, text: s.extractedText })) }); return { answer: answer.text, sourcesUsed: answer.sourcesUsed }; }
+  private async findOwnedArea(userId: string, studyAreaId: string) { const area = await this.areaModel.findOne({ _id: new Types.ObjectId(studyAreaId), ownerId: new Types.ObjectId(userId) }); if (!area) throw new NotFoundException('Área de estudo não encontrada.'); return area; }
+  private assertStudent(actor: AuthenticatedUser) { if (actor.role !== 'STUDENT') throw new ForbiddenException('Apenas alunos podem configurar adaptação individual.'); }
+  private prompt(profile: StudentLearningProfileDocument | null) { return ['Responde apenas com base nas fontes.', `Ritmo: ${profile?.pace ?? 'NORMAL'}.`, `Nível: ${profile?.level ?? 'INTERMEDIATE'}.`, `Dificuldades: ${profile?.difficulties?.join(', ') || 'sem registo'}.`].join('\\n'); }
 }
 ```
 
-Garante validação mínima de identidade no arranque do fluxo de conta.
-- Requisitos alvo deste BK: `RF13`.
+Explicação do código:
+- A autorização acontece antes de carregar dados sensíveis.
+- As queries filtram por professor, aluno, turma, disciplina ou sala, consoante o BK.
+- Quando existe IA, o provider recebe apenas fontes autorizadas.
+- Não há chamadas para métodos externos por implementar neste BK.
 
-## Criterios de aceite
-- Fluxo principal implementado no scope definido.
-- Cenarios negativos concluidos: minimo `2` com resultado controlado.
-- Evidencia de testes por camada conforme prioridade (`P1`).
-- Contrato canónico preservado (`bk_id/macro/sprint/owner/rf_rnf/dependencias/guia_path/core_or_reforco`).
-- Evidence pronta para revisão técnica e defesa PAP.
+### Passo 4 - Criar controller e módulo
+```ts
+import { Body, Controller, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
+import { SessionGuard } from '../../auth/guards/session.guard';
+import { AdaptedExplanationDto, UpdateLearningProfileDto } from '../schemas/student-learning-profile.schema';
+import { AdaptiveLearningService } from '../services/adaptive-learning.service';
+@UseGuards(SessionGuard)
+@Controller('api/ai')
+export class AdaptiveLearningController {
+  constructor(private readonly service: AdaptiveLearningService) {}
+  @Put('learning-profile') update(@Req() request: Request, @Body() dto: UpdateLearningProfileDto) { return this.service.updateProfile(request.user, dto); }
+  @Post('adapted-explanations') explain(@Req() request: Request, @Body() dto: AdaptedExplanationDto) { return this.service.explain(request.user, dto); }
+}
+```
 
-## Evidence para PR/defesa
-- `pr`: link de PR/commit com resumo funcional do BK.
-- `proof`: output/screenshot/log/teste que comprova o caminho principal.
-- `neg`: evidência dos cenários negativos executados e respetivo erro controlado.
+Explicação do código:
+- `SessionGuard` obriga sessão válida.
+- `request.user` é a identidade confiável.
+- O controller não recebe `userId`, `teacherId` ou `studentId` no body.
+- O módulo regista schemas e provider necessários para o service.
 
-## Proximo BK recomendado
-`BK-MF1-02`
+### Passo 5 - Criar cliente frontend
+```tsx
+export type UpdateLearningProfilePayload = { studyAreaId: string; pace: 'SLOW' | 'NORMAL' | 'FAST'; level: 'BASIC' | 'INTERMEDIATE' | 'ADVANCED'; difficulties: string[] };
+export type AdaptedExplanationPayload = { studyAreaId: string; question: string };
+export async function requestAdaptedExplanation(payload: AdaptedExplanationPayload) {
+  const response = await fetch('/api/ai/adapted-explanations', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (!response.ok) throw new Error('Não foi possível gerar explicação adaptada.');
+  return response.json();
+}
+```
+
+Explicação do código:
+- O payload é tipado.
+- `credentials: 'include'` envia a sessão sem expor tokens.
+- O erro mostrado ao utilizador é seguro e curto.
+- O backend continua a validar mesmo que a UI bloqueie campos vazios.
+
+### Passo 6 - Validar caminho principal e negativos
+Caminho principal:
+- Perfil atualizado por aluno/área.
+- Explicação devolve `answer` e `sourcesUsed`.
+
+Cenários negativos:
+- Área de outro aluno recebe `404`.
+- Sem fontes recebe `422`.
+- Pergunta vazia recebe `400`.
+
+Comandos úteis:
+```bash
+npm run test:unit
+npm run test:integration
+npm run test:contracts
+bash scripts/validate-planificacao.sh
+```
+
+## Evidência de conclusão
+- Resposta do perfil.
+- Resposta da IA com fontes.
+- Teste negativo de ownership.
+
+## Handoff para o próximo BK
+- `BK-MF1-04` e `BK-MF1-11` reutilizam a regra de IA limitada a fontes.
+
+## Checklist final
+- [ ] Header preservado sem alterar campos canónicos.
+- [ ] Código completo para schema, DTO, service, controller/módulo e frontend.
+- [ ] Sem funções por implementar nem payloads sem tipo.
+- [ ] Caminho principal e negativos com expected results.
+- [ ] Validação executada ou bloqueio registado com erro exato.
 
 ## Changelog
-- `2026-04-19`: guia semântico regenerado com passos, validação e snippet alinhados ao requisito.
+- `2026-04-19`: guia semântico inicial alinhado ao requisito.
+- `2026-05-30`: guia reescrito como tutorial guiado para alunos, com código completo do BK e validação objetiva.
