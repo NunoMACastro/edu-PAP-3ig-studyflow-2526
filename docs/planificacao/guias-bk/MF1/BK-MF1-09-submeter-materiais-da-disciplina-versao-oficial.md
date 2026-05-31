@@ -39,6 +39,7 @@ Materiais oficiais são diferentes dos materiais privados do aluno. A IA docente
 
 ## Estado antes
 - `BK-MF1-08` criou disciplinas associadas a turmas.
+- O professor de desenvolvimento de `BK-MF1-07` consegue autenticar-se e gerir uma disciplina sua.
 - Ainda não existe fonte oficial por disciplina.
 
 ## Estado depois
@@ -50,6 +51,8 @@ Materiais oficiais são diferentes dos materiais privados do aluno. A IA docente
 ## Pré-requisitos
 - `SubjectsModule` exporta `SubjectsService`.
 - `SessionGuard` funcional.
+- Professor de desenvolvimento criado pela seed local de `BK-MF1-07`.
+- Disciplina criada por esse professor no `BK-MF1-08`.
 - Validação global de DTOs ativa.
 
 ## Glossário
@@ -65,6 +68,8 @@ Materiais oficiais são diferentes dos materiais privados do aluno. A IA docente
 **Estado do material.** `PROCESSED` significa que o material pode alimentar IA. `REFERENCE_ONLY` significa que o material aparece para consulta humana, mas não deve ser usado como base factual pela IA.
 
 **Ligação à disciplina e turma.** O material guarda `subjectId`, `classId` e `teacherId`. Assim, a IA limitada consegue procurar fontes por disciplina e ainda manter rasto da turma e do professor.
+
+**Validação com professor real.** Usa o professor de desenvolvimento criado no `BK-MF1-07` para submeter materiais. Isto confirma que o `teacherId` vem da sessão e que o service rejeita alunos ou professores sem ownership da disciplina.
 
 **Guardrail contra invenção.** A IA de `BK-MF1-11` só consulta materiais `PROCESSED`. Esta regra reduz o risco de respostas baseadas em URLs que o sistema nunca leu.
 
@@ -103,6 +108,8 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 - `SubjectsModule` exporta `SubjectsService`.
 - `SessionGuard` funcional.
+- Professor de desenvolvimento criado pela seed local de `BK-MF1-07`.
+- Disciplina criada por esse professor no `BK-MF1-08`.
 - Validação global de DTOs ativa.
 
 ### Passo 1 - Criar schema
@@ -700,6 +707,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 ## Validação operacional por passo
 
+- Antes dos passos técnicos: inicia sessão com o professor de desenvolvimento criado no `BK-MF1-07`.
 - Passos 1 e 2: confirmar schema e DTOs apenas com campos persistidos: título, tipo, texto ou URL.
 - Passos 3 e 4: validar ownership da disciplina antes de criar/listar materiais oficiais.
 - Passos 5 e 6: confirmar export de `OfficialMaterialsService` e cliente frontend sem campos não suportados.
@@ -715,6 +723,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 ## Expected results
 - `POST /api/teacher/subjects/:subjectId/materials` com professor dono e `TEXT` válido devolve `201` com `status: "PROCESSED"`.
 - `POST /api/teacher/subjects/:subjectId/materials` com `URL` válido devolve `201` com `status: "REFERENCE_ONLY"`.
+- O professor de desenvolvimento criado no `BK-MF1-07` consegue criar materiais apenas em disciplina sua.
 - Professor sem ownership da disciplina devolve `404`; aluno devolve `403`.
 - Payload com campo livre de notas não faz parte do contrato e não é enviado pelo frontend.
 - `GET /api/teacher/subjects/:subjectId/materials` lista apenas materiais da disciplina do professor autenticado.
@@ -739,13 +748,15 @@ npm run test:integration
 Confirma que um material `URL` não alimenta a IA como texto processado.
 
 ## Evidence para PR/defesa
+- Prova de login local com o professor criado no `BK-MF1-07`.
 - Screenshot de material `TEXT` criado.
 - Screenshot de material `URL` criado.
 - Resposta `403` para aluno.
 - Diff do schema sem campo genérico duplicado.
 
 ## Handoff
-`BK-MF1-10` associa voz docente à mesma disciplina. `BK-MF1-11` consulta `OfficialMaterialsService.findProcessedBySubject`.
+`BK-MF1-10` associa voz docente à mesma disciplina criada pelo professor de desenvolvimento. `BK-MF1-11` consulta `OfficialMaterialsService.findProcessedBySubject`.
 
 ## Changelog
+- 2026-05-31: Pré-requisitos e validação alinhados com a seed local de professor criada no BK-MF1-07.
 - 2026-05-30: Guia reescrito com schema sem campo duplicado, módulo exportado e estados de fonte explícitos.

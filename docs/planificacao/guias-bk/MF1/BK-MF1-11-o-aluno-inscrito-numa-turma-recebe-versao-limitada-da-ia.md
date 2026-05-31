@@ -41,6 +41,7 @@ Este é um dos pontos de maior risco da MF1. A IA não pode misturar disciplinas
 - Existem turmas com `studentIds`.
 - Existem disciplinas.
 - Existem materiais oficiais e voz docente.
+- O aluno de desenvolvimento de `BK-MF1-07` pode estar inscrito numa turma criada pelo professor de desenvolvimento.
 
 ## Estado depois
 - Aluno inscrito pergunta sobre uma disciplina.
@@ -50,6 +51,7 @@ Este é um dos pontos de maior risco da MF1. A IA não pode misturar disciplinas
 
 ## Pré-requisitos
 - `BK-MF1-07` com aluno inscrito em `SchoolClass.studentIds`.
+- Professor e aluno de desenvolvimento criados pela seed local de `BK-MF1-07`.
 - `BK-MF1-08` com `SubjectsService.findSubjectForStudent`.
 - `BK-MF1-09` com `OfficialMaterialsService.findProcessedBySubject`.
 - `BK-MF1-10` com `TeacherAiVoiceService.findForSubject`.
@@ -64,6 +66,8 @@ Este é um dos pontos de maior risco da MF1. A IA não pode misturar disciplinas
 **IA limitada da disciplina.** Esta IA pertence ao contexto oficial professor-turma-disciplina. O aluno só a usa se estiver inscrito na turma da disciplina, e a resposta só pode usar materiais oficiais processados.
 
 **De onde vem a inscrição.** A inscrição vem de `SchoolClass.studentIds`, preenchido no `BK-MF1-07` quando o professor adiciona um aluno por email. O aluno não envia esta lista; o backend consulta a turma associada à disciplina.
+
+**Validação com aluno real.** Usa o aluno de desenvolvimento criado no `BK-MF1-07` depois de o professor o associar à turma. Assim, a IA limitada é testada com cookie HttpOnly, `role` `STUDENT` e inscrição persistida, não com IDs enviados livremente pelo browser.
 
 **Percurso da pergunta.** O aluno escreve a pergunta no frontend. O controller recebe `subjectId` pela rota e `question` no body. O service encontra a disciplina, confirma que o aluno pertence à turma, recolhe materiais oficiais processados, aplica a voz docente, chama a IA e guarda a interação.
 
@@ -107,6 +111,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 ### Pré-requisitos concretos
 
 - `BK-MF1-07` com aluno inscrito em `SchoolClass.studentIds`.
+- Professor e aluno de desenvolvimento criados pela seed local de `BK-MF1-07`.
 - `BK-MF1-08` com `SubjectsService.findSubjectForStudent`.
 - `BK-MF1-09` com `OfficialMaterialsService.findProcessedBySubject`.
 - `BK-MF1-10` com `TeacherAiVoiceService.findForSubject`.
@@ -697,6 +702,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 ## Validação operacional por passo
 
+- Antes dos passos técnicos: garante que o aluno de desenvolvimento criado no `BK-MF1-07` está inscrito na turma da disciplina.
 - Passos 1 e 2: confirmar schema e DTO de interação da IA limitada ligados a aluno, turma e disciplina.
 - Passos 3 e 4: validar inscrição do aluno antes de consultar materiais oficiais ou chamar IA.
 - Passos 5 e 6: confirmar uso de materiais `PROCESSED`, voz docente e provider isolado com validação runtime.
@@ -711,6 +717,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 ## Expected results
 - `POST /api/student/subjects/:subjectId/ai/answers` por aluno inscrito devolve `201` com `answer` não vazio e fontes oficiais autorizadas.
+- O aluno de desenvolvimento criado no `BK-MF1-07`, quando inscrito, consegue usar a IA limitada da disciplina.
 - Aluno não inscrito ou professor devolve `403`.
 - Disciplina sem materiais oficiais `PROCESSED` devolve `422` e não chama a IA.
 - Provider indisponível, resposta vazia ou fontes não autorizadas devolvem `503` e não persistem interação.
@@ -736,13 +743,15 @@ npm run test:integration
 Inclui testes de acesso cruzado entre turmas.
 
 ## Evidence para PR/defesa
+- Prova de login local com o aluno criado no `BK-MF1-07`.
 - Pergunta de aluno inscrito com fontes visíveis.
 - Resposta `422` sem material processado.
 - Resposta `403` para aluno não inscrito.
 - Registo de `ClassAiInteraction`.
 
 ## Handoff
-`BK-MF1-12` usa a mesma inscrição por `studentIds` para proteger leitura de publicações por alunos.
+`BK-MF1-12` usa a mesma inscrição por `studentIds` e o mesmo aluno de desenvolvimento para proteger leitura de publicações por alunos.
 
 ## Changelog
+- 2026-05-31: Pré-requisitos e validação alinhados com a seed local de professor/aluno criada no BK-MF1-07.
 - 2026-05-30: Guia reescrito para depender de inscrição real, materiais oficiais processados e voz docente.

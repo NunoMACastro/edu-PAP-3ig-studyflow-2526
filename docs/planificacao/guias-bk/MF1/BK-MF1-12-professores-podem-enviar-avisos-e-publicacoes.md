@@ -39,6 +39,7 @@ Publicações docentes são comunicação oficial. A leitura por alunos tem de u
 
 ## Estado antes
 - `BK-MF1-07` criou turmas e inscrição por aluno.
+- Professor e aluno de desenvolvimento de `BK-MF1-07` conseguem autenticar-se com sessão real.
 - Ainda não existe canal oficial de avisos.
 
 ## Estado depois
@@ -51,6 +52,8 @@ Publicações docentes são comunicação oficial. A leitura por alunos tem de u
 - `ClassesService.findOwnedClass`.
 - `ClassesService.ensureStudentEnrollment`.
 - `SessionGuard`.
+- Professor e aluno de desenvolvimento criados pela seed local de `BK-MF1-07`.
+- Aluno de desenvolvimento inscrito numa turma do professor de desenvolvimento.
 
 ## Glossário
 - **Aviso**: mensagem curta e importante.
@@ -63,6 +66,8 @@ Publicações docentes são comunicação oficial. A leitura por alunos tem de u
 **Diferença entre escrita e leitura.** A escrita pertence ao professor dono da turma. A leitura pertence aos alunos inscritos. Isto significa que a mesma entidade (`ClassPost`) tem duas regras de autorização diferentes.
 
 **Origem de `studentIds`.** A lista de alunos inscritos vem do `BK-MF1-07`. Quando o aluno pede `GET /api/student/classes/:classId/posts`, o backend confirma se `request.user.id` está em `studentIds` da turma.
+
+**Validação com sessões reais.** Usa o professor e o aluno de desenvolvimento criados no `BK-MF1-07`. O professor valida a escrita; o aluno inscrito valida a leitura. Esta separação mostra que a autorização depende do papel e da inscrição persistida, não de IDs enviados no body.
 
 **Porque não basta conhecer o `classId`.** Um aluno pode copiar o ID de uma turma de outro contexto. O service não pode confiar no ID vindo da URL sem consultar a turma e confirmar a inscrição.
 
@@ -108,6 +113,8 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 - `ClassesService.findOwnedClass`.
 - `ClassesService.ensureStudentEnrollment`.
 - `SessionGuard`.
+- Professor e aluno de desenvolvimento criados pela seed local de `BK-MF1-07`.
+- Aluno de desenvolvimento inscrito numa turma do professor de desenvolvimento.
 
 ### Passo 1 - Criar schema
 
@@ -712,6 +719,7 @@ export function StudentClassPostsPage({ classId }: Props) {
 
 ## Validação operacional por passo
 
+- Antes dos passos técnicos: inicia sessão com o professor de desenvolvimento para criar publicações e com o aluno de desenvolvimento inscrito para as ler.
 - Passos 1 e 2: confirmar schema e DTO de publicação com `classId`, `teacherId`, tipo, título e corpo.
 - Passos 3 e 4: validar escrita apenas por professor dono e leitura apenas por aluno inscrito.
 - Passos 5 e 6: confirmar clientes separados para professor e aluno com sessão HttpOnly.
@@ -726,9 +734,11 @@ export function StudentClassPostsPage({ classId }: Props) {
 
 ## Expected results
 - `POST /api/teacher/classes/:classId/posts` com professor dono devolve `201`.
+- O professor de desenvolvimento criado no `BK-MF1-07` consegue publicar apenas numa turma sua.
 - Professor sem ownership da turma devolve `404`.
 - Aluno autenticado a criar publicação devolve `403`.
 - `GET /api/student/classes/:classId/posts` devolve `200` para aluno inscrito.
+- O aluno de desenvolvimento criado no `BK-MF1-07`, quando inscrito, consegue ler publicações da sua turma.
 - Aluno não inscrito devolve `403` e não recebe publicações da turma.
 - Frontend docente mostra carregamento, vazio, sucesso e erro; frontend do aluno mostra carregamento, vazio e erro.
 
@@ -750,13 +760,15 @@ npm run test:integration
 Testa cruzamento entre duas turmas para garantir que publicações não vazam.
 
 ## Evidence para PR/defesa
+- Prova de login local com professor e aluno criados no `BK-MF1-07`.
 - Screenshot de aviso criado por professor.
 - Screenshot de aluno inscrito a ler o aviso.
 - Resposta `403` para aluno não inscrito.
 - Resposta `403` para aluno a tentar criar publicação.
 
 ## Handoff
-`BK-MF2-01` pode partir de uma turma com comunicação oficial funcional e acesso por aluno inscrito.
+`BK-MF2-01` pode partir de uma turma com comunicação oficial funcional, professor autenticado e acesso por aluno inscrito.
 
 ## Changelog
+- 2026-05-31: Pré-requisitos e validação alinhados com a seed local de professor/aluno criada no BK-MF1-07.
 - 2026-05-30: Guia reescrito com leitura protegida por inscrição e clientes frontend separados.

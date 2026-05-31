@@ -39,6 +39,7 @@ A IA limitada do aluno não deve soar genérica. Deve respeitar o tom, nível de
 
 ## Estado antes
 - Existem disciplinas e materiais oficiais.
+- O professor de desenvolvimento de `BK-MF1-07` consegue autenticar-se e gerir uma disciplina sua.
 - Ainda não existe configuração docente de IA.
 
 ## Estado depois
@@ -49,6 +50,8 @@ A IA limitada do aluno não deve soar genérica. Deve respeitar o tom, nível de
 ## Pré-requisitos
 - `BK-MF1-08` com `SubjectsService.findOwnedSubject`.
 - `SessionGuard`.
+- Professor de desenvolvimento criado pela seed local de `BK-MF1-07`.
+- Disciplina criada por esse professor no `BK-MF1-08`.
 - Validação global de DTOs.
 
 ## Glossário
@@ -66,6 +69,8 @@ A IA limitada do aluno não deve soar genérica. Deve respeitar o tom, nível de
 **Regras pedagógicas.** `rules` são instruções curtas do professor, como “usar exemplos do quotidiano” ou “não dar a resposta final sem explicar passos”. O backend remove regras vazias e limita a quantidade para manter o prompt controlado.
 
 **Voz não é fonte.** Mesmo que o professor peça uma resposta detalhada, a IA continua limitada aos materiais oficiais `PROCESSED`. A voz muda forma; as fontes definem conteúdo.
+
+**Validação com professor real.** Usa o professor de desenvolvimento criado no `BK-MF1-07` para configurar a voz. Isto confirma que a configuração pertence ao professor autenticado e que um aluno não consegue alterar a voz docente.
 
 **Decorators do NestJS.** Decorators como `@Controller`, `@Post`, `@Get`, `@Put`, `@Module` e `@Injectable` dizem ao NestJS que papel cada classe tem. O controller recebe pedidos HTTP, o service contém regras de negócio e o módulo liga tudo.
 
@@ -102,6 +107,8 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 - `BK-MF1-08` com `SubjectsService.findOwnedSubject`.
 - `SessionGuard`.
+- Professor de desenvolvimento criado pela seed local de `BK-MF1-07`.
+- Disciplina criada por esse professor no `BK-MF1-08`.
 - Validação global de DTOs.
 
 ### Passo 1 - Criar schema
@@ -672,6 +679,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 ## Validação operacional por passo
 
+- Antes dos passos técnicos: inicia sessão com o professor de desenvolvimento criado no `BK-MF1-07`.
 - Passos 1 e 2: confirmar schema e DTO de voz docente com configuração única por disciplina.
 - Passos 3 e 4: validar `PUT` idempotente, normalização de regras e ownership da disciplina.
 - Passos 5 e 6: confirmar export de `TeacherAiVoiceService` para `BK-MF1-11` e cliente frontend alinhado com o controller.
@@ -686,6 +694,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 ## Expected results
 - `PUT /api/teacher/subjects/:subjectId/ai-voice` com professor dono devolve `200` e cria ou atualiza uma única configuração.
+- O professor de desenvolvimento criado no `BK-MF1-07` consegue configurar voz apenas numa disciplina sua.
 - Segundo `PUT` para a mesma disciplina atualiza o mesmo registo, sem duplicar.
 - Regras vazias são removidas antes de persistir.
 - Aluno autenticado devolve `403`.
@@ -710,13 +719,15 @@ npm run test:integration
 Confirma no diff que não existe chamada `POST` para a rota de atualização de voz.
 
 ## Evidence para PR/defesa
+- Prova de login local com o professor criado no `BK-MF1-07`.
 - Screenshot da configuração guardada.
 - Segundo pedido `PUT` a atualizar a mesma configuração.
 - Resposta `403` para aluno.
 - Demonstração de regras vazias removidas.
 
 ## Handoff
-`BK-MF1-11` deve ler `TeacherAiVoiceService.findForSubject` e usar tom, nível de detalhe e regras no prompt da IA limitada.
+`BK-MF1-11` deve ler `TeacherAiVoiceService.findForSubject` e usar tom, nível de detalhe e regras no prompt da IA limitada, validando com a disciplina criada pelo professor de desenvolvimento.
 
 ## Changelog
+- 2026-05-31: Pré-requisitos e validação alinhados com a seed local de professor criada no BK-MF1-07.
 - 2026-05-30: Guia reescrito com endpoint `PUT`, sanitização de regras e módulo exportado.

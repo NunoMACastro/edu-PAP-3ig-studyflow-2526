@@ -40,6 +40,7 @@ A disciplina é o contexto oficial para materiais, voz da IA e IA limitada. Se a
 ## Estado antes
 - `BK-MF1-07` criou `SchoolClass`.
 - Professor consegue criar turmas.
+- A seed local de `BK-MF1-07` permite iniciar sessão como professor de desenvolvimento.
 - Ainda não existe contexto disciplinar oficial.
 
 ## Estado depois
@@ -51,6 +52,8 @@ A disciplina é o contexto oficial para materiais, voz da IA e IA limitada. Se a
 ## Pré-requisitos
 - `ClassesModule` disponível e exportável.
 - `SessionGuard` e `AuthenticatedRequest`.
+- Professor de desenvolvimento criado pela seed local de `BK-MF1-07`.
+- Turma criada por esse professor.
 - Validação global de DTOs ativa.
 
 ## Glossário
@@ -62,6 +65,8 @@ A disciplina é o contexto oficial para materiais, voz da IA e IA limitada. Se a
 **Disciplina dentro de turma.** Uma disciplina não é um catálogo solto. Ela pertence a uma turma (`classId`) e a um professor (`teacherId`). Isto permite saber que materiais, voz da IA e interações pertencem a um contexto oficial específico.
 
 **Validação em cadeia.** O backend valida por ordem: sessão válida, papel `TEACHER`, turma pertencente ao professor, e só depois disciplina. Esta ordem evita expor se uma turma de outro professor existe.
+
+**Validação com professor real.** A conta local criada no `BK-MF1-07` permite testar este fluxo com cookie HttpOnly e `role` `TEACHER`, sem depender de uma alteração manual na base de dados. O frontend nunca envia `teacherId`; o backend retira o professor da sessão.
 
 **Duplicados por turma.** O índice `{ classId, name }` impede duas disciplinas com o mesmo nome dentro da mesma turma. A mesma disciplina pode existir em turmas diferentes porque cada turma é um contexto independente.
 
@@ -104,6 +109,8 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 - `ClassesModule` disponível e exportável.
 - `SessionGuard` e `AuthenticatedRequest`.
+- Professor de desenvolvimento criado pela seed local de `BK-MF1-07`.
+- Turma criada por esse professor.
 - Validação global de DTOs ativa.
 
 ### Passo 1 - Criar schema da disciplina
@@ -690,6 +697,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 ## Validação operacional por passo
 
+- Antes dos passos técnicos: inicia sessão com o professor de desenvolvimento criado no `BK-MF1-07`.
 - Passos 1 e 2: confirmar schema e DTOs de disciplina ligados a turma existente do professor.
 - Passos 3 e 4: validar ownership da turma antes de criar/listar disciplinas e duplicados na mesma turma.
 - Passos 5 e 6: confirmar export de `SubjectsService` para materiais, voz docente e IA limitada.
@@ -703,6 +711,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 ## Expected results
 - `POST /api/teacher/classes/:classId/subjects` com professor dono da turma devolve `201`.
+- O professor de desenvolvimento criado no `BK-MF1-07` consegue criar disciplina numa turma sua.
 - Professor sem ownership da turma devolve `404`.
 - Aluno autenticado devolve `403`.
 - Nome duplicado na mesma turma devolve `409`.
@@ -727,13 +736,15 @@ npm run test:integration
 Regista evidência de criação, listagem, duplicado e professor sem ownership.
 
 ## Evidence para PR/defesa
+- Prova de login local com o professor criado no `BK-MF1-07`.
 - Screenshot da lista de disciplinas dentro da turma.
 - Resposta `409` para disciplina duplicada.
 - Resposta `404` para professor sem acesso à turma.
 - Diff mostrando `SubjectsModule` exportado.
 
 ## Handoff
-`BK-MF1-09` deve usar `SubjectsService.findOwnedSubject`. `BK-MF1-11` deve usar `SubjectsService.findSubjectForStudent` para validar inscrição antes de consultar materiais oficiais.
+`BK-MF1-09` deve usar `SubjectsService.findOwnedSubject` com o mesmo professor de desenvolvimento. `BK-MF1-11` deve usar `SubjectsService.findSubjectForStudent` para validar inscrição antes de consultar materiais oficiais.
 
 ## Changelog
+- 2026-05-31: Pré-requisitos e validação alinhados com a seed local de professor criada no BK-MF1-07.
 - 2026-05-30: Guia reescrito com módulo completo, ownership por turma e integração explícita para materiais e IA.

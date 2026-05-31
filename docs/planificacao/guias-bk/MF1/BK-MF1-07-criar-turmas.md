@@ -25,6 +25,8 @@ Implementar `RF19`: permitir que um professor crie turmas oficiais e consulte ap
 Turmas são a fronteira principal da área docente. Disciplinas, materiais oficiais, voz da IA, IA limitada e publicações usam a turma para saber quem é o professor responsável e que alunos podem consultar conteúdo. Por isso, a turma não pode depender de um `teacherId` enviado pelo browser.
 
 ## Scope-in
+- Preparar ligação local ao MongoDB Atlas para a seed e para a API.
+- Criar uma seed local de desenvolvimento para validar professor e aluno com sessão real.
 - Criar `SchoolClass`.
 - Listar turmas do professor autenticado.
 - Adicionar aluno existente à turma por email.
@@ -36,13 +38,18 @@ Turmas são a fronteira principal da área docente. Disciplinas, materiais ofici
 - Horários, avaliações e sumários.
 - Convites por email com token.
 - Gestão avançada de vários professores na mesma turma.
+- Gestão real de papéis em produção, que pertence ao fluxo próprio de administração.
+- Configuração avançada de redes privadas, VPC peering ou ambientes cloud.
 
 ## Estado antes
 - Existe autenticação com cookie HttpOnly e `SessionGuard`.
-- Existem utilizadores com `role` `TEACHER` ou `STUDENT`.
+- O contrato `User` já suporta `role` `TEACHER` e `STUDENT`, mas o registo público da MF0 cria apenas alunos.
+- A app ainda não tem `MONGODB_URI` local documentado para validar a seed.
 - Não existe fronteira persistente para turmas oficiais.
 
 ## Estado depois
+- Existe `MONGODB_URI` local configurado para um cluster MongoDB Atlas de desenvolvimento.
+- Existe uma seed local, bloqueada em produção, para criar contas de validação de professor e aluno.
 - `SchoolClass` guarda professor, código, ano letivo e alunos.
 - Professor cria e lista as suas turmas.
 - Professor associa um aluno existente à turma.
@@ -51,7 +58,10 @@ Turmas são a fronteira principal da área docente. Disciplinas, materiais ofici
 ## Pré-requisitos
 - `BK-MF0-01` com `User`.
 - `BK-MF0-02` com `SessionGuard` e `AuthenticatedRequest`.
-- Mongoose configurado no backend.
+- Conta MongoDB Atlas disponível para a equipa.
+- Cluster de desenvolvimento criado no Atlas.
+- Variável `MONGODB_URI` configurada no ambiente local.
+- Dependência `bcrypt` disponível, herdada da MF0.
 - Frontend a chamar endpoints privados com `credentials: 'include'`.
 
 ## Glossário
@@ -71,6 +81,20 @@ Turmas são a fronteira principal da área docente. Disciplinas, materiais ofici
 
 **Decisão derivada.** `RF19` fala em criar turmas, mas `RF23` e `RF24` dependem de alunos inscritos. Por isso, este BK acrescenta o fluxo mínimo de inscrição para a cadeia seguinte ficar demonstrável sem mexer manualmente na base de dados.
 
+**MongoDB Atlas.** Atlas é o serviço gerido onde a base de dados MongoDB pode ficar alojada. A aplicação não recebe uma “key”; recebe uma connection string guardada em `MONGODB_URI`, que inclui host, nome da base de dados e credenciais de um utilizador da base de dados.
+
+**Utilizador da base de dados.** O utilizador criado no Atlas deve ser diferente da conta pessoal usada para entrar no painel do Atlas. Para desenvolvimento, basta um utilizador com leitura e escrita na base de dados do StudyFlow. Isto evita usar permissões administrativas para correr a app.
+
+**Lista de acesso por IP.** O Atlas só aceita ligações de IPs autorizados. Para trabalho local, adiciona o IP público actual da máquina ou da rede da escola. Abrir acesso a todos os IPs é menos seguro e só deve ser temporário em ambiente de desenvolvimento, removendo essa regra depois dos testes.
+
+**Variáveis de ambiente.** `MONGODB_URI` deve ficar num ficheiro `.env` local que não entra no Git. Assim, a connection string não aparece em commits, screenshots de código ou relatório de defesa.
+
+**Contas de desenvolvimento.** A MF0 permite guardar roles `STUDENT`, `TEACHER` e `ADMIN`, mas o registo público cria apenas `STUDENT`. Para validar este BK com sessão real, vais criar uma seed local que insere um professor e um aluno de teste. Esta seed não é gestão de papéis: é uma ferramenta de desenvolvimento para testar a cadeia docente sem abrir uma rota insegura.
+
+**Proteção contra execução em produção.** Uma seed que cria contas deve recusar `NODE_ENV=production`. Esta validação evita que credenciais conhecidas de desenvolvimento sejam criadas num ambiente real.
+
+**Idempotência da seed.** Executar a seed duas vezes não deve duplicar contas nem alterar uma conta existente com papel diferente. O script cria apenas contas que ainda não existem e ignora contas incompatíveis para não transformar uma ferramenta local num mecanismo escondido de promoção de permissões.
+
 **Decorators do NestJS.** Decorators como `@Controller`, `@Post`, `@Get`, `@Put`, `@Module` e `@Injectable` dizem ao NestJS que papel cada classe tem. O controller recebe pedidos HTTP, o service contém regras de negócio e o módulo liga tudo.
 
 **DTOs e validação.** DTO significa Data Transfer Object. NestJS usa estes objetos, em conjunto com `class-validator`, para validar o que chega do frontend antes de executar regras de negócio.
@@ -84,6 +108,8 @@ Turmas são a fronteira principal da área docente. Disciplinas, materiais ofici
 **Fetch API e cookies.** O frontend usa `fetch` para chamar a API. A opção `credentials: 'include'` envia o cookie HttpOnly da sessão, sem expor tokens no JavaScript.
 
 ## Arquitetura do BK
+- `apps/api/.env`
+- `apps/api/src/scripts/seed-development-users.ts`
 - `apps/api/src/modules/classes/schemas/school-class.schema.ts`
 - `apps/api/src/modules/classes/dto/create-class.dto.ts`
 - `apps/api/src/modules/classes/dto/add-class-student.dto.ts`
@@ -110,10 +136,175 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 - `BK-MF0-01` com `User`.
 - `BK-MF0-02` com `SessionGuard` e `AuthenticatedRequest`.
-- Mongoose configurado no backend.
+- Conta MongoDB Atlas disponível para a equipa.
+- Cluster de desenvolvimento criado no Atlas.
+- Variável `MONGODB_URI` configurada no ambiente local.
+- Dependência `bcrypt` disponível, herdada da MF0.
 - Frontend a chamar endpoints privados com `credentials: 'include'`.
 
-### Passo 1 - Criar schema da turma
+### Passo 1 - Preparar MongoDB Atlas e MONGODB_URI
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais preparar a ligação entre a API e uma base de dados MongoDB Atlas de desenvolvimento. A seed do passo seguinte precisa de `MONGODB_URI` para saber onde criar o professor e o aluno locais.
+
+2. Ficheiros envolvidos.
+
+- CRIAR LOCALMENTE: `apps/api/.env`
+- REVER: `.gitignore`
+- LOCALIZAÇÃO: ficheiro `.env` local da API, sem entrar no Git.
+
+3. O que fazer.
+
+    No MongoDB Atlas, cria ou usa um cluster de desenvolvimento. Em seguida, cria um utilizador da base de dados com permissões de leitura e escrita para a base de dados do StudyFlow, adiciona o teu IP público actual à lista de acesso por IP e copia a connection string da opção de ligação da aplicação.
+
+    No ficheiro local `apps/api/.env`, guarda a connection string em `MONGODB_URI`. Substitui o utilizador, a password e o host pelos valores reais do Atlas. Se a password tiver caracteres especiais, usa a versão codificada que o Atlas mostra na connection string.
+
+4. Código completo, correto e integrado.
+
+```env
+# apps/api/.env
+MONGODB_URI=mongodb+srv://studyflow_dev_user:<password>@<cluster-host>/studyflow_dev?retryWrites=true&w=majority
+NODE_ENV=development
+```
+
+5. Explicação do código.
+
+    `MONGODB_URI` é a variável que a API e a seed vão ler para abrir ligação à base de dados. O nome `studyflow_dev` deixa claro que esta base é de desenvolvimento. `NODE_ENV=development` confirma que estás num ambiente local, o que é importante porque a seed do próximo passo recusa execução em produção.
+
+    O ficheiro `.env` não deve ser enviado para o Git porque contém credenciais. A connection string deve usar um utilizador próprio da base de dados, não a conta pessoal do Atlas nem um utilizador com permissões administrativas globais.
+
+6. Como validar este passo.
+
+    Confirma no Atlas que o IP público actual está autorizado na lista de acesso por IP. Depois arranca a API ou executa a seed do passo seguinte e verifica que a ligação ao MongoDB não falha por autenticação nem por bloqueio de rede.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais comum é copiar a connection string sem substituir `<password>` pela password real do utilizador da base de dados. Outro erro é permitir todos os IPs durante vários dias por conveniência. Para a PAP, se for mesmo necessário usar acesso amplo durante uma aula, remove essa regra depois da validação.
+
+### Passo 2 - Criar seed local de utilizadores de validação
+
+1. Explicação simples do objetivo.
+
+    Neste passo vais criar uma seed local para garantir que consegues testar a área docente com autenticação real. A MF0 já definiu o campo `role`, mas o registo público cria apenas alunos; por isso, este BK precisa de uma forma segura e explícita de criar um professor de desenvolvimento.
+
+2. Ficheiros envolvidos.
+
+- CRIAR: `apps/api/src/scripts/seed-development-users.ts`
+- REVER: `apps/api/src/modules/auth/schemas/user.schema.ts`
+- LOCALIZAÇÃO: ficheiro completo.
+
+3. O que fazer.
+
+    Cria o ficheiro indicado abaixo. Depois de o projecto ter uma forma de executar scripts TypeScript, este ficheiro deve ser chamado apenas em ambiente local, com `MONGODB_URI` definido. As passwords abaixo são públicas porque pertencem só ao ambiente de desenvolvimento; nunca as uses em produção.
+
+4. Código completo, correto e integrado.
+
+```ts
+// apps/api/src/scripts/seed-development-users.ts
+import * as bcrypt from "bcrypt";
+import mongoose, { Model } from "mongoose";
+
+import { User, UserRole, UserSchema } from "../modules/auth/schemas/user.schema";
+
+const BCRYPT_COST = 12;
+
+type DevelopmentUserSeed = {
+    email: string;
+    password: string;
+    role: UserRole;
+};
+
+const developmentUsers: DevelopmentUserSeed[] = [
+    {
+        email: "professor.dev@studyflow.local",
+        password: "ProfessorDev123!",
+        role: "TEACHER",
+    },
+    {
+        email: "aluno.dev@studyflow.local",
+        password: "AlunoDev123!",
+        role: "STUDENT",
+    },
+];
+
+async function ensureDevelopmentUser(
+    userModel: Model<User>,
+    seed: DevelopmentUserSeed,
+): Promise<void> {
+    const email = seed.email.toLowerCase();
+    const existingUser = await userModel.findOne({ email }).exec();
+
+    if (existingUser) {
+        if (existingUser.role !== seed.role) {
+            console.log(
+                `Conta ${email} já existe com role ${existingUser.role}; não será alterada para ${seed.role}.`,
+            );
+            return;
+        }
+
+        console.log(`Conta de desenvolvimento já existe: ${email}.`);
+        return;
+    }
+
+    const passwordHash = await bcrypt.hash(seed.password, BCRYPT_COST);
+
+    await userModel.create({
+        email,
+        passwordHash,
+        role: seed.role,
+        authProvider: "local",
+    });
+
+    console.log(`Conta de desenvolvimento criada: ${email} (${seed.role}).`);
+}
+
+async function main(): Promise<void> {
+    if (process.env.NODE_ENV === "production") {
+        throw new Error("Esta seed não pode ser executada em produção.");
+    }
+
+    const mongoUri = process.env.MONGODB_URI;
+
+    if (!mongoUri) {
+        throw new Error("Define MONGODB_URI antes de executar a seed.");
+    }
+
+    const connection = await mongoose.createConnection(mongoUri).asPromise();
+
+    try {
+        const UserModel = connection.model<User>(User.name, UserSchema);
+
+        for (const seed of developmentUsers) {
+            await ensureDevelopmentUser(UserModel, seed);
+        }
+    } finally {
+        await connection.close();
+    }
+}
+
+main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : "Erro inesperado na seed.";
+    console.error(message);
+    process.exitCode = 1;
+});
+```
+
+5. Explicação do código.
+
+    A seed liga-se ao MongoDB indicado por `MONGODB_URI`, reutiliza o schema `User` criado na MF0 e cria duas contas locais: uma de professor e uma de aluno. O `passwordHash` é calculado com `bcrypt`, tal como no registo da MF0, para manter o mesmo contrato de login.
+
+    A validação de `NODE_ENV` evita execução em produção. A função `ensureDevelopmentUser` torna o script idempotente: se a conta já existir com o papel certo, não duplica; se existir com outro papel, não altera permissões. Esta regra evita transformar uma ajuda de desenvolvimento num mecanismo escondido de gestão de roles.
+
+6. Como validar este passo.
+
+    Executa a seed em ambiente local com `MONGODB_URI` definido e confirma que consegues iniciar sessão com `professor.dev@studyflow.local` e `aluno.dev@studyflow.local`. Depois volta a executar a seed e confirma que não são criadas contas duplicadas. Nunca faças esta validação com `NODE_ENV=production`.
+
+7. Erros comuns ou cenário negativo.
+
+    O erro mais perigoso é permitir que a seed corra em produção. Outro erro é actualizar uma conta existente para `TEACHER`, porque isso seria uma alteração de permissões fora do fluxo administrativo real. Por isso, o script recusa produção e ignora contas existentes com papel incompatível.
+
+### Passo 3 - Criar schema da turma
 
 1. Explicação simples do objetivo.
 
@@ -177,7 +368,7 @@ Valida que o índice único é por professor. Dois professores podem usar o mesm
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
-### Passo 2 - Criar DTOs de entrada
+### Passo 4 - Criar DTOs de entrada
 
 1. Explicação simples do objetivo.
 
@@ -245,7 +436,7 @@ export class AddClassStudentDto {
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
-### Passo 3 - Criar service com regras de segurança
+### Passo 5 - Criar service com regras de segurança
 
 1. Explicação simples do objetivo.
 
@@ -429,7 +620,7 @@ export class ClassesService {
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
-### Passo 4 - Criar controller
+### Passo 6 - Criar controller
 
 1. Explicação simples do objetivo.
 
@@ -501,7 +692,7 @@ export class ClassesController {
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
-### Passo 5 - Criar módulo
+### Passo 7 - Criar módulo
 
 1. Explicação simples do objetivo.
 
@@ -553,7 +744,7 @@ export class ClassesModule {}
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
-### Passo 6 - Criar cliente frontend
+### Passo 8 - Criar cliente frontend
 
 1. Explicação simples do objetivo.
 
@@ -647,7 +838,7 @@ export async function listStudentClasses() {
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
-### Passo 7 - Criar páginas mínimas de utilização
+### Passo 9 - Criar páginas mínimas de utilização
 
 1. Explicação simples do objetivo.
 
@@ -819,7 +1010,7 @@ export function StudentClassesPage() {
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
-### Passo 8 - Validar comportamento e integração
+### Passo 10 - Validar comportamento e integração
 
 1. Explicação simples do objetivo.
 
@@ -860,10 +1051,13 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
 ## Validação operacional por passo
 
-- Passos 1 e 2: confirmar schema e DTOs de turma com `teacherId` vindo da sessão e aluno adicionado por email.
-- Passos 3 e 4: validar criação apenas por professor, unicidade de `code` por professor e inscrição de aluno existente.
-- Passos 5 e 6: confirmar rotas separadas para professor e aluno e cliente frontend com sessão HttpOnly.
-- Passo 7: validar carregamento, vazio, sucesso ao criar/adicionar aluno e erros da API nas páginas docente e discente.
+- Passo 1: confirmar `MONGODB_URI` local, utilizador da base de dados e IP público autorizado no Atlas.
+- Passo 2: confirmar que a seed cria professor e aluno locais, recusa produção e não altera contas com papel incompatível.
+- Passos 3 e 4: confirmar schema e DTOs de turma com `teacherId` vindo da sessão e aluno adicionado por email.
+- Passos 5 e 6: validar criação apenas por professor, unicidade de `code` por professor e inscrição de aluno existente.
+- Passos 7 e 8: confirmar rotas separadas para professor e aluno e cliente frontend com sessão HttpOnly.
+- Passo 9: validar carregamento, vazio, sucesso ao criar/adicionar aluno e erros da API nas páginas docente e discente.
+- Passo 10: repetir o fluxo completo com as contas locais de desenvolvimento.
 
 ## Cenários negativos específicos
 
@@ -872,6 +1066,12 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Aluno não inscrito não vê a turma em `GET /api/student/classes`.
 
 ## Expected results
+- `apps/api/.env` local contém `MONGODB_URI` para uma base de dados Atlas de desenvolvimento.
+- O utilizador da base de dados tem permissões de leitura e escrita adequadas ao ambiente local.
+- O IP público usado no desenvolvimento está autorizado no Atlas.
+- A seed local cria `professor.dev@studyflow.local` com `role` `TEACHER` e `aluno.dev@studyflow.local` com `role` `STUDENT`.
+- A seed recusa execução com `NODE_ENV=production`.
+- A seed não altera uma conta existente com papel incompatível.
 - `POST /api/teacher/classes` com professor autenticado devolve `201` com `teacherId` vindo da sessão.
 - `POST /api/teacher/classes` com aluno autenticado devolve `403`.
 - Criação duplicada de `code` dentro das turmas do mesmo professor devolve `409`.
@@ -880,6 +1080,12 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Frontend mostra carregamento, vazio, sucesso ao criar/adicionar aluno e erros da API.
 
 ## Critérios de aceite
+- `MONGODB_URI` fica apenas em `.env` local e não é enviada para Git.
+- O Atlas usa utilizador próprio da base de dados, não uma conta pessoal nem permissões administrativas globais.
+- A lista de acesso por IP fica limitada ao IP público de desenvolvimento sempre que possível.
+- A validação da cadeia docente usa sessão real criada a partir das contas locais de desenvolvimento.
+- A seed usa `MONGODB_URI`, `bcrypt` e o schema `User` da MF0.
+- A seed não corre em produção e não promove permissões de contas existentes.
 - `SchoolClass` existe com `teacherId`, `name`, `code`, `schoolYear` e `studentIds`.
 - O `teacherId` vem sempre da sessão.
 - A associação de aluno usa email de utilizador existente com `role` `STUDENT`.
@@ -897,13 +1103,18 @@ npm run test:integration
 Confirma também que `BK-MF1-08`, `BK-MF1-11` e `BK-MF1-12` conseguem depender de `SchoolClass.studentIds`.
 
 ## Evidence para PR/defesa
+- Screenshot do Atlas com cluster e IP autorizado, escondendo host completo e credenciais.
+- Confirmação de que `.env` não aparece no diff.
+- Output local da seed a criar ou reutilizar professor e aluno de desenvolvimento.
 - Screenshot da criação de turma.
 - Screenshot da associação de aluno.
 - Resposta `403` para aluno a tentar criar turma.
 - Registo de turma com `studentIds` preenchido.
 
 ## Handoff
-O próximo BK (`BK-MF1-08`) deve usar `SchoolClass.teacherId` para confirmar que a disciplina pertence ao professor autenticado. `BK-MF1-11` e `BK-MF1-12` devem usar `studentIds` para proteger a leitura por alunos.
+O próximo BK (`BK-MF1-08`) deve usar o professor de desenvolvimento para validar `SchoolClass.teacherId` e confirmar que a disciplina pertence ao professor autenticado. `BK-MF1-11` e `BK-MF1-12` devem usar o aluno de desenvolvimento inscrito em `studentIds` para proteger a leitura por alunos.
 
 ## Changelog
+- 2026-05-31: Acrescentado passo de preparação do MongoDB Atlas, `MONGODB_URI`, utilizador da base de dados e IP público autorizado.
+- 2026-05-31: Acrescentada seed local segura para criar professor e aluno de desenvolvimento e desbloquear validação real da cadeia docente.
 - 2026-05-30: Guia reescrito para fechar módulo, endpoints, cliente frontend e fluxo derivado de inscrição de alunos.
