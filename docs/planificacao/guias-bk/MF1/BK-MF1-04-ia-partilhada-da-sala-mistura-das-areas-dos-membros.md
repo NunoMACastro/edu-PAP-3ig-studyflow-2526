@@ -9,14 +9,14 @@
 - `prioridade`: `P2`
 - `estado`: `TODO`
 - `esforco`: `S`
-- `dependencias`: `BK-MF1-02`
+- `dependencias`: `BK-MF1-02, BK-MF1-03`
 - `rf_rnf`: `RF16`
 - `fase_documental`: `Fase 1`
 - `sprint`: `S03`
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF1-07`
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md`
-- `last_updated`: `2026-05-30`
+- `last_updated`: `2026-05-31`
 
 ## Objetivo
 Implementar `RF16`: permitir que membros de uma sala usem uma IA partilhada baseada apenas nas fontes textuais partilhadas nessa sala.
@@ -51,7 +51,7 @@ A IA da sala mistura contribuições dos membros, mas não pode consultar materi
 - `StudyRoomsService.ensureMember`.
 - `RoomSharesService.findUsableSharesForRoom`.
 - `AiModule` com `AI_PROVIDER` exportado.
-- Decisão `DERIVADO`: apesar do header canónico depender de `BK-MF1-02`, este BK tem dependência técnica direta de `BK-MF1-03`, porque a IA só pode responder sobre `RoomShare` validado.
+- `BK-MF1-03` merged, porque a IA só pode responder sobre `RoomShare` validado.
 
 ## Glossário
 - **Fonte da sala**: partilha textual com `usableByAi`.
@@ -61,7 +61,9 @@ A IA da sala mistura contribuições dos membros, mas não pode consultar materi
 ## Conceitos teóricos
 **IA partilhada da sala.** Esta IA responde com base nas partilhas textuais feitas pelos membros da sala. Ela não usa materiais privados do aluno, materiais oficiais de turma nem conteúdo de outras salas.
 
-**Dependência técnica de `BK-MF1-03`.** O header mantém a dependência canónica em `BK-MF1-02`, porque membership nasce nas salas. Tecnicamente, a execução depende também de `BK-MF1-03`: sem `RoomSharesService.findUsableSharesForRoom`, não existem fontes autorizadas para o prompt. Esta é uma decisão `DERIVADO`, registada para tornar a ordem atual executável sem alterar o contrato canónico.
+**Dependência canónica de `BK-MF1-03`.** A execução depende de `BK-MF1-02` para membership e de `BK-MF1-03` para fontes partilhadas. Sem `RoomSharesService.findUsableSharesForRoom`, não existem fontes autorizadas para o prompt, por isso este BK só deve abrir PR depois de `BK-MF1-03` estar merged.
+
+**Módulo acumulado.** Este BK edita `study-rooms.module.ts` a partir da versão final de `BK-MF1-03`: preserva `StudyRoomsController`, `StudyRoomsService`, `RoomSharesController` e `RoomSharesService`, e acrescenta apenas `RoomAiController`, `RoomAiService`, `RoomAiInteraction` e o import de `AiModule`.
 
 **O que são `sourceIds`.** `sourceIds` é uma lista opcional de IDs de partilhas que o aluno escolhe no frontend para focar a resposta. Por exemplo, a página pode mostrar três apontamentos partilhados e o aluno selecciona dois. Esses dois `_id` seguem no body do pedido como `sourceIds`.
 
@@ -111,7 +113,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 - `StudyRoomsService.ensureMember`.
 - `RoomSharesService.findUsableSharesForRoom`.
 - `AiModule` com `AI_PROVIDER` exportado.
-- Decisão `DERIVADO`: este BK requer `BK-MF1-03` implementado para obter fontes `RoomShare.usableByAi`.
+- `BK-MF1-03` implementado e merged para obter fontes `RoomShare.usableByAi`.
 
 ### Passo 1 - Criar schema da interação
 
@@ -461,7 +463,7 @@ export class RoomAiController {
 
 1. Explicação simples do objetivo.
 
-    Neste passo vais atualizar módulo da sala nos ficheiros `apps/api/src/modules/study-rooms/study-rooms.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+    Neste passo vais atualizar módulo da sala nos ficheiros `apps/api/src/modules/study-rooms/study-rooms.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios. Este ficheiro é acumulado sobre `BK-MF1-03`; não removas o módulo de salas nem o módulo de partilhas.
 
 2. Ficheiros envolvidos.
 
@@ -511,7 +513,7 @@ export class StudyRoomsModule {}
 
 5. Explicação do código.
 
-    O módulo integra o provider de IA, os schemas da cadeia colaborativa e o schema `Material` exigido por `RoomSharesService` desde `BK-MF1-03`. Não importa disciplinas oficiais. Assim, a IA da sala continua isolada da cadeia docente e só depende de salas, membros, partilhas validadas e provider.
+    O módulo integra o provider de IA, os schemas da cadeia colaborativa e o schema `Material` exigido por `RoomSharesService` desde `BK-MF1-03`. Não importa disciplinas oficiais. Assim, a IA da sala continua isolada da cadeia docente e só depende de salas, membros, partilhas validadas e provider. Como o ficheiro é partilhado com `BK-MF1-02` e `BK-MF1-03`, qualquer PR deste BK deve partir da versão merged anterior.
 
 6. Como validar este passo.
 

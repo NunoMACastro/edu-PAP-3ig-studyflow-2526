@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF1-12`
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-11-o-aluno-inscrito-numa-turma-recebe-versao-limitada-da-ia.md`
-- `last_updated`: `2026-05-30`
+- `last_updated`: `2026-05-31`
 
 ## Objetivo
 Implementar `RF23`: permitir que um aluno inscrito numa turma use uma IA limitada aos materiais oficiais da disciplina.
@@ -55,7 +55,7 @@ Este é um dos pontos de maior risco da MF1. A IA não pode misturar disciplinas
 - `BK-MF1-08` com `SubjectsService.findSubjectForStudent`.
 - `BK-MF1-09` com `OfficialMaterialsService.findProcessedBySubject`.
 - `BK-MF1-10` com `TeacherAiVoiceService.findForSubject`.
-- `AiModule` com `AI_PROVIDER` exportado pelos BKs de IA da MF0.
+- `AiModule` final da MF0 com `AI_PROVIDER` exportado e `AiAreaProfileService`, `SummariesService` e `StudyToolsService` preservados.
 
 ## Glossário
 - **IA limitada**: IA que responde apenas com fontes oficiais da disciplina.
@@ -76,6 +76,8 @@ Este é um dos pontos de maior risco da MF1. A IA não pode misturar disciplinas
 **Voz docente.** `TeacherAiVoice` entra no prompt para controlar tom, detalhe e regras pedagógicas. Ela não permite responder fora das fontes.
 
 **Duas proteções.** A primeira proteção é programática: validar inscrição e fontes antes da IA. A segunda é textual: o prompt instrui a IA a responder apenas com as fontes fornecidas. Se uma das duas falhar, o risco de fuga ou invenção aumenta.
+
+**Contrato de IA herdado.** Este BK importa o `AiModule` final em vez de redefinir `AI_PROVIDER` ou `OpenAiProvider`. A cadeia docente usa o mesmo contrato de IA fechado na MF0/MF1: provider exportado uma vez, services específicos em módulos próprios e sem duplicação de lógica de chamada à IA.
 
 **Decorators do NestJS.** Decorators como `@Controller`, `@Post`, `@Get`, `@Put`, `@Module` e `@Injectable` dizem ao NestJS que papel cada classe tem. O controller recebe pedidos HTTP, o service contém regras de negócio e o módulo liga tudo.
 
@@ -115,7 +117,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 - `BK-MF1-08` com `SubjectsService.findSubjectForStudent`.
 - `BK-MF1-09` com `OfficialMaterialsService.findProcessedBySubject`.
 - `BK-MF1-10` com `TeacherAiVoiceService.findForSubject`.
-- `AiModule` com `AI_PROVIDER` exportado pelos BKs de IA da MF0.
+- `AiModule` final da MF0 com `AI_PROVIDER` exportado e services de IA da MF0 preservados.
 
 ### Passo 1 - Criar schema da interação
 
@@ -488,7 +490,7 @@ export class ClassAiController {
 
 1. Explicação simples do objetivo.
 
-    Neste passo vais criar módulo nos ficheiros `apps/api/src/modules/class-ai/class-ai.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+    Neste passo vais criar módulo nos ficheiros `apps/api/src/modules/class-ai/class-ai.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios. Este módulo consome `AiModule`; não declares outro provider de IA dentro de `ClassAiModule`.
 
 2. Ficheiros envolvidos.
 
@@ -534,7 +536,7 @@ export class ClassAiModule {}
 
 5. Explicação do código.
 
-    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
+    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`. O import de `AiModule` é a fronteira correta: `ClassAiService` injeta `AI_PROVIDER`, mas o provider continua definido no módulo de IA, sem duplicação.
 
 6. Como validar este passo.
 

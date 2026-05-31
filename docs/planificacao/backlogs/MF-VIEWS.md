@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-19`
+- `last_updated`: `2026-05-31`
 
 ## Criterio de pronto pedagogico por macro
 - 100% BK com guia canónico completo e snippet tecnico aplicavel.
@@ -40,10 +40,12 @@ BK-MF0-01, BK-MF0-02, BK-MF0-03, BK-MF0-04, BK-MF0-05, BK-MF0-06, BK-MF0-07, BK-
 3. Validar smoke e negativos por BK antes do handoff.
 4. Garantir evidence (`pr/proof/neg`) e atualizar estado documental.
 5. Fechar macro apenas com criterios de pronto cumpridos.
+6. Considerar `BK-MF0-12` o fecho técnico de IA: `AiModule` preserva perfil IA, resumos, ferramentas de estudo e exporta `AI_PROVIDER`.
 
 ### Pronto da macro
 - Todos os BK da macro com guia e evidence minima.
 - Sem dependencias invalidas para a macro seguinte.
+- Contratos herdáveis explícitos: `SessionGuard`, `AuthenticatedUser`, `StudyAreasService`, `MaterialsService`, `AiModule` e `AI_PROVIDER`.
 
 ## MF1 - Nucleo funcional I
 ### Sequencia por macro
@@ -63,14 +65,20 @@ BK-MF1-01, BK-MF1-02, BK-MF1-03, BK-MF1-04, BK-MF1-07, BK-MF1-08, BK-MF1-09, BK-
 
 ### Step-by-step macro
 1. Confirmar dependencias desbloqueadas antes de iniciar BK.
-2. Executar BK por ordem de prioridade `P0->P1->P2` mantendo sequencia tecnica.
+2. Executar BK pela ordem canónica de PRs: `BK-MF1-01`, `BK-MF1-02`, `BK-MF1-03`, `BK-MF1-04`, `BK-MF1-07`, `BK-MF1-08`, `BK-MF1-09`, `BK-MF1-10`, `BK-MF1-11`, `BK-MF1-12`.
 3. Validar smoke e negativos por BK antes do handoff.
 4. Garantir evidence (`pr/proof/neg`) e atualizar estado documental.
 5. Fechar macro apenas com criterios de pronto cumpridos.
+6. Abrir cada PR apenas depois do BK anterior da mesma cadeia estar merged.
+7. Evitar PRs paralelos em módulos partilhados: `ai.module.ts` acumula MF0 -> `BK-MF1-01`; `study-rooms.module.ts` acumula `BK-MF1-02` -> `BK-MF1-03` -> `BK-MF1-04`.
+8. Manter `BK-MF1-12` depois de `BK-MF1-11` na sequência macro, apesar de a dependência técnica direta vir de `BK-MF1-07`.
 
 ### Pronto da macro
 - Todos os BK da macro com guia e evidence minima.
 - Sem dependencias invalidas para a macro seguinte.
+- `BK-MF1-01` depende de `BK-MF0-12` e preserva `StudyToolsService` e `AI_PROVIDER`.
+- `BK-MF1-04` depende de `BK-MF1-02` e `BK-MF1-03`.
+- `BK-MF1-11` importa `AiModule` final em vez de redefinir provider.
 
 ## MF2 - Nucleo funcional II
 ### Sequencia por macro

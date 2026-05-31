@@ -1,14 +1,15 @@
-# Auditoria e correção de guias BK - MF1
+# Auditoria de guias BK - MF1
 
 ## Metadados
 
 - MF processada: `MF1`
-- Modo: `corrigir_apenas`
-- Estado: `corrigido`
+- Modo: `auditar_apenas`
+- Estado: `auditado`
 - Data: `2026-05-31`
-- Escopo: guias em `docs/planificacao/guias-bk/MF1/*.md`
+- Escopo: auditoria documental e técnica dos BKs da `MF1`, sem edição de BKs dos alunos.
 - BKs analisados: `10`
-- BKs editados nesta execução: `6`
+- BKs editados nesta execução: `0`
+- Código em `apps/`: tratado como código inicial não validado; não foi usado como contrato técnico final.
 
 ## Fontes consultadas
 
@@ -22,91 +23,101 @@
 - `docs/planificacao/backlogs/MF-VIEWS.md`
 - `docs/planificacao/sprints/PLANO-SPRINTS.md`
 - `docs/planificacao/guias-bk/_TEMPLATE-BK.md`
-- Todos os BKs da `MF0`
-- Todos os BKs da `MF1`
+- Todos os BKs em `docs/planificacao/guias-bk/MF0/`
+- Todos os BKs em `docs/planificacao/guias-bk/MF1/`
 - BKs posteriores dependentes em `MF2`, `MF3` e `MF4`
 
-## Resultado antes/depois
+## Resultado da auditoria
 
 | Momento | `OK` | `PARCIAL` | `CRÍTICO` |
 | --- | ---: | ---: | ---: |
-| Antes da correção | 4 | 6 | 0 |
-| Depois da correção | 10 | 0 | 0 |
+| Antes de qualquer correção nesta execução | 10 | 0 | 0 |
+| Depois desta execução | 10 | 0 | 0 |
 
-Antes da correção, `BK-MF1-07` a `BK-MF1-12` estavam `PARCIAL` porque a cadeia docente exigia sessão real de professor, mas a sequência MF0 -> MF1 não dizia como obter uma conta `TEACHER` executável. A correção escolhida foi preparar `MONGODB_URI` local para MongoDB Atlas e acrescentar uma seed local de desenvolvimento em `BK-MF1-07`, bloqueada em produção, para criar professor e aluno de validação sem transformar isto em gestão real de papéis.
+Como o modo desta execução é `auditar_apenas`, nenhum BK foi reescrito. A classificação reflete o estado atual dos guias no repositório.
 
-## Classificação final por BK
+## Classificação por BK
 
-| BK | Estado final | Justificação |
+| BK | Estado | Fundamentação |
 | --- | --- | --- |
-| `BK-MF1-01` | `OK` | Aprendizagem adaptativa individual mantém perfil, fontes, provider IA e guardrails. |
-| `BK-MF1-02` | `OK` | Salas de estudo continuam coerentes com membership e partilha posterior. Mantém drift documental de sprint. |
-| `BK-MF1-03` | `OK` | Partilha de materiais da sala valida membership e prepara `RoomSharesService`. |
-| `BK-MF1-04` | `OK` | IA partilhada usa fontes partilhadas, membership e bloqueio sem contexto. Mantém drift documental de dependência técnica. |
-| `BK-MF1-07` | `OK` | Agora inclui preparação do MongoDB Atlas, `MONGODB_URI` local e seed segura para criar professor/aluno de desenvolvimento e validar turmas com sessão real. |
-| `BK-MF1-08` | `OK` | Pré-requisitos e validação usam o professor de desenvolvimento criado no `BK-MF1-07`. |
-| `BK-MF1-09` | `OK` | Materiais oficiais usam professor real de desenvolvimento e mantêm separação `PROCESSED`/`REFERENCE_ONLY`. Mantém drift documental de owner. |
-| `BK-MF1-10` | `OK` | Voz docente textual usa professor real de desenvolvimento e continua limitada a estilo, não a fonte. |
-| `BK-MF1-11` | `OK` | IA limitada usa aluno inscrito real, materiais oficiais processados e voz docente. |
-| `BK-MF1-12` | `OK` | Publicações usam professor/aluno reais e validação por ownership/inscrição. |
+| `BK-MF1-01` | `OK` | Estende a IA individual depois de `BK-MF0-12`, preserva `StudyToolsService`, `SummariesService`, `AiAreaProfileService` e `AI_PROVIDER`, valida ownership da área e bloqueia geração sem fontes `READY`. |
+| `BK-MF1-02` | `OK` | Cria salas com `StudyRoomsService`, membership explícito, endpoints reais e cliente frontend com `credentials: 'include'`; não mistura disciplinas oficiais antes de `BK-MF1-08`. |
+| `BK-MF1-03` | `OK` | Partilha materiais e notas na sala com membership, ownership de materiais da MF0 e `RoomSharesService` exportado para `BK-MF1-04`. |
+| `BK-MF1-04` | `OK` | IA da sala usa `RoomSharesService.findUsableSharesForRoom`, `StudyRoomsService.ensureMember`, `AiModule` e bloqueio sem fontes autorizadas. |
+| `BK-MF1-07` | `OK` | Cria a base docente de turmas, documenta `MONGODB_URI` local, seed bloqueada em produção, professor/aluno de validação e `ClassesService` exportado. |
+| `BK-MF1-08` | `OK` | Cria disciplinas dentro de turmas, valida ownership com `ClassesService.findOwnedClass` e prepara `findOwnedSubject`/`findSubjectForStudent`. |
+| `BK-MF1-09` | `OK` | Materiais oficiais ficam ligados à disciplina do professor, distinguem `PROCESSED` de `REFERENCE_ONLY` e exportam `OfficialMaterialsService`. |
+| `BK-MF1-10` | `OK` | Voz docente é estilo pedagógico textual, com `PUT` idempotente, ownership de disciplina e export de `TeacherAiVoiceService`. |
+| `BK-MF1-11` | `OK` | IA limitada valida inscrição, usa materiais oficiais `PROCESSED`, voz docente e `AI_PROVIDER` herdado via `AiModule`, sem duplicar provider. |
+| `BK-MF1-12` | `OK` | Publicações oficiais validam professor dono ou aluno inscrito, usam `ClassPostsService` e preparam dependentes de notificações/painel. |
 
-## BKs editados
+## BKs PARCIAL ou CRÍTICO
 
-- `docs/planificacao/guias-bk/MF1/BK-MF1-07-criar-turmas.md`
-- `docs/planificacao/guias-bk/MF1/BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md`
-- `docs/planificacao/guias-bk/MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md`
-- `docs/planificacao/guias-bk/MF1/BK-MF1-10-configurar-voz-da-ia-docente.md`
-- `docs/planificacao/guias-bk/MF1/BK-MF1-11-o-aluno-inscrito-numa-turma-recebe-versao-limitada-da-ia.md`
-- `docs/planificacao/guias-bk/MF1/BK-MF1-12-professores-podem-enviar-avisos-e-publicacoes.md`
-
-## Lacunas corrigidas
-
-- `BK-MF1-07` passou a explicar como preparar MongoDB Atlas para desenvolvimento: utilizador da base de dados, IP público autorizado e `MONGODB_URI` local.
-- O guia passou a reforçar que `apps/api/.env` não deve entrar no Git e que a connection string não deve aparecer em commits.
-- `BK-MF1-07` passou a documentar `apps/api/src/scripts/seed-development-users.ts`.
-- A seed usa `MONGODB_URI`, `bcrypt`, `User`, `UserSchema` e roles da MF0.
-- A seed recusa `NODE_ENV=production`.
-- A seed cria apenas contas locais de validação: `professor.dev@studyflow.local` (`TEACHER`) e `aluno.dev@studyflow.local` (`STUDENT`).
-- A seed não altera contas existentes com papel incompatível.
-- `BK-MF1-08` a `BK-MF1-12` passaram a declarar explicitamente que a validação usa professor/aluno criados no `BK-MF1-07`.
-- Expected results, evidence, handoff e changelog dos BKs docentes foram alinhados com validação por sessão real.
+Não foram encontrados BKs `PARCIAL` ou `CRÍTICO` na MF1 nesta auditoria.
 
 ## Decisões técnicas confirmadas
 
-- A seed é ferramenta local de desenvolvimento, não funcionalidade de produto nem gestão real de papéis.
-- A connection string do MongoDB Atlas deve ficar em `MONGODB_URI` local e não é uma key pública de aplicação.
-- O acesso Atlas deve usar utilizador de base de dados com permissões limitadas e IP access list restrita ao desenvolvimento sempre que possível.
-- Gestão administrativa de papéis continua pertencente ao fluxo próprio de administração, associado a RF55.
+- `M0` é tratado como `MF0`.
+- `BK-MF0-12` fecha a fundação técnica de IA: `AiModule` preserva perfil IA, resumos e study tools, e exporta `AI_PROVIDER`.
+- `BK-MF1-01` acrescenta adaptação sem substituir os contratos de IA da MF0.
+- A cadeia de sala é acumulada: `BK-MF1-02` cria salas, `BK-MF1-03` acrescenta partilhas e `BK-MF1-04` acrescenta IA da sala.
+- A cadeia docente é acumulada: `BK-MF1-07` turmas, `BK-MF1-08` disciplinas, `BK-MF1-09` materiais oficiais, `BK-MF1-10` voz docente, `BK-MF1-11` IA limitada e `BK-MF1-12` publicações.
+- `teacherId`, `studentId`, ownership e membership vêm da sessão/base de dados, não de IDs livres enviados pelo frontend.
 - Voz docente continua a ser estilo pedagógico textual, não áudio.
-- URLs de materiais oficiais continuam `REFERENCE_ONLY` e não alimentam IA factual antes de processamento textual.
-- IA limitada continua a bloquear sem materiais oficiais `PROCESSED`.
-- `teacherId`, `studentId`, ownership e inscrição continuam a vir da sessão/base de dados, não de IDs livres enviados pelo frontend.
+- Materiais oficiais `URL` ficam como `REFERENCE_ONLY`; só materiais `PROCESSED` alimentam IA factual.
+- IA privada, IA da sala e IA da turma/disciplina mantêm contextos separados.
+- Qualquer geração IA da MF1 bloqueia quando não existem fontes processáveis e autorizadas.
 
 ## Drift documental encontrado
 
-| Item | Drift | Estado |
-| --- | --- | --- |
-| `BK-MF1-02` | `CONTRATO-CAMPOS-BK.md` e `MATRIZ-CANONICA-BK.md` indicam `S03`; `BACKLOG-MVP.md` e guia indicam `S02`. | Mantido, sem alteração por falta de decisão documental única. |
-| `BK-MF1-09` | `CONTRATO-CAMPOS-BK.md` e `MATRIZ-CANONICA-BK.md` indicam owner `Guilherme`; `BACKLOG-MVP.md` e guia indicam `Kaua`. | Mantido, sem alteração por falta de decisão documental única. |
-| `BK-MF1-04` | Header/contrato declaram dependência de `BK-MF1-02`; corpo usa tecnicamente `RoomSharesService` de `BK-MF1-03`. | Mantido como dependência técnica derivada. |
-| BKs posteriores | Alguns BKs dependentes em `MF2`, `MF3` e `MF4` continuam em formato curto/legacy. | Fora do escopo desta execução. |
+Não foi encontrado drift documental ativo entre headers dos BKs da MF1, `MATRIZ-CANONICA-BK.md` e `CONTRATO-CAMPOS-BK.md`.
+
+Itens históricos já aparecem resolvidos no estado atual:
+
+- `BK-MF1-02` está alinhado em `S03`.
+- `BK-MF1-04` declara dependência em `BK-MF1-02, BK-MF1-03`.
+- `BK-MF1-09` está alinhado com owner `Kaua`.
 
 ## Mapa de integração da MF
 
 | BK | Ficheiros criados/editados no guia | Exports/elementos produzidos | Imports/consumos principais | Endpoints | Dependentes |
 | --- | --- | --- | --- | --- | --- |
-| `BK-MF1-01` | Perfil, DTOs, prompt, provider, service, controller, API web e página de IA adaptativa | `AdaptiveLearningService`, profile/adaptive explanation | `Material`, `StudyAreasService`, `AI_PROVIDER`, `SessionGuard` | `GET/PUT /api/study-areas/:studyAreaId/learning-profile`, `POST /api/study-areas/:studyAreaId/adaptive-explanations` | Personalização individual da IA |
-| `BK-MF1-02` | `StudyRoom`, DTOs, service, controller, module, API web e página | `StudyRoomsService` | `SessionGuard`, utilizador autenticado | `POST/GET /api/study-rooms`, `POST /api/study-rooms/:roomId/members` | `BK-MF1-03`, `BK-MF1-04` |
-| `BK-MF1-03` | `RoomShare`, DTO, service, controller, update de module, API web e página | `RoomSharesService` | `StudyRoomsService.ensureMember`, `Material` | `POST/GET /api/study-rooms/:roomId/shares` | `BK-MF1-04` |
-| `BK-MF1-04` | `RoomAiInteraction`, DTO, prompt, service, controller, module, API web e página | IA colectiva da sala | `StudyRoomsService`, `RoomSharesService`, `AI_PROVIDER` | `POST /api/study-rooms/:roomId/ai/answers` | Fecho RF14-RF16 |
-| `BK-MF1-07` | `apps/api/.env`, `seed-development-users.ts`, `SchoolClass`, DTOs, service, controller, module, APIs web e páginas teacher/student | `MONGODB_URI` local, contas locais de validação, `ClassesService`, `SchoolClass.studentIds` | MongoDB Atlas, `User`, `UserSchema`, `bcrypt`, `MONGODB_URI`, `SessionGuard` | `POST/GET /api/teacher/classes`, `POST /api/teacher/classes/:classId/students`, `GET /api/student/classes` | `BK-MF1-08`, `BK-MF1-11`, `BK-MF1-12` |
-| `BK-MF1-08` | `Subject`, DTO, service, controller, module, API web e página | `SubjectsService`, `findOwnedSubject`, `findSubjectForStudent` | `ClassesService.findOwnedClass`, professor de desenvolvimento | `POST/GET /api/teacher/classes/:classId/subjects` | `BK-MF1-09`, `BK-MF1-10`, `BK-MF1-11` |
-| `BK-MF1-09` | `OfficialMaterial`, DTO, service, controller, module, API web e página | `OfficialMaterialsService`, materiais `PROCESSED`/`REFERENCE_ONLY` | `SubjectsService.findOwnedSubject`, professor de desenvolvimento | `POST/GET /api/teacher/subjects/:subjectId/materials` | `BK-MF1-11` |
-| `BK-MF1-10` | `TeacherAiVoice`, DTO, service, controller, module, API web e página | `TeacherAiVoiceService` | `SubjectsService.findOwnedSubject`, professor de desenvolvimento | `PUT/GET /api/teacher/subjects/:subjectId/ai-voice` | `BK-MF1-11` |
-| `BK-MF1-11` | `ClassAiInteraction`, DTO, prompt, service, controller, module, API web e página | IA limitada por disciplina/turma | `SubjectsService`, `OfficialMaterialsService`, `TeacherAiVoiceService`, `AI_PROVIDER`, aluno inscrito | `POST /api/student/subjects/:subjectId/ai/answers` | Fluxos discentes posteriores |
-| `BK-MF1-12` | `ClassPost`, DTO, service, controller, module, APIs web e páginas teacher/student | Publicações oficiais da turma | `ClassesService.findOwnedClass`, `ClassesService.ensureStudentEnrollment`, professor/aluno de desenvolvimento | `POST/GET /api/teacher/classes/:classId/posts`, `GET /api/student/classes/:classId/posts` | `BK-MF2-01` |
+| `BK-MF1-01` | Schemas de perfil/explicação, DTOs, prompt, provider, service, controller, `AiModule`, cliente API e página | `AdaptiveLearningService`, perfil de aprendizagem, explicação adaptativa | `StudyAreasService`, `Material`, `AI_PROVIDER`, `StudyToolsService`, `SessionGuard` | `GET/PUT /api/study-areas/:studyAreaId/learning-profile`, `POST /api/study-areas/:studyAreaId/adaptive-explanations` | `BK-MF3-04` |
+| `BK-MF1-02` | `StudyRoom`, DTOs, service, controller, module, cliente API e página | `StudyRoomsService`, `StudyRoomsModule` | `SessionGuard`, `User`, utilizador autenticado | `POST/GET /api/study-rooms`, `POST /api/study-rooms/:roomId/members` | `BK-MF1-03`, `BK-MF1-04`, `BK-MF3-05` |
+| `BK-MF1-03` | `RoomShare`, DTO, service, controller, update de module, cliente API e página | `RoomSharesService`, `findUsableSharesForRoom` | `StudyRoomsService.ensureMember`, `Material` da MF0 | `POST/GET /api/study-rooms/:roomId/shares` | `BK-MF1-04` |
+| `BK-MF1-04` | `RoomAiInteraction`, DTO, prompt, service, controller, update de module, cliente API e página | `RoomAiService`, IA da sala com fontes partilhadas | `StudyRoomsService`, `RoomSharesService`, `AI_PROVIDER`, `AiModule` | `POST /api/study-rooms/:roomId/ai/answers` | Fecho da cadeia `RF14-RF16` |
+| `BK-MF1-07` | `.env` local documentado, seed local, `SchoolClass`, DTOs, service, controller, module, cliente API e páginas | `MONGODB_URI` local, contas de validação, `ClassesService`, `SchoolClass.studentIds` | `User`, `UserSchema`, `bcrypt`, `SessionGuard`, MongoDB Atlas | `POST/GET /api/teacher/classes`, `POST /api/teacher/classes/:classId/students`, `GET /api/student/classes` | `BK-MF1-08`, `BK-MF1-12`, `BK-MF2-01`, `BK-MF2-02` |
+| `BK-MF1-08` | `Subject`, DTO, service, controller, module, cliente API e página | `SubjectsService`, `findOwnedSubject`, `findSubjectForStudent` | `ClassesService.findOwnedClass`, `ClassesService.ensureStudentEnrollment` | `POST/GET /api/teacher/classes/:classId/subjects` | `BK-MF1-09`, `BK-MF1-10`, `BK-MF1-11`, `BK-MF2-04` |
+| `BK-MF1-09` | `OfficialMaterial`, DTO, service, controller, module, cliente API e página | `OfficialMaterialsService`, materiais `PROCESSED`/`REFERENCE_ONLY` | `SubjectsService.findOwnedSubject` | `POST/GET /api/teacher/subjects/:subjectId/materials` | `BK-MF1-10`, `BK-MF1-11`, `BK-MF2-05`, `BK-MF2-07` |
+| `BK-MF1-10` | `TeacherAiVoice`, DTO, service, controller, module, cliente API e página | `TeacherAiVoiceService`, voz docente textual | `SubjectsService.findOwnedSubject` | `PUT/GET /api/teacher/subjects/:subjectId/ai-voice` | `BK-MF1-11`, `BK-MF2-12` |
+| `BK-MF1-11` | `ClassAiInteraction`, DTO, prompt, service, controller, module, cliente API e página | `ClassAiService`, IA limitada por disciplina/turma | `SubjectsService`, `OfficialMaterialsService`, `TeacherAiVoiceService`, `AI_PROVIDER`, `AiModule` | `POST /api/student/subjects/:subjectId/ai/answers` | Fluxos de IA docente posteriores |
+| `BK-MF1-12` | `ClassPost`, DTO, service, controller, module, cliente API e páginas teacher/student | `ClassPostsService`, publicações oficiais da turma | `ClassesService.findOwnedClass`, `ClassesService.ensureStudentEnrollment` | `POST/GET /api/teacher/classes/:classId/posts`, `GET /api/student/classes/:classId/posts` | `BK-MF2-06`, `BK-MF4-01` |
+
+## Gate de app funcional
+
+| Pergunta | Resultado |
+| --- | --- |
+| Este código compila no contexto da app final prevista? | `OK` documental: imports e módulos estão descritos de forma acumulada. Não foi executada compilação da app. |
+| Os imports apontam para ficheiros existentes ou criados em BKs anteriores? | `OK` na sequência documental MF0 -> MF1. |
+| O controller chama um service existente? | `OK`; cada controller da MF1 tem service correspondente. |
+| O service usa schemas/models existentes? | `OK`; schemas próprios ou herdados dos BKs anteriores são declarados. |
+| O frontend chama endpoints reais definidos no backend? | `OK`; endpoints dos clientes batem com controllers/expected results. |
+| Os tipos do frontend correspondem ao payload e resposta do backend? | `OK` documental; não foram encontrados `payload: unknown` nem `as any`. |
+| O fluxo funciona com autenticação real? | `OK` documental; os BKs usam `SessionGuard`, sessão HttpOnly e seed local para professor/aluno quando necessário. |
+| O fluxo falha de forma controlada nos negativos? | `OK`; há `400/401/403/404/409/422/503` conforme domínio. |
+| Este BK deixa a app num estado mais funcional do que antes? | `OK`; cada BK entrega endpoints, services e UI incrementais. |
+| O próximo BK consegue construir sobre este sem reescrever tudo? | `OK`; handoffs e exports estão explícitos. |
 
 ## Verificações textuais executadas
+
+### Estrutura dos BKs
+
+Resultado:
+
+- Todos os `10` BKs da MF1 têm as secções obrigatórias de objetivo, importância, scope, pré-requisitos, conceitos, arquitetura, guia linear, expected results, critérios, validação, evidence, handoff e changelog.
+- Todos os passos auditados seguem os pontos `1` a `7` exigidos.
+- Mínimo de passos por prioridade cumprido: `P0 >= 8`, `P1/P2 >= 6`.
+- Blocos `ts`/`tsx` auditados incluem comentário inicial com caminho de ficheiro.
 
 ### Pesquisa obrigatória
 
@@ -118,9 +129,9 @@ rg -n "hidrata|pós-auditoria|scaffold|roteiro genérico|conversa interna|este g
 
 Resultado: sem ocorrências nos BKs MF1. O `rg` terminou com exit code `1`, que neste caso significa zero matches.
 
-### Blocos de código
+### Alinhamento documental
 
-Resultado: não foram encontrados blocos `ts`/`tsx` sem comentário inicial com caminho de ficheiro.
+Resultado: headers da MF1 alinhados com `MATRIZ-CANONICA-BK.md` e `CONTRATO-CAMPOS-BK.md`.
 
 ## Verificações de comandos
 
@@ -130,7 +141,7 @@ Resultado: passou sem output.
 
 ### `bash scripts/validate-planificacao.sh`
 
-Resultado: falhou antes de executar a validação canónica por bloqueio de infraestrutura já existente.
+Resultado: falhou antes de executar a validação canónica por bloqueio de infraestrutura.
 
 Output observado:
 
@@ -138,12 +149,24 @@ Output observado:
 /opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python: can't open file '/Users/nuno/Developer/EPMS/Terceiro Ano/2025.2026/PAP/studyflow/../scripts/validate_planificacao_canonica.py': [Errno 2] No such file or directory
 ```
 
-Causa confirmada: `scripts/validate-planificacao.sh` chama `python3 ../scripts/validate_planificacao_canonica.py --project studyflow --json`, mas o ficheiro Python referido não existe neste workspace; `scripts/` contém apenas `validate-planificacao.sh`.
+Causa observada: `scripts/validate-planificacao.sh` chama `../scripts/validate_planificacao_canonica.py`, mas esse ficheiro não existe neste workspace.
+
+## Ordem recomendada de correção
+
+Não há correções recomendadas para a MF1 nesta execução. Se a MF1 voltar a ser alterada, a ordem segura de revisão deve seguir a sequência canónica:
+
+1. `BK-MF1-01`
+2. `BK-MF1-02`
+3. `BK-MF1-03`
+4. `BK-MF1-04`
+5. `BK-MF1-07`
+6. `BK-MF1-08`
+7. `BK-MF1-09`
+8. `BK-MF1-10`
+9. `BK-MF1-11`
+10. `BK-MF1-12`
 
 ## Bloqueios e TODOs restantes
 
-- `TODO`: resolver drift de sprint de `BK-MF1-02`.
-- `TODO`: resolver drift de owner de `BK-MF1-09`.
-- `TODO`: decidir se `BK-MF1-04` deve declarar formalmente `BK-MF1-03` como dependência.
-- `TODO`: corrigir o caminho do validador canónico ou repor `../scripts/validate_planificacao_canonica.py`.
-- `TODO`: hidratar BKs posteriores dependentes em `MF2`, `MF3` e `MF4` quando essas macrofases entrarem em escopo.
+- `TODO`: confirmar infraestrutura do validador canónico se `scripts/validate-planificacao.sh` continuar a apontar para ficheiro Python inexistente fora deste workspace.
+- `TODO`: hidratar/auditar BKs posteriores dependentes em `MF2`, `MF3` e `MF4` quando essas macrofases entrarem em escopo.

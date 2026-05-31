@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF1-04`
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md`
-- `last_updated`: `2026-05-30`
+- `last_updated`: `2026-05-31`
 
 ## Objetivo
 Implementar `RF15`: permitir que membros de uma sala partilhem apontamentos, URLs e referências de material dentro da sala.
@@ -72,6 +72,8 @@ A partilha é a fonte colaborativa para a IA da sala. O sistema precisa de guard
 **`copiedText`.** Este campo permite ao aluno colar um excerto textual quando partilha uma URL. O texto copiado fica em `textContent` e pode tornar a partilha elegível para IA, desde que passe a validação mínima. Para `MATERIAL_REF`, o texto usado pela IA vem sempre do material validado na base de dados.
 
 **Membership antes de conteúdo.** Antes de criar ou listar partilhas, o service chama `StudyRoomsService.ensureMember`. Isto impede que um aluno coloque conteúdo numa sala onde não participa.
+
+**Módulo acumulado.** Este BK edita `study-rooms.module.ts` a partir da versão criada em `BK-MF1-02`: mantém `StudyRoomsController` e `StudyRoomsService`, acrescenta `RoomSharesController` e `RoomSharesService`, e exporta `RoomSharesService` para `BK-MF1-04`. O BK seguinte deve partir desta versão, não voltar ao módulo de salas simples.
 
 **Decorators do NestJS.** Decorators como `@Controller`, `@Post`, `@Get`, `@Put`, `@Module` e `@Injectable` dizem ao NestJS que papel cada classe tem. O controller recebe pedidos HTTP, o service contém regras de negócio e o módulo liga tudo.
 
@@ -480,7 +482,7 @@ export class RoomSharesController {
 
 1. Explicação simples do objetivo.
 
-    Neste passo vais atualizar módulo da sala nos ficheiros `apps/api/src/modules/study-rooms/study-rooms.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+    Neste passo vais atualizar módulo da sala nos ficheiros `apps/api/src/modules/study-rooms/study-rooms.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios. Este ficheiro é acumulado sobre `BK-MF1-02`; não removas o service nem o controller de salas.
 
 2. Ficheiros envolvidos.
 
@@ -524,7 +526,7 @@ export class StudyRoomsModule {}
 
 5. Explicação do código.
 
-    O módulo junta o contrato de salas com o contrato de materiais da MF0. Regista `MaterialSchema` para validar referências do próprio aluno e mantém `StudyRoomsService` exportado para membership. Não importa módulos de disciplinas oficiais, porque a cadeia `BK-MF1-02` a `BK-MF1-04` ainda não depende de disciplinas formais.
+    O módulo junta o contrato de salas com o contrato de materiais da MF0. Regista `MaterialSchema` para validar referências do próprio aluno e mantém `StudyRoomsService` exportado para membership. Também exporta `RoomSharesService`, que é a dependência direta de `BK-MF1-04` para obter fontes textuais validadas da sala. Não importa módulos de disciplinas oficiais, porque a cadeia `BK-MF1-02` a `BK-MF1-04` ainda não depende de disciplinas formais.
 
 6. Como validar este passo.
 

@@ -9,14 +9,14 @@
 - `prioridade`: `P1`
 - `estado`: `TODO`
 - `esforco`: `S`
-- `dependencias`: `BK-MF0-11`
+- `dependencias`: `BK-MF0-12`
 - `rf_rnf`: `RF13`
 - `fase_documental`: `Fase 1`
 - `sprint`: `S03`
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF1-02`
 - `guia_path`: `docs/planificacao/guias-bk/MF1/BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md`
-- `last_updated`: `2026-05-30`
+- `last_updated`: `2026-05-31`
 
 ## Objetivo
 Implementar `RF13`: permitir que a IA adapte explicações ao ritmo, dificuldades e estilo de estudo do aluno, usando apenas materiais processáveis da área de estudo do próprio aluno.
@@ -40,7 +40,7 @@ Adaptação pedagógica só é segura se continuar baseada em fontes. O perfil d
 ## Estado antes
 - `BK-MF0-07` criou áreas de estudo.
 - `BK-MF0-08` criou materiais com `contentText` quando estão prontos.
-- `BK-MF0-11` criou provider IA e artefactos de IA.
+- `BK-MF0-12` fechou a fundação de IA da MF0 com `AiAreaProfileService`, `SummariesService`, `StudyToolsService` e `AI_PROVIDER` exportados.
 
 ## Estado depois
 - Aluno configura perfil numa área.
@@ -52,7 +52,7 @@ Adaptação pedagógica só é segura se continuar baseada em fontes. O perfil d
 - `StudyAreasService.getMyStudyArea`.
 - `Material` com `status: "READY"` e `contentText`.
 - `SessionGuard`.
-- `AI_PROVIDER` isolado atrás do `AiModule`.
+- `AiModule` final da MF0 com `AI_PROVIDER`, `AiAreaProfileService`, `SummariesService` e `StudyToolsService` preservados.
 
 ## Glossário
 - **Perfil de aprendizagem**: preferências pedagógicas do aluno numa área.
@@ -68,6 +68,8 @@ Adaptação pedagógica só é segura se continuar baseada em fontes. O perfil d
 **Fontes processáveis.** Uma fonte processável é um material que já tem texto em `contentText` e estado `READY`. Um ficheiro enviado mas ainda sem texto extraído não pode ser usado pela IA, porque a aplicação não sabe realmente o que está lá dentro.
 
 **Bloqueio sem fontes.** Se a área não tiver materiais prontos, o service devolve `422`. Isto ensina uma regra importante: é melhor falhar com uma mensagem clara do que gerar uma resposta bonita mas sem base factual.
+
+**Extensão acumulada do `AiModule`.** Este BK não substitui a fundação de IA da MF0. Ele acrescenta perfil adaptativo, explicações adaptadas e o método `generateAdaptiveExplanation`, mantendo `generateSummary`, `generateStudyTool`, `AiAreaProfileService`, `SummariesService`, `StudyToolsService` e o export de `AI_PROVIDER`.
 
 **Fluxo de dados.** O aluno guarda o perfil no frontend, o controller recebe o pedido com a sessão, o service confirma que a área pertence ao aluno, recolhe materiais prontos, constrói o prompt, chama o provider IA e guarda a explicação com as fontes usadas.
 
@@ -112,7 +114,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 - `StudyAreasService.getMyStudyArea`.
 - `Material` com `status: "READY"` e `contentText`.
 - `SessionGuard`.
-- `AI_PROVIDER` isolado atrás do `AiModule`.
+- `AiModule` final da MF0 com `AI_PROVIDER`, `AiAreaProfileService`, `SummariesService` e `StudyToolsService` preservados.
 
 ### Passo 1 - Criar schema do perfil
 
@@ -472,7 +474,7 @@ export class OpenAiProvider implements AiProvider {
 
 5. Explicação do código.
 
-    Este BK parte do provider criado na MF0 e acrescenta um método específico para explicações adaptadas.
+    Este BK parte do provider final da MF0 e acrescenta apenas o método específico para explicações adaptadas. O contrato herdado continua a expor `generateSummary` e `generateStudyTool`; MF1 aumenta capacidades, não troca o provider nem remove métodos usados por resumos e ferramentas de estudo.
 
 6. Como validar este passo.
 
@@ -724,7 +726,7 @@ export class AdaptiveLearningService {
 
 1. Explicação simples do objetivo.
 
-    Neste passo vais criar controller e atualizar módulo nos ficheiros `apps/api/src/modules/ai/adaptive-learning.controller.ts`, `apps/api/src/modules/ai/ai.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+    Neste passo vais criar controller e atualizar módulo nos ficheiros `apps/api/src/modules/ai/adaptive-learning.controller.ts`, `apps/api/src/modules/ai/ai.module.ts`. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios. O módulo abaixo é acumulado sobre a versão final de `BK-MF0-12`: não removas controllers, services, schemas ou exports da MF0.
 
 2. Ficheiros envolvidos.
 
@@ -735,7 +737,7 @@ export class AdaptiveLearningService {
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
+    Cria ou edita os ficheiros indicados acima, exatamente na localização indicada. Usa o código completo abaixo como a versão final prevista acumulada para a app, mantendo nomes, exports e imports coerentes com os BKs anteriores e seguintes.
 
 4. Código completo, correto e integrado.
 
@@ -782,44 +784,68 @@ export class AdaptiveLearningController {
 // apps/api/src/modules/ai/ai.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { MaterialsModule } from "../materials/materials.module";
 import { Material, MaterialSchema } from "../materials/schemas/material.schema";
 import { StudyAreasModule } from "../study-areas/study-areas.module";
 import { AdaptiveLearningController } from "./adaptive-learning.controller";
 import { AdaptiveLearningService } from "./adaptive-learning.service";
+import { AiAreaProfileController } from "./ai-area-profile.controller";
+import { AiAreaProfileService } from "./ai-area-profile.service";
 import { AI_PROVIDER, OpenAiProvider } from "./providers/ai-provider";
 import {
     AdaptiveExplanation,
     AdaptiveExplanationSchema,
 } from "./schemas/adaptive-explanation.schema";
+import {
+    AiAreaProfile,
+    AiAreaProfileSchema,
+} from "./schemas/ai-area-profile.schema";
 import { AiArtifact, AiArtifactSchema } from "./schemas/ai-artifact.schema";
 import { LearningProfile, LearningProfileSchema } from "./schemas/learning-profile.schema";
+import { StudyToolsController } from "./study-tools.controller";
+import { StudyToolsService } from "./study-tools.service";
 import { SummariesController } from "./summaries.controller";
 import { SummariesService } from "./summaries.service";
 
 @Module({
     imports: [
-        StudyAreasModule,
         MongooseModule.forFeature([
+            { name: AiAreaProfile.name, schema: AiAreaProfileSchema },
             { name: AiArtifact.name, schema: AiArtifactSchema },
             { name: LearningProfile.name, schema: LearningProfileSchema },
             { name: AdaptiveExplanation.name, schema: AdaptiveExplanationSchema },
             { name: Material.name, schema: MaterialSchema },
         ]),
+        StudyAreasModule,
+        MaterialsModule,
     ],
-    controllers: [SummariesController, AdaptiveLearningController],
+    controllers: [
+        AiAreaProfileController,
+        SummariesController,
+        StudyToolsController,
+        AdaptiveLearningController,
+    ],
     providers: [
+        AiAreaProfileService,
         SummariesService,
+        StudyToolsService,
         AdaptiveLearningService,
         { provide: AI_PROVIDER, useClass: OpenAiProvider },
     ],
-    exports: [AI_PROVIDER],
+    exports: [
+        AI_PROVIDER,
+        AiAreaProfileService,
+        SummariesService,
+        StudyToolsService,
+        AdaptiveLearningService,
+    ],
 })
 export class AiModule {}
 ```
 
 5. Explicação do código.
 
-    A página usa a sessão HttpOnly nas chamadas e mostra apenas a resposta já validada pelo backend. O frontend envia tópico e preferências, mas não escolhe fontes nem prova ownership. As fontes mostradas vêm dos materiais autorizados que o service aceitou antes da chamada à IA.
+    O controller novo expõe o fluxo adaptativo e o módulo preserva a fundação final da MF0: perfil IA da área, resumos, ferramentas de estudo e provider continuam registados. A MF1 acrescenta `AdaptiveLearningController` e `AdaptiveLearningService`, mais os schemas adaptativos, e mantém `AI_PROVIDER` exportado para módulos como `class-ai.module.ts` importarem `AiModule` sem duplicar provider.
 
 6. Como validar este passo.
 

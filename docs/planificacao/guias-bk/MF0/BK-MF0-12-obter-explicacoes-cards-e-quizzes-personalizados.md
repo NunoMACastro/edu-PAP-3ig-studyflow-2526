@@ -17,7 +17,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF1-01`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-12-obter-explicacoes-cards-e-quizzes-personalizados.md`
-- `last_updated`: `2026-05-25`
+- `last_updated`: `2026-05-31`
 
 ## O que vamos fazer neste BK
 
@@ -27,7 +27,7 @@ O requisito RF12 fala em personalização, mas a adaptação profunda ao ritmo/d
 
 Decisão explícita de escopo MF0: a IA só pode usar fontes já disponíveis e processáveis no sistema. PDF/DOCX sem texto extraído, sem estado processável ou sem indexação completa devem bloquear a geração com mensagem clara. RAG, embeddings, chunking semântico, OCR e indexação completa pertencem a fases posteriores e não devem ser prometidos por este BK.
 
-O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adaptação ao ritmo e dificuldades, por isso este BK deve guardar resultados e feedback mínimo para reutilização futura.
+O output deste BK fecha tecnicamente a fundação de IA da MF0 e prepara a MF1. O próximo BK vai melhorar a adaptação ao ritmo e dificuldades, por isso este BK deve guardar resultados e feedback mínimo para reutilização futura. O `AiModule` final da MF0 deve preservar `AiAreaProfileService`, `SummariesService`, `StudyToolsService` e exportar também `AI_PROVIDER`.
 
 ## Porque é que isto é importante
 
@@ -60,7 +60,7 @@ O output deste BK fecha a MF0 e prepara a MF1. O próximo BK vai melhorar a adap
 - Impacto em dados: artefactos IA guardados com fontes e tipo.
 - Impacto em segurança: não gerar sem fontes e validar estrutura do quiz.
 - Impacto em testes: negativos contra fonte ausente, quiz inválido e área alheia.
-- Handoff: BK-MF1-01 usa feedback e histórico para adaptação ao ritmo.
+- Handoff: BK-MF1-01 usa feedback e histórico para adaptação ao ritmo e deve estender o provider sem remover `generateSummary` nem `generateStudyTool`.
 
 ## O que não entra (scope-out)
 
@@ -161,6 +161,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 - BK-MF0-10 com `AiAreaProfileService.prepareProfile`.
 - BK-MF0-11 com `AiArtifact`, `AI_PROVIDER` e `OpenAiProvider`.
 - Pelo menos um material `READY` com `contentText` na área.
+- Contrato final esperado: `AiModule` exporta `AI_PROVIDER`, `AiAreaProfileService`, `SummariesService` e `StudyToolsService`.
 
 ### Passo 1 - Criar DTO de pedido
 
@@ -415,7 +416,7 @@ Este validador impede que a UI receba quizzes impossíveis de corrigir. A IA pod
 
 1. Explicação simples do objetivo.
 
-    Neste passo vais editar provider IA. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios.
+    Neste passo vais editar provider IA. O objetivo é avançar uma peça pequena, verificável e ligada ao que os BKs anteriores já criaram, para evitar código solto ou contratos contraditórios. Esta versão fecha o contrato MF0: MF1 pode acrescentar métodos ao provider, mas não deve substituir `generateSummary` nem `generateStudyTool`.
 
 2. Ficheiros envolvidos.
 
@@ -810,14 +811,19 @@ import { AiArtifact, AiArtifactSchema } from "./schemas/ai-artifact.schema";
         StudyToolsService,
         { provide: AI_PROVIDER, useClass: OpenAiProvider },
     ],
-    exports: [AiAreaProfileService, SummariesService, StudyToolsService],
+    exports: [
+        AI_PROVIDER,
+        AiAreaProfileService,
+        SummariesService,
+        StudyToolsService,
+    ],
 })
 export class AiModule {}
 ```
 
 5. Explicação do código.
 
-Este módulo fecha a MF0 de IA: perfil, resumos e ferramentas usam o mesmo provider e os mesmos artefactos.
+Este módulo fecha a MF0 de IA: perfil, resumos e ferramentas usam o mesmo provider e os mesmos artefactos. O export de `AI_PROVIDER` é intencional para a MF1 importar `AiModule` em fluxos como IA adaptativa, IA da sala e IA limitada da turma, sem redefinir provider nem perder os services já criados.
 
 6. Como validar este passo.
 
@@ -1262,8 +1268,9 @@ Este teste prova a regra mais importante: sem fontes, não há chamada útil à 
 
 ## Handoff para BK-MF1-01
 
-- BK-MF1-01 pode reutilizar `AiArtifact`, `StudyEvent` e `type` para adaptar ritmo/dificuldades.
+- BK-MF1-01 pode reutilizar `AiArtifact`, `StudyEvent`, `type`, `StudyToolsService` e `AI_PROVIDER` para adaptar ritmo/dificuldades.
 - Este BK não cria métricas avançadas de aprendizagem. Se for necessário feedback detalhado, MF1 deve definir o contrato antes de persistir novas métricas.
+- O `AiProvider` herdado pela MF1 mantém `generateSummary` e `generateStudyTool`; novos métodos devem ser acrescentados de forma acumulada.
 
 ## Changelog
 

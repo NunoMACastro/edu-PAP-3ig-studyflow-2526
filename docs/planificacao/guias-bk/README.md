@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-19`
+- `last_updated`: `2026-05-31`
 
 ## Regra de naming oficial
 - Formato obrigatorio: `BK-MF*-**-slug-semantico.md`.
@@ -20,6 +20,13 @@
 - O `Snippet tecnico aplicavel` deve pertencer ao dominio funcional do BK (nao sao aceites snippets genéricos).
 - `Evidence` deve incluir prova do caminho principal e prova de falha controlada.
 - Politica de negativos: `P0=>3`, `P1=>2`, `P2=>1`.
+
+## Contratos herdados por MF futuras
+- `MF0` fecha a fundação comum: `SessionGuard`, `AuthenticatedUser`, `StudyAreasService`, `MaterialsService`, `AiModule` e `AI_PROVIDER`.
+- `BK-MF0-12` é o fecho técnico da fundação de IA: `AiModule` deve preservar `AiAreaProfileService`, `SummariesService`, `StudyToolsService` e exportar `AI_PROVIDER`.
+- `MF1` deve acrescentar capacidades sobre estes contratos, não substituir módulos partilhados. `ai.module.ts` e `study-rooms.module.ts` são ficheiros acumulativos.
+- Fases futuras devem importar os módulos/serviços herdados e só alterar contratos partilhados quando o BK anterior da cadeia já estiver merged.
+- PRs paralelos só são aceitáveis entre cadeias que não editem o mesmo módulo partilhado.
 
 ## Indice completo
 ### MF0

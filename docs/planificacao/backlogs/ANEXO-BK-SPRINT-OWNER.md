@@ -6,7 +6,7 @@
 - `area`: `project`
 - `owner`: `Nuno`
 - `status`: `ativo`
-- `last_updated`: `2026-04-19`
+- `last_updated`: `2026-05-31`
 
 ## Objetivo
 Rastreabilidade operacional `BK -> Sprint -> Owner` com contrato `Core/Reforco`.
@@ -26,13 +26,13 @@ Rastreabilidade operacional `BK -> Sprint -> Owner` com contrato `Core/Reforco`.
 | BK-MF0-10 | MF0 | S01 | Daniel | Guilherme | P0 | Reforco | RF10 | BK-MF0-08 | docs/planificacao/guias-bk/MF0/BK-MF0-10-criar-perfil-ia-da-area-de-estudo.md |
 | BK-MF0-11 | MF0 | S02 | Natalia | Guilherme | P0 | Reforco | RF11 | BK-MF0-08, BK-MF0-10 | docs/planificacao/guias-bk/MF0/BK-MF0-11-obter-resumos-ia-baseados-nos-materiais-enviados.md |
 | BK-MF0-12 | MF0 | S02 | Natalia | Guilherme | P0 | Reforco | RF12 | BK-MF0-11 | docs/planificacao/guias-bk/MF0/BK-MF0-12-obter-explicacoes-cards-e-quizzes-personalizados.md |
-| BK-MF1-01 | MF1 | S03 | Natalia | Guilherme | P1 | Core | RF13 | BK-MF0-11 | docs/planificacao/guias-bk/MF1/BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md |
+| BK-MF1-01 | MF1 | S03 | Natalia | Guilherme | P1 | Core | RF13 | BK-MF0-12 | docs/planificacao/guias-bk/MF1/BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md |
 | BK-MF1-02 | MF1 | S03 | Kaua | Guilherme | P1 | Core | RF14 | BK-MF0-03 | docs/planificacao/guias-bk/MF1/BK-MF1-02-criar-salas-de-estudo-com-outros-alunos-livres-ou-por-disciplina.md |
 | BK-MF1-03 | MF1 | S04 | Guilherme | Natalia | P1 | Core | RF15 | BK-MF1-02 | docs/planificacao/guias-bk/MF1/BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md |
-| BK-MF1-04 | MF1 | S03 | Daniel | Kaua | P2 | Core | RF16 | BK-MF1-02 | docs/planificacao/guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md |
+| BK-MF1-04 | MF1 | S03 | Daniel | Kaua | P2 | Core | RF16 | BK-MF1-02, BK-MF1-03 | docs/planificacao/guias-bk/MF1/BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md |
 | BK-MF1-07 | MF1 | S03 | Guilherme | Natalia | P0 | Reforco | RF19 | - | docs/planificacao/guias-bk/MF1/BK-MF1-07-criar-turmas.md |
 | BK-MF1-08 | MF1 | S03 | Natalia | Guilherme | P0 | Reforco | RF20 | BK-MF1-07 | docs/planificacao/guias-bk/MF1/BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md |
-| BK-MF1-09 | MF1 | S03 | Guilherme | Natalia | P0 | Reforco | RF21 | BK-MF1-08 | docs/planificacao/guias-bk/MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md |
+| BK-MF1-09 | MF1 | S03 | Kaua | Natalia | P0 | Reforco | RF21 | BK-MF1-08 | docs/planificacao/guias-bk/MF1/BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md |
 | BK-MF1-10 | MF1 | S03 | Natalia | Guilherme | P1 | Core | RF22 | BK-MF1-09 | docs/planificacao/guias-bk/MF1/BK-MF1-10-configurar-voz-da-ia-docente.md |
 | BK-MF1-11 | MF1 | S03 | Natalia | Guilherme | P0 | Reforco | RF23 | BK-MF1-10 | docs/planificacao/guias-bk/MF1/BK-MF1-11-o-aluno-inscrito-numa-turma-recebe-versao-limitada-da-ia.md |
 | BK-MF1-12 | MF1 | S03 | Kaua | Guilherme | P1 | Core | RF24 | BK-MF1-07 | docs/planificacao/guias-bk/MF1/BK-MF1-12-professores-podem-enviar-avisos-e-publicacoes.md |

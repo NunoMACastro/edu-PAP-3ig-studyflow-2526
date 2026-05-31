@@ -8,7 +8,7 @@ Trabalha como arquiteto de software sénior, professor de programação e reviso
 
 ```md
 MF_ALVO: MF1
-MODO: corrigir_apenas
+MODO: auditar_apenas
 ```
 
 Valores possíveis para `MODO`:
