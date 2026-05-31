@@ -65,9 +65,9 @@ A IA da sala mistura contribuições dos membros, mas não pode consultar materi
 
 **Módulo acumulado.** Este BK edita `study-rooms.module.ts` a partir da versão final de `BK-MF1-03`: preserva `StudyRoomsController`, `StudyRoomsService`, `RoomSharesController` e `RoomSharesService`, e acrescenta apenas `RoomAiController`, `RoomAiService`, `RoomAiInteraction` e o import de `AiModule`.
 
-**O que são `sourceIds`.** `sourceIds` é uma lista opcional de IDs de partilhas que o aluno escolhe no frontend para focar a resposta. Por exemplo, a página pode mostrar três apontamentos partilhados e o aluno selecciona dois. Esses dois `_id` seguem no body do pedido como `sourceIds`.
+**O que são `sourceIds`.** `sourceIds` é uma lista opcional de IDs de partilhas que o aluno escolhe no frontend para focar a resposta. Por exemplo, a página pode mostrar três apontamentos partilhados e o aluno seleciona dois. Esses dois `_id` seguem no body do pedido como `sourceIds`.
 
-**De onde vêm e para onde vão os `sourceIds`.** Os IDs nascem nos registos `RoomShare` guardados em MongoDB, são apresentados pela UI, voltam para o backend no DTO `AskRoomAiDto`, e são usados pelo service apenas para filtrar fontes que já pertencem à sala. Eles nunca dão acesso directo a documentos.
+**De onde vêm e para onde vão os `sourceIds`.** Os IDs nascem nos registos `RoomShare` guardados em MongoDB, são apresentados pela UI, voltam para o backend no DTO `AskRoomAiDto`, e são usados pelo service apenas para filtrar fontes que já pertencem à sala. Eles nunca dão acesso direto a documentos.
 
 **Porque `sourceIds` não são confiáveis.** Um aluno pode alterar o pedido no browser e enviar IDs de outra sala. Por isso, o backend cruza sempre os IDs recebidos com `roomId` e `usableByAi: true`. Se o ID não pertence à sala, não entra no prompt.
 

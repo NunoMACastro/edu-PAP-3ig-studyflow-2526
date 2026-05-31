@@ -567,5 +567,5 @@ A UI evita prometer áudio e usa presets claros para um aluno do 12.º ano.
 ## Changelog
 
 - `2026-05-24`: guia refinado para voz pedagógica por área, com presets, segurança e handoff para perfil IA.
-- `2026-05-25`: sprint normalizado de `S03` para `S02`, porque `PLANO-SPRINTS.md` define `S02` como MF0 e `S03` como MF1; `CONTRATO-CAMPOS-BK.md` e `ANEXO-BK-SPRINT-OWNER.md` ja estavam em `S02`.
+- `2026-05-25`: sprint normalizado de `S03` para `S02`, porque `PLANO-SPRINTS.md` define `S02` como MF0 e `S03` como MF1; `CONTRATO-CAMPOS-BK.md` e `ANEXO-BK-SPRINT-OWNER.md` já estavam em `S02`.
 - `2026-05-25`: persistência ajustada para campos Mongoose no schema `StudyArea`.

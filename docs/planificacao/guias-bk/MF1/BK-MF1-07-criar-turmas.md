@@ -85,7 +85,7 @@ Turmas são a fronteira principal da área docente. Disciplinas, materiais ofici
 
 **Utilizador da base de dados.** O utilizador criado no Atlas deve ser diferente da conta pessoal usada para entrar no painel do Atlas. Para desenvolvimento, basta um utilizador com leitura e escrita na base de dados do StudyFlow. Isto evita usar permissões administrativas para correr a app.
 
-**Lista de acesso por IP.** O Atlas só aceita ligações de IPs autorizados. Para trabalho local, adiciona o IP público actual da máquina ou da rede da escola. Abrir acesso a todos os IPs é menos seguro e só deve ser temporário em ambiente de desenvolvimento, removendo essa regra depois dos testes.
+**Lista de acesso por IP.** O Atlas só aceita ligações de IPs autorizados. Para trabalho local, adiciona o IP público atual da máquina ou da rede da escola. Abrir acesso a todos os IPs é menos seguro e só deve ser temporário em ambiente de desenvolvimento, removendo essa regra depois dos testes.
 
 **Variáveis de ambiente.** `MONGODB_URI` deve ficar num ficheiro `.env` local que não entra no Git. Assim, a connection string não aparece em commits, screenshots de código ou relatório de defesa.
 
@@ -156,7 +156,7 @@ O código abaixo deve ser tratado como código final previsto, não como exemplo
 
 3. O que fazer.
 
-    No MongoDB Atlas, cria ou usa um cluster de desenvolvimento. Em seguida, cria um utilizador da base de dados com permissões de leitura e escrita para a base de dados do StudyFlow, adiciona o teu IP público actual à lista de acesso por IP e copia a connection string da opção de ligação da aplicação.
+    No MongoDB Atlas, cria ou usa um cluster de desenvolvimento. Em seguida, cria um utilizador da base de dados com permissões de leitura e escrita para a base de dados do StudyFlow, adiciona o teu IP público atual à lista de acesso por IP e copia a connection string da opção de ligação da aplicação.
 
     No ficheiro local `apps/api/.env`, guarda a connection string em `MONGODB_URI`. Substitui o utilizador, a password e o host pelos valores reais do Atlas. Se a password tiver caracteres especiais, usa a versão codificada que o Atlas mostra na connection string.
 
@@ -176,7 +176,7 @@ NODE_ENV=development
 
 6. Como validar este passo.
 
-    Confirma no Atlas que o IP público actual está autorizado na lista de acesso por IP. Depois arranca a API ou executa a seed do passo seguinte e verifica que a ligação ao MongoDB não falha por autenticação nem por bloqueio de rede.
+    Confirma no Atlas que o IP público atual está autorizado na lista de acesso por IP. Depois arranca a API ou executa a seed do passo seguinte e verifica que a ligação ao MongoDB não falha por autenticação nem por bloqueio de rede.
 
 7. Erros comuns ou cenário negativo.
 
@@ -196,7 +196,7 @@ NODE_ENV=development
 
 3. O que fazer.
 
-    Cria o ficheiro indicado abaixo. Depois de o projecto ter uma forma de executar scripts TypeScript, este ficheiro deve ser chamado apenas em ambiente local, com `MONGODB_URI` definido. As passwords abaixo são públicas porque pertencem só ao ambiente de desenvolvimento; nunca as uses em produção.
+    Cria o ficheiro indicado abaixo. Depois de o projeto ter uma forma de executar scripts TypeScript, este ficheiro deve ser chamado apenas em ambiente local, com `MONGODB_URI` definido. As passwords abaixo são públicas porque pertencem só ao ambiente de desenvolvimento; nunca as uses em produção.
 
 4. Código completo, correto e integrado.
 
@@ -302,7 +302,7 @@ main().catch((error: unknown) => {
 
 7. Erros comuns ou cenário negativo.
 
-    O erro mais perigoso é permitir que a seed corra em produção. Outro erro é actualizar uma conta existente para `TEACHER`, porque isso seria uma alteração de permissões fora do fluxo administrativo real. Por isso, o script recusa produção e ignora contas existentes com papel incompatível.
+    O erro mais perigoso é permitir que a seed corra em produção. Outro erro é atualizar uma conta existente para `TEACHER`, porque isso seria uma alteração de permissões fora do fluxo administrativo real. Por isso, o script recusa produção e ignora contas existentes com papel incompatível.
 
 ### Passo 3 - Criar schema da turma
 

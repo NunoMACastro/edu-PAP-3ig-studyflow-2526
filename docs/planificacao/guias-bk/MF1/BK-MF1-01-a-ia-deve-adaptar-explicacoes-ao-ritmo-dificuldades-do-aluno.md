@@ -61,7 +61,7 @@ Adaptação pedagógica só é segura se continuar baseada em fontes. O perfil d
 - **Fonte processável**: material com texto guardado e pronto para IA.
 
 ## Conceitos teóricos
-**Personalização pedagógica.** Personalizar uma explicação não significa mudar a verdade do conteúdo. Significa ajustar a forma: mais lenta, mais directa, com mais passos, com exemplos ou com linguagem mais simples. O conteúdo factual continua a vir dos materiais do aluno.
+**Personalização pedagógica.** Personalizar uma explicação não significa mudar a verdade do conteúdo. Significa ajustar a forma: mais lenta, mais direta, com mais passos, com exemplos ou com linguagem mais simples. O conteúdo factual continua a vir dos materiais do aluno.
 
 **Perfil por área de estudo.** O perfil não é global porque um aluno pode estar confortável em Matemática e ter dificuldades em Física. Por isso, `LearningProfile` guarda `userId` e `studyAreaId`: a combinação destes dois campos diz “este perfil pertence a este aluno nesta área”.
 

@@ -63,7 +63,7 @@ Materiais oficiais são diferentes dos materiais privados do aluno. A IA docente
 ## Conceitos teóricos
 **Material oficial.** É conteúdo fornecido pelo professor para uma disciplina. O aluno pode confiar que este material representa a versão oficial usada pela turma.
 
-**Texto vs URL.** `textContent` guarda texto que o sistema pode ler directamente. `sourceUrl` guarda uma ligação. Uma ligação não é automaticamente conhecimento, por isso fica como referência até existir texto associado.
+**Texto vs URL.** `textContent` guarda texto que o sistema pode ler diretamente. `sourceUrl` guarda uma ligação. Uma ligação não é automaticamente conhecimento, por isso fica como referência até existir texto associado.
 
 **Estado do material.** `PROCESSED` significa que o material pode alimentar IA. `REFERENCE_ONLY` significa que o material aparece para consulta humana, mas não deve ser usado como base factual pela IA.
 
