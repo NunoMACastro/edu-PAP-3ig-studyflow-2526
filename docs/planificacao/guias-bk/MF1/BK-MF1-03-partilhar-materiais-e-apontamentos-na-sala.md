@@ -645,18 +645,26 @@ type Props = {
 export function RoomSharesPage({ roomId }: Props) {
     const [shares, setShares] = useState<RoomShareView[]>([]);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     async function refresh() {
         setShares(await listRoomShares(roomId));
     }
 
     useEffect(() => {
-        refresh().catch((reason: Error) => setError(reason.message));
+        setIsLoading(true);
+        refresh()
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, [roomId]);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setIsSaving(true);
 
         const form = new FormData(event.currentTarget);
 
@@ -671,8 +679,11 @@ export function RoomSharesPage({ roomId }: Props) {
             });
             event.currentTarget.reset();
             await refresh();
+            setNotice("Partilha criada com sucesso.");
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível partilhar.");
+        } finally {
+            setIsSaving(false);
         }
     }
 
@@ -690,9 +701,14 @@ export function RoomSharesPage({ roomId }: Props) {
                 <input name="sourceUrl" type="url" placeholder="URL" />
                 <input name="materialId" placeholder="ID do material" />
                 <textarea name="copiedText" placeholder="Texto copiado da URL para a IA" />
-                <button type="submit">Partilhar</button>
+                <button type="submit" disabled={isSaving}>
+                    {isSaving ? "A partilhar" : "Partilhar"}
+                </button>
             </form>
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
+            {isLoading ? <p>A carregar partilhas.</p> : null}
+            {!isLoading && shares.length === 0 ? <p>Ainda não existem partilhas nesta sala.</p> : null}
             {shares.map((share) => (
                 <article key={share.id}>
                     <h2>{share.title}</h2>
@@ -706,7 +722,7 @@ export function RoomSharesPage({ roomId }: Props) {
 
 5. Explicação do código.
 
-    A página permite criar apontamentos, URLs e referências a materiais, mas a UI é apenas uma camada de entrada. A saída mostra se a partilha ficou elegível para IA. O teste decisivo é backend: uma referência a material de outro aluno deve falhar, mesmo que o utilizador tente enviar texto copiado no formulário.
+    A página permite criar apontamentos, URLs e referências a materiais, mas a UI é apenas uma camada de entrada. A saída mostra se a partilha ficou elegível para IA e cobre carregamento, lista vazia, sucesso de criação e erro. O teste decisivo é backend: uma referência a material de outro aluno deve falhar, mesmo que o utilizador tente enviar texto copiado no formulário.
 
 6. Como validar este passo.
 
@@ -754,12 +770,26 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar que a partilha guarda sala, autor, tipo, conteúdo e estado `usableByAi` coerente com o tipo.
+- Passos 3 e 4: validar membership antes de criar/listar e validar `MATERIAL_REF` contra materiais do próprio aluno.
+- Passos 5 e 6: confirmar export de `RoomSharesService` e cliente frontend com sessão HttpOnly.
+- Passo 7: validar carregamento, lista vazia, sucesso ao criar partilha e erro de autorização/validação.
+
+## Cenários negativos específicos
+
+- Não membro ou professor recebe `403`.
+- `MATERIAL_REF` para material de outro aluno devolve `404`.
+- Partilha sem texto processável não alimenta IA.
+
 ## Expected results
 - `POST /api/study-rooms/:roomId/shares` com `NOTE` válida devolve `201` e `usableByAi: true`.
 - `POST /api/study-rooms/:roomId/shares` com `URL` sem `copiedText` devolve `201` e `usableByAi: false`.
 - `POST /api/study-rooms/:roomId/shares` com `MATERIAL_REF` próprio e `READY` devolve `201` com `materialId` e texto derivado do material.
 - `POST /api/study-rooms/:roomId/shares` com material de outro aluno devolve `404` e não cria partilha.
 - `GET /api/study-rooms/:roomId/shares` devolve `403` para não membros e lista apenas para membros.
+- Frontend mostra carregamento, lista vazia, sucesso ao criar partilha e erros de validação/autorização.
 
 ## Critérios de aceite
 - `RoomShare` guarda autor, sala, tipo e conteúdo.

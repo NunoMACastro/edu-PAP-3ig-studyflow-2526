@@ -554,18 +554,26 @@ type Props = {
 export function TeacherClassPostsPage({ classId }: Props) {
     const [posts, setPosts] = useState<ClassPostView[]>([]);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     async function refresh() {
         setPosts(await listTeacherClassPosts(classId));
     }
 
     useEffect(() => {
-        refresh().catch((reason: Error) => setError(reason.message));
+        setIsLoading(true);
+        refresh()
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, [classId]);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setIsSaving(true);
 
         const form = new FormData(event.currentTarget);
 
@@ -577,8 +585,11 @@ export function TeacherClassPostsPage({ classId }: Props) {
             });
             event.currentTarget.reset();
             await refresh();
+            setNotice("Publicação enviada.");
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível publicar.");
+        } finally {
+            setIsSaving(false);
         }
     }
 
@@ -592,9 +603,14 @@ export function TeacherClassPostsPage({ classId }: Props) {
                 </select>
                 <input name="title" placeholder="Título" required />
                 <textarea name="body" required />
-                <button type="submit">Publicar</button>
+                <button type="submit" disabled={isSaving}>
+                    {isSaving ? "A publicar" : "Publicar"}
+                </button>
             </form>
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
+            {isLoading ? <p>A carregar publicações.</p> : null}
+            {!isLoading && posts.length === 0 ? <p>Ainda não existem publicações nesta turma.</p> : null}
             {posts.map((post) => (
                 <article key={post.id}>
                     <strong>{post.type}</strong>
@@ -609,7 +625,7 @@ export function TeacherClassPostsPage({ classId }: Props) {
 
 5. Explicação do código.
 
-    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
+    Este passo pertence ao fluxo de publicações da turma: recebe sessão, `classId` e conteúdo validado, devolve publicações oficiais apenas para professor dono ou alunos inscritos. A página docente mostra carregamento, vazio, sucesso e erro. As validações esperadas são `403` para aluno a escrever ou aluno não inscrito, `404` para professor sem ownership e listagem limitada por membership. O resultado deixa a comunicação oficial pronta para a MF2.
 
 6. Como validar este passo.
 
@@ -627,7 +643,7 @@ export function TeacherClassPostsPage({ classId }: Props) {
 
 2. Ficheiros envolvidos.
 
-- VALIDAR: `apps/web/src/pages/student/StudentClassPostsPage.tsx`
+- CRIAR: `apps/web/src/pages/student/StudentClassPostsPage.tsx`
 - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
@@ -648,17 +664,22 @@ type Props = {
 export function StudentClassPostsPage({ classId }: Props) {
     const [posts, setPosts] = useState<ClassPostView[]>([]);
     const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        setIsLoading(true);
         listClassPostsForStudent(classId)
             .then(setPosts)
-            .catch((reason: Error) => setError(reason.message));
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, [classId]);
 
     return (
         <main>
             <h1>Avisos e publicações</h1>
             {error ? <p role="alert">{error}</p> : null}
+            {isLoading ? <p>A carregar publicações.</p> : null}
+            {!isLoading && posts.length === 0 ? <p>Ainda não existem publicações para esta turma.</p> : null}
             {posts.map((post) => (
                 <article key={post.id}>
                     <strong>{post.type}</strong>
@@ -673,12 +694,13 @@ export function StudentClassPostsPage({ classId }: Props) {
 
 5. Explicação do código.
 
-    Valida:
+    A página do aluno cobre carregamento, vazio e erro antes de listar publicações. Valida:
 - Professor dono cria publicação.
 - Professor sem ownership recebe `404`.
 - Aluno inscrito lê publicações.
 - Aluno não inscrito recebe `403`.
 - Aluno não consegue criar publicação.
+- Frontend docente mostra carregamento, vazio, sucesso e erro; frontend do aluno mostra carregamento, vazio e erro.
 
 6. Como validar este passo.
 
@@ -688,12 +710,27 @@ export function StudentClassPostsPage({ classId }: Props) {
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar schema e DTO de publicação com `classId`, `teacherId`, tipo, título e corpo.
+- Passos 3 e 4: validar escrita apenas por professor dono e leitura apenas por aluno inscrito.
+- Passos 5 e 6: confirmar clientes separados para professor e aluno com sessão HttpOnly.
+- Passos 7 e 8: validar carregamento, vazio, sucesso/erro na página docente e carregamento, vazio/erro na página do aluno.
+
+## Cenários negativos específicos
+
+- Professor sem ownership da turma recebe `404`.
+- Aluno a criar publicação recebe `403`.
+- Aluno não inscrito a listar publicações recebe `403`.
+- Publicações de uma turma não aparecem noutra turma.
+
 ## Expected results
 - `POST /api/teacher/classes/:classId/posts` com professor dono devolve `201`.
 - Professor sem ownership da turma devolve `404`.
 - Aluno autenticado a criar publicação devolve `403`.
 - `GET /api/student/classes/:classId/posts` devolve `200` para aluno inscrito.
 - Aluno não inscrito devolve `403` e não recebe publicações da turma.
+- Frontend docente mostra carregamento, vazio, sucesso e erro; frontend do aluno mostra carregamento, vazio e erro.
 
 ## Critérios de aceite
 - Escrita exige professor dono da turma.

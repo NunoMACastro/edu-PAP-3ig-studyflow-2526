@@ -577,18 +577,26 @@ export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
     const [materials, setMaterials] = useState<OfficialMaterialView[]>([]);
     const [type, setType] = useState<"TEXT" | "URL">("TEXT");
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     async function refresh() {
         setMaterials(await listOfficialMaterials(subjectId));
     }
 
     useEffect(() => {
-        refresh().catch((reason: Error) => setError(reason.message));
+        setIsLoading(true);
+        refresh()
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, [subjectId]);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setIsSaving(true);
 
         const form = new FormData(event.currentTarget);
 
@@ -601,8 +609,11 @@ export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
             });
             event.currentTarget.reset();
             await refresh();
+            setNotice("Material oficial guardado.");
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível guardar o material.");
+        } finally {
+            setIsSaving(false);
         }
     }
 
@@ -617,10 +628,15 @@ export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
                 </select>
                 {type === "TEXT" ? <textarea name="textContent" required /> : null}
                 {type === "URL" ? <input name="sourceUrl" type="url" required /> : null}
-                <button type="submit">Guardar material</button>
+                <button type="submit" disabled={isSaving}>
+                    {isSaving ? "A guardar" : "Guardar material"}
+                </button>
             </form>
 
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
+            {isLoading ? <p>A carregar materiais.</p> : null}
+            {!isLoading && materials.length === 0 ? <p>Ainda não existem materiais oficiais.</p> : null}
 
             {materials.map((material) => (
                 <article key={material.id}>
@@ -635,7 +651,7 @@ export function TeacherOfficialMaterialsPage({ subjectId }: Props) {
 
 5. Explicação do código.
 
-    Este passo pertence ao fluxo de materiais oficiais: recebe sessão de professor, `subjectId` e conteúdo validado, devolve material ligado a `subjectId`, `classId` e `teacherId`, e separa texto processado de URL de referência. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e exclusão de campos não persistidos. O resultado é a fonte oficial que `BK-MF1-11` pode consultar.
+    Este passo pertence ao fluxo de materiais oficiais: recebe sessão de professor, `subjectId` e conteúdo validado, devolve material ligado a `subjectId`, `classId` e `teacherId`, e separa texto processado de URL de referência. A página mostra carregamento, vazio, sucesso de gravação e erro. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e exclusão de campos não persistidos. O resultado é a fonte oficial que `BK-MF1-11` pode consultar.
 
 6. Como validar este passo.
 
@@ -672,6 +688,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Professor sem ownership recebe `404`.
 - Aluno recebe `403`.
 - `BK-MF1-11` usa apenas materiais `PROCESSED`.
+- Frontend mostra carregamento, vazio, sucesso de gravação e erros da API.
 
 6. Como validar este passo.
 
@@ -681,12 +698,27 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar schema e DTOs apenas com campos persistidos: título, tipo, texto ou URL.
+- Passos 3 e 4: validar ownership da disciplina antes de criar/listar materiais oficiais.
+- Passos 5 e 6: confirmar export de `OfficialMaterialsService` e cliente frontend sem campos não suportados.
+- Passo 7: validar carregamento, vazio, sucesso de gravação e erros da API.
+
+## Cenários negativos específicos
+
+- Professor sem ownership da disciplina recebe `404`.
+- Aluno recebe `403`.
+- Material `URL` fica `REFERENCE_ONLY` e não alimenta `BK-MF1-11`.
+- Payload com campo livre de notas não faz parte do contrato frontend.
+
 ## Expected results
 - `POST /api/teacher/subjects/:subjectId/materials` com professor dono e `TEXT` válido devolve `201` com `status: "PROCESSED"`.
 - `POST /api/teacher/subjects/:subjectId/materials` com `URL` válido devolve `201` com `status: "REFERENCE_ONLY"`.
 - Professor sem ownership da disciplina devolve `404`; aluno devolve `403`.
 - Payload com campo livre de notas não faz parte do contrato e não é enviado pelo frontend.
 - `GET /api/teacher/subjects/:subjectId/materials` lista apenas materiais da disciplina do professor autenticado.
+- Frontend mostra carregamento, vazio, sucesso de gravação e erros da API.
 
 ## Critérios de aceite
 - Não existe campo duplicado para conteúdo.

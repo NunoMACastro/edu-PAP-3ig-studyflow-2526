@@ -595,17 +595,20 @@ type Props = {
 export function StudentClassAiPage({ subjectId }: Props) {
     const [answer, setAnswer] = useState<ClassAiAnswer | null>(null);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
         setIsLoading(true);
 
         const form = new FormData(event.currentTarget);
 
         try {
             setAnswer(await askClassAi(subjectId, String(form.get("question") ?? "")));
+            setNotice("Resposta gerada com materiais oficiais.");
             event.currentTarget.reset();
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível obter resposta.");
@@ -624,6 +627,8 @@ export function StudentClassAiPage({ subjectId }: Props) {
                 </button>
             </form>
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
+            {!isLoading && !answer ? <p>Ainda não há resposta gerada nesta sessão.</p> : null}
             {answer ? (
                 <section>
                     <p>{answer.answer}</p>
@@ -642,7 +647,7 @@ export function StudentClassAiPage({ subjectId }: Props) {
 
 5. Explicação do código.
 
-    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
+    Este passo pertence ao fluxo da IA limitada da turma: recebe sessão de aluno, `subjectId`, pergunta e fontes oficiais, devolve resposta com fontes autorizadas e grava a interação com `studentId`, `classId` e `subjectId`. A página mostra vazio inicial, carregamento, sucesso e erro. As validações esperadas são inscrição via turma, `422` sem materiais processados e `503` para provider inválido. O resultado fecha a cadeia `BK-MF1-08` a `BK-MF1-11`.
 
 6. Como validar este passo.
 
@@ -680,6 +685,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Provider sem `answer` não vazio ou sem fontes oficiais autorizadas devolve `503`.
 - A resposta guarda interação com `studentId`, `classId` e `subjectId`.
 - A IA não usa materiais `REFERENCE_ONLY`.
+- Frontend mostra vazio inicial, carregamento, sucesso da resposta e erro da API.
 
 6. Como validar este passo.
 
@@ -689,12 +695,27 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar schema e DTO de interação da IA limitada ligados a aluno, turma e disciplina.
+- Passos 3 e 4: validar inscrição do aluno antes de consultar materiais oficiais ou chamar IA.
+- Passos 5 e 6: confirmar uso de materiais `PROCESSED`, voz docente e provider isolado com validação runtime.
+- Passo 7: validar vazio inicial, carregamento, sucesso da resposta e erro da API.
+
+## Cenários negativos específicos
+
+- Aluno não inscrito ou professor recebe `403`.
+- Disciplina sem materiais oficiais `PROCESSED` devolve `422`.
+- Provider indisponível, resposta vazia ou fontes não autorizadas devolvem `503`.
+- Materiais `REFERENCE_ONLY` não entram no prompt.
+
 ## Expected results
 - `POST /api/student/subjects/:subjectId/ai/answers` por aluno inscrito devolve `201` com `answer` não vazio e fontes oficiais autorizadas.
 - Aluno não inscrito ou professor devolve `403`.
 - Disciplina sem materiais oficiais `PROCESSED` devolve `422` e não chama a IA.
 - Provider indisponível, resposta vazia ou fontes não autorizadas devolvem `503` e não persistem interação.
 - A interação gravada contém `studentId`, `classId`, `subjectId`, pergunta, resposta e fontes oficiais usadas.
+- Frontend mostra vazio inicial, carregamento, sucesso da resposta e erro da API.
 
 ## Critérios de aceite
 - Inscrição é validada via `SchoolClass.studentIds`.

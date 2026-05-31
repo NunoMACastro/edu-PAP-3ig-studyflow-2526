@@ -628,18 +628,26 @@ import {
 export function StudyRoomsPage() {
     const [rooms, setRooms] = useState<StudyRoomView[]>([]);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     async function refresh() {
         setRooms(await listStudyRooms());
     }
 
     useEffect(() => {
-        refresh().catch((reason: Error) => setError(reason.message));
+        setIsLoading(true);
+        refresh()
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, []);
 
     async function handleCreate(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setIsSaving(true);
         const form = new FormData(event.currentTarget);
 
         try {
@@ -651,14 +659,20 @@ export function StudyRoomsPage() {
             });
             event.currentTarget.reset();
             await refresh();
+            setNotice("Sala criada com sucesso.");
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível criar a sala.");
+        } finally {
+            setIsSaving(false);
         }
     }
 
     async function handleInvite(roomId: string, email: string) {
+        setError("");
+        setNotice("");
         await addRoomMember(roomId, email);
         await refresh();
+        setNotice("Membro adicionado à sala.");
     }
 
     return (
@@ -672,10 +686,15 @@ export function StudyRoomsPage() {
                 </select>
                 <input name="disciplineName" placeholder="Nome da disciplina" />
                 <textarea name="description" placeholder="Descrição" />
-                <button type="submit">Criar sala</button>
+                <button type="submit" disabled={isSaving}>
+                    {isSaving ? "A criar" : "Criar sala"}
+                </button>
             </form>
 
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
+            {isLoading ? <p>A carregar salas.</p> : null}
+            {!isLoading && rooms.length === 0 ? <p>Ainda não tens salas de estudo.</p> : null}
 
             {rooms.map((room) => (
                 <article key={room.id}>
@@ -703,7 +722,7 @@ export function StudyRoomsPage() {
 
 5. Explicação do código.
 
-    A página do aluno recolhe nome, tipo, disciplina textual opcional e email de convite, mas não decide permissões. A saída visível é a lista de salas onde a API confirmou membership. O erro apresentado vem da resposta HTTP controlada pelo backend, permitindo testar `400` para disciplina textual em falta, `403` para utilizador não autorizado e `404` para aluno convidado inexistente.
+    A página do aluno recolhe nome, tipo, disciplina textual opcional e email de convite, mas não decide permissões. A saída visível é a lista de salas onde a API confirmou membership, com estados explícitos de carregamento, lista vazia, sucesso e erro. O erro apresentado vem da resposta HTTP controlada pelo backend, permitindo testar `400` para disciplina textual em falta, `403` para utilizador não autorizado e `404` para aluno convidado inexistente.
 
 6. Como validar este passo.
 
@@ -750,12 +769,27 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar que `StudyRoom` guarda dono, tipo, etiqueta textual de disciplina e membros sem importar disciplinas oficiais.
+- Passos 3 e 4: validar criação de sala por aluno autenticado, inclusão automática do criador em `memberIds` e convite por email.
+- Passos 5 e 6: confirmar que o módulo exporta `StudyRoomsService` para os BKs seguintes e que o cliente usa sessão HttpOnly.
+- Passo 7: validar carregamento, lista vazia, sucesso ao criar/adicionar membro e erro vindo da API.
+
+## Cenários negativos específicos
+
+- Sala `SUBJECT` sem `disciplineName` válido devolve `400`.
+- Não membro a adicionar aluno devolve `403`.
+- Email sem aluno existente devolve `404`.
+- Professor autenticado a usar fluxo de aluno devolve `403`.
+
 ## Expected results
 - `POST /api/study-rooms` com aluno autenticado e sala `FREE` devolve `201` com `memberIds` a incluir o criador.
 - `POST /api/study-rooms` com `type: "SUBJECT"` e `disciplineName` preenchido devolve `201` sem depender de disciplinas oficiais.
 - `POST /api/study-rooms` com `type: "SUBJECT"` sem `disciplineName` válido devolve `400`.
 - `GET /api/study-rooms` devolve apenas salas onde o aluno autenticado está em `memberIds`.
 - `POST /api/study-rooms/:roomId/members` devolve `403` para não membros, `404` para aluno inexistente e a sala atualizada quando o convite é válido.
+- Frontend mostra carregamento, lista vazia, sucesso ao criar/adicionar membro e erros vindos da API.
 
 ## Critérios de aceite
 - `StudyRoom` guarda owner, tipo, `disciplineName` opcional e membros.

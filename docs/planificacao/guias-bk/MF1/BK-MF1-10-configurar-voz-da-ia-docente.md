@@ -553,16 +553,24 @@ type Props = {
 export function TeacherAiVoicePage({ subjectId }: Props) {
     const [voice, setVoice] = useState<TeacherAiVoiceView | null>(null);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
+        setIsLoading(true);
+        setError("");
         getTeacherAiVoice(subjectId)
             .then(setVoice)
-            .catch((reason: Error) => setError(reason.message));
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, [subjectId]);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setIsSaving(true);
 
         const form = new FormData(event.currentTarget);
         const rules = String(form.get("rules") ?? "")
@@ -577,15 +585,20 @@ export function TeacherAiVoicePage({ subjectId }: Props) {
                 rules,
             });
             setVoice(updated);
+            setNotice("Voz da IA docente guardada.");
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível guardar a voz.");
+        } finally {
+            setIsSaving(false);
         }
     }
 
     return (
         <main>
             <h1>Voz da IA docente</h1>
-            <form onSubmit={handleSubmit}>
+            {isLoading ? <p>A carregar voz da IA.</p> : null}
+            {!isLoading && !voice ? <p>Ainda não existe voz personalizada para esta disciplina.</p> : null}
+            <form key={voice?.id ?? "new-voice"} onSubmit={handleSubmit}>
                 <select name="tone" defaultValue={voice?.tone ?? "CALM"}>
                     <option value="CALM">Calma</option>
                     <option value="DIRECT">Direta</option>
@@ -597,9 +610,12 @@ export function TeacherAiVoicePage({ subjectId }: Props) {
                     <option value="DETAILED">Detalhada</option>
                 </select>
                 <textarea name="rules" defaultValue={voice?.rules.join("\n") ?? ""} />
-                <button type="submit">Guardar voz</button>
+                <button type="submit" disabled={isSaving || isLoading}>
+                    {isSaving ? "A guardar" : "Guardar voz"}
+                </button>
             </form>
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
         </main>
     );
 }
@@ -607,7 +623,7 @@ export function TeacherAiVoicePage({ subjectId }: Props) {
 
 5. Explicação do código.
 
-    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
+    Este passo pertence ao fluxo da voz docente: recebe sessão de professor, `subjectId` e regras textuais, devolve uma configuração única por disciplina e normaliza listas antes de persistir. A página cobre carregamento, vazio inicial, sucesso de gravação e erro. As validações esperadas são `403` para aluno, `404` para disciplina fora do professor e atualização idempotente por `PUT`. O resultado é consumido pelo `BK-MF1-11` para orientar a IA limitada da turma.
 
 6. Como validar este passo.
 
@@ -644,6 +660,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Regras vazias são removidas.
 - Aluno recebe `403`.
 - Professor sem ownership recebe `404`.
+- Frontend mostra carregamento, vazio inicial, sucesso de gravação e erros da API.
 
 6. Como validar este passo.
 
@@ -653,12 +670,27 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar schema e DTO de voz docente com configuração única por disciplina.
+- Passos 3 e 4: validar `PUT` idempotente, normalização de regras e ownership da disciplina.
+- Passos 5 e 6: confirmar export de `TeacherAiVoiceService` para `BK-MF1-11` e cliente frontend alinhado com o controller.
+- Passo 7: validar carregamento, vazio inicial, sucesso de gravação e erros da API.
+
+## Cenários negativos específicos
+
+- Aluno recebe `403`.
+- Professor sem ownership da disciplina recebe `404`.
+- Regras vazias são removidas antes de persistir.
+- Segunda gravação atualiza o mesmo registo, sem duplicar configuração.
+
 ## Expected results
 - `PUT /api/teacher/subjects/:subjectId/ai-voice` com professor dono devolve `200` e cria ou atualiza uma única configuração.
 - Segundo `PUT` para a mesma disciplina atualiza o mesmo registo, sem duplicar.
 - Regras vazias são removidas antes de persistir.
 - Aluno autenticado devolve `403`.
 - Professor sem ownership da disciplina devolve `404`.
+- Frontend mostra carregamento, vazio inicial, sucesso de gravação e erros da API.
 
 ## Critérios de aceite
 - Uma configuração por disciplina.

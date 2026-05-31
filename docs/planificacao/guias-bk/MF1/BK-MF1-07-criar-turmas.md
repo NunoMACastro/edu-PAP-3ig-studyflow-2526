@@ -679,6 +679,8 @@ import {
 export function TeacherClassesPage() {
     const [classes, setClasses] = useState<SchoolClassView[]>([]);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     async function refresh() {
@@ -686,13 +688,17 @@ export function TeacherClassesPage() {
     }
 
     useEffect(() => {
-        refresh().catch((reason: Error) => setError(reason.message));
+        setIsLoading(true);
+        refresh()
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, []);
 
     async function handleCreate(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsSaving(true);
         setError("");
+        setNotice("");
 
         const form = new FormData(event.currentTarget);
 
@@ -705,6 +711,7 @@ export function TeacherClassesPage() {
             });
             event.currentTarget.reset();
             await refresh();
+            setNotice("Turma criada com sucesso.");
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível criar a turma.");
         } finally {
@@ -714,8 +721,10 @@ export function TeacherClassesPage() {
 
     async function handleAddStudent(classId: string, email: string) {
         setError("");
+        setNotice("");
         await addClassStudent(classId, email);
         await refresh();
+        setNotice("Aluno adicionado à turma.");
     }
 
     return (
@@ -732,8 +741,11 @@ export function TeacherClassesPage() {
             </form>
 
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
 
             <section>
+                {isLoading ? <p>A carregar turmas.</p> : null}
+                {!isLoading && classes.length === 0 ? <p>Ainda não existem turmas criadas.</p> : null}
                 {classes.map((schoolClass) => (
                     <article key={schoolClass.id}>
                         <h2>{schoolClass.name}</h2>
@@ -768,18 +780,22 @@ import { SchoolClassView, listStudentClasses } from "../../lib/api/classes";
 export function StudentClassesPage() {
     const [classes, setClasses] = useState<SchoolClassView[]>([]);
     const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        setIsLoading(true);
         listStudentClasses()
             .then(setClasses)
-            .catch((reason: Error) => setError(reason.message));
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, []);
 
     return (
         <main>
             <h1>As minhas turmas</h1>
             {error ? <p role="alert">{error}</p> : null}
-            {classes.length === 0 ? <p>Ainda não estás inscrito em turmas.</p> : null}
+            {isLoading ? <p>A carregar turmas.</p> : null}
+            {!isLoading && classes.length === 0 ? <p>Ainda não estás inscrito em turmas.</p> : null}
             {classes.map((schoolClass) => (
                 <article key={schoolClass.id}>
                     <h2>{schoolClass.name}</h2>
@@ -793,7 +809,7 @@ export function StudentClassesPage() {
 
 5. Explicação do código.
 
-    A página do professor deve permitir criar turma, ver lista e adicionar aluno por email.
+    A página do professor deve permitir criar turma, ver lista e adicionar aluno por email, mostrando carregamento, vazio, sucesso e erro. A página do aluno só mostra vazio depois de terminar a leitura das turmas inscritas.
 
 6. Como validar este passo.
 
@@ -832,6 +848,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Professor adiciona aluno existente por email.
 - Aluno inscrito vê a turma em `GET /api/student/classes`.
 - Aluno não inscrito não vê a turma.
+- Frontend mostra carregamento, vazio, sucesso ao criar/adicionar aluno e erros da API.
 
 6. Como validar este passo.
 
@@ -841,12 +858,26 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar schema e DTOs de turma com `teacherId` vindo da sessão e aluno adicionado por email.
+- Passos 3 e 4: validar criação apenas por professor, unicidade de `code` por professor e inscrição de aluno existente.
+- Passos 5 e 6: confirmar rotas separadas para professor e aluno e cliente frontend com sessão HttpOnly.
+- Passo 7: validar carregamento, vazio, sucesso ao criar/adicionar aluno e erros da API nas páginas docente e discente.
+
+## Cenários negativos específicos
+
+- Aluno a criar turma devolve `403`.
+- `code` duplicado nas turmas do mesmo professor devolve `409`.
+- Aluno não inscrito não vê a turma em `GET /api/student/classes`.
+
 ## Expected results
 - `POST /api/teacher/classes` com professor autenticado devolve `201` com `teacherId` vindo da sessão.
 - `POST /api/teacher/classes` com aluno autenticado devolve `403`.
 - Criação duplicada de `code` dentro das turmas do mesmo professor devolve `409`.
 - `POST /api/teacher/classes/:classId/students` adiciona aluno existente por email e devolve a turma atualizada.
 - `GET /api/student/classes` devolve `200` apenas com turmas onde o aluno autenticado está em `studentIds`.
+- Frontend mostra carregamento, vazio, sucesso ao criar/adicionar aluno e erros da API.
 
 ## Critérios de aceite
 - `SchoolClass` existe com `teacherId`, `name`, `code`, `schoolYear` e `studentIds`.

@@ -567,18 +567,26 @@ type Props = {
 export function TeacherSubjectsPage({ classId }: Props) {
     const [subjects, setSubjects] = useState<SubjectView[]>([]);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     async function refresh() {
         setSubjects(await listSubjects(classId));
     }
 
     useEffect(() => {
-        refresh().catch((reason: Error) => setError(reason.message));
+        setIsLoading(true);
+        refresh()
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoading(false));
     }, [classId]);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setIsSaving(true);
 
         const form = new FormData(event.currentTarget);
 
@@ -590,8 +598,11 @@ export function TeacherSubjectsPage({ classId }: Props) {
             });
             event.currentTarget.reset();
             await refresh();
+            setNotice("Disciplina criada com sucesso.");
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível criar a disciplina.");
+        } finally {
+            setIsSaving(false);
         }
     }
 
@@ -602,12 +613,17 @@ export function TeacherSubjectsPage({ classId }: Props) {
                 <input name="name" placeholder="Nome da disciplina" required />
                 <input name="code" placeholder="Código curto" />
                 <textarea name="description" placeholder="Descrição" />
-                <button type="submit">Criar disciplina</button>
+                <button type="submit" disabled={isSaving}>
+                    {isSaving ? "A criar" : "Criar disciplina"}
+                </button>
             </form>
 
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
 
             <section>
+                {isLoading ? <p>A carregar disciplinas.</p> : null}
+                {!isLoading && subjects.length === 0 ? <p>Ainda não existem disciplinas nesta turma.</p> : null}
                 {subjects.map((subject) => (
                     <article key={subject.id}>
                         <h2>{subject.name}</h2>
@@ -623,7 +639,7 @@ export function TeacherSubjectsPage({ classId }: Props) {
 
 5. Explicação do código.
 
-    Este passo pertence ao fluxo de disciplinas oficiais: recebe `classId`, `subjectId` ou dados de criação, devolve entidades associadas à turma do professor e valida ownership com `ClassesService` ou `SubjectsService`. Erros esperados incluem `403` para papel errado, `404` para turma ou disciplina fora do professor e `409` para duplicados. O resultado alimenta materiais oficiais, voz docente e IA limitada dos BKs seguintes.
+    Este passo pertence ao fluxo de disciplinas oficiais: recebe `classId`, `subjectId` ou dados de criação, devolve entidades associadas à turma do professor e valida ownership com `ClassesService` ou `SubjectsService`. A página cobre carregamento, vazio, sucesso e erro para a gestão da lista. Erros esperados incluem `403` para papel errado, `404` para turma ou disciplina fora do professor e `409` para duplicados. O resultado alimenta materiais oficiais, voz docente e IA limitada dos BKs seguintes.
 
 6. Como validar este passo.
 
@@ -662,6 +678,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Nome duplicado na mesma turma recebe `409`.
 - `SubjectsModule` exporta `SubjectsService`.
 - `BK-MF1-09`, `BK-MF1-10` e `BK-MF1-11` conseguem localizar disciplina por `subjectId`.
+- Frontend mostra carregamento, vazio, sucesso de criação e erros da API.
 
 6. Como validar este passo.
 
@@ -671,12 +688,26 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar schema e DTOs de disciplina ligados a turma existente do professor.
+- Passos 3 e 4: validar ownership da turma antes de criar/listar disciplinas e duplicados na mesma turma.
+- Passos 5 e 6: confirmar export de `SubjectsService` para materiais, voz docente e IA limitada.
+- Passo 7: validar carregamento, vazio, sucesso de criação e erros da API na página docente.
+
+## Cenários negativos específicos
+
+- Professor sem ownership da turma recebe `404`.
+- Aluno recebe `403`.
+- Nome duplicado na mesma turma recebe `409`.
+
 ## Expected results
 - `POST /api/teacher/classes/:classId/subjects` com professor dono da turma devolve `201`.
 - Professor sem ownership da turma devolve `404`.
 - Aluno autenticado devolve `403`.
 - Nome duplicado na mesma turma devolve `409`.
 - `GET /api/teacher/classes/:classId/subjects` devolve `200` apenas com disciplinas da turma do professor autenticado.
+- Frontend mostra carregamento, vazio, sucesso de criação e erros da API.
 
 ## Critérios de aceite
 - A disciplina guarda `classId` e `teacherId`.

@@ -929,48 +929,71 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
     const [profile, setProfile] = useState<LearningProfileView | null>(null);
     const [explanation, setExplanation] = useState<AdaptiveExplanationView | null>(null);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
+        setIsLoadingProfile(true);
+        setError("");
         getLearningProfile(studyAreaId)
             .then(setProfile)
-            .catch((reason: Error) => setError(reason.message));
+            .catch((reason: Error) => setError(reason.message))
+            .finally(() => setIsLoadingProfile(false));
     }, [studyAreaId]);
 
     async function handleProfile(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        setError("");
+        setNotice("");
+        setIsSavingProfile(true);
         const form = new FormData(event.currentTarget);
         const difficulties = String(form.get("difficulties") ?? "")
             .split("\n")
             .map((difficulty) => difficulty.trim())
             .filter(Boolean);
 
-        const updated = await updateLearningProfile(studyAreaId, {
-            pace: String(form.get("pace") ?? "BALANCED") as LearningProfileView["pace"],
-            level: String(form.get("level") ?? "BEGINNER") as LearningProfileView["level"],
-            difficulties,
-            preferredExplanationStyle: String(form.get("preferredExplanationStyle") ?? ""),
-        });
+        try {
+            const updated = await updateLearningProfile(studyAreaId, {
+                pace: String(form.get("pace") ?? "BALANCED") as LearningProfileView["pace"],
+                level: String(form.get("level") ?? "BEGINNER") as LearningProfileView["level"],
+                difficulties,
+                preferredExplanationStyle: String(form.get("preferredExplanationStyle") ?? ""),
+            });
 
-        setProfile(updated);
+            setProfile(updated);
+            setNotice("Perfil adaptativo guardado.");
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Não foi possível guardar o perfil.");
+        } finally {
+            setIsSavingProfile(false);
+        }
     }
 
     async function handleQuestion(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setIsGenerating(true);
         const form = new FormData(event.currentTarget);
 
         try {
             setExplanation(await askAdaptiveExplanation(studyAreaId, String(form.get("topic") ?? "")));
+            setNotice("Explicação gerada com fontes autorizadas.");
             event.currentTarget.reset();
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível gerar explicação.");
+        } finally {
+            setIsGenerating(false);
         }
     }
 
     return (
         <main>
             <h1>Explicações adaptadas</h1>
-            <form onSubmit={handleProfile}>
+            {isLoadingProfile ? <p>A carregar perfil adaptativo.</p> : null}
+            <form key={profile?.id ?? "new-profile"} onSubmit={handleProfile}>
                 <select name="pace" defaultValue={profile?.pace ?? "BALANCED"}>
                     <option value="SLOW">Devagar</option>
                     <option value="BALANCED">Equilibrado</option>
@@ -987,15 +1010,21 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
                     defaultValue={profile?.preferredExplanationStyle ?? ""}
                     placeholder="Estilo preferido"
                 />
-                <button type="submit">Guardar perfil</button>
+                <button type="submit" disabled={isSavingProfile || isLoadingProfile}>
+                    {isSavingProfile ? "A guardar" : "Guardar perfil"}
+                </button>
             </form>
 
             <form onSubmit={handleQuestion}>
                 <input name="topic" placeholder="Tópico" required />
-                <button type="submit">Gerar explicação</button>
+                <button type="submit" disabled={isGenerating}>
+                    {isGenerating ? "A gerar" : "Gerar explicação"}
+                </button>
             </form>
 
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
+            {!isGenerating && !explanation ? <p>Ainda não há explicação gerada.</p> : null}
 
             {explanation ? (
                 <section>
@@ -1015,7 +1044,7 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
 
 5. Explicação do código.
 
-    Este passo pertence ao fluxo individual adaptativo: recebe dados da sessão e da área do aluno, devolve perfil, explicação ou fontes normalizadas, e deve preservar ownership via `StudyAreasService`. As validações esperadas são `404` para área fora do aluno, `422` sem materiais `READY` e `503` quando a IA falha ou devolve conteúdo inválido. O resultado prepara a transição para a cadeia colaborativa sem misturar salas, turmas ou disciplinas.
+    Este passo pertence ao fluxo individual adaptativo: recebe dados da sessão e da área do aluno, devolve perfil, explicação ou fontes normalizadas, e deve preservar ownership via `StudyAreasService`. A página cobre estados de carregamento do perfil, gravação, geração, vazio inicial, sucesso e erro. As validações esperadas são `404` para área fora do aluno, `422` sem materiais `READY` e `503` quando a IA falha ou devolve conteúdo inválido. O resultado prepara a transição para a cadeia colaborativa sem misturar salas, turmas ou disciplinas.
 
 6. Como validar este passo.
 
@@ -1025,12 +1054,26 @@ export function AdaptiveLearningPage({ studyAreaId }: Props) {
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 a 3: confirmar que schemas e DTOs não aceitam ownership vindo do body e que o perfil fica ligado ao aluno e à área autenticada.
+- Passos 4 e 5: validar que `StudyAreasService.getMyStudyArea` bloqueia área inexistente ou fora do aluno antes de consultar materiais ou IA.
+- Passo 6: confirmar que o controller expõe apenas `/learning-profile` e `/adaptive-explanations` e que o módulo regista os schemas necessários.
+- Passo 8: validar carregamento do perfil, vazio inicial sem explicação, sucesso de gravação/geração e erro vindo da API.
+
+## Cenários negativos específicos
+
+- Área de outro aluno devolve `404`.
+- Área sem materiais `READY` com texto processável devolve `422`.
+- Provider indisponível, resposta vazia ou fontes não autorizadas devolvem `503`.
+
 ## Expected results
-- `GET /api/study-areas/:studyAreaId/adaptive-learning/profile` devolve `200` com perfil existente ou defaults seguros.
-- `PUT /api/study-areas/:studyAreaId/adaptive-learning/profile` devolve `200` e guarda perfil apenas na área do aluno autenticado.
-- `POST /api/study-areas/:studyAreaId/adaptive-learning/explanations` sem materiais `READY` com `contentText` devolve `422`.
+- `GET /api/study-areas/:studyAreaId/learning-profile` devolve `200` com perfil existente ou defaults seguros.
+- `PUT /api/study-areas/:studyAreaId/learning-profile` devolve `200` e guarda perfil apenas na área do aluno autenticado.
+- `POST /api/study-areas/:studyAreaId/adaptive-explanations` sem materiais `READY` com `contentText` devolve `422`.
 - Provider indisponível, `answer` vazio ou `sourceMaterialIds` não autorizados devolvem `503` e não persistem explicação.
 - Área inexistente ou fora do aluno devolve `404`.
+- Frontend mostra carregamento do perfil, vazio inicial sem explicação, sucesso de gravação/geração e erro de API.
 
 ## Critérios de aceite
 - Perfil é único por aluno e área.

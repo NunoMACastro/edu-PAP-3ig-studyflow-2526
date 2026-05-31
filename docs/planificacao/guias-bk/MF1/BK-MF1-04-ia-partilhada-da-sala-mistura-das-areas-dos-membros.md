@@ -577,17 +577,20 @@ type Props = {
 export function RoomAiPage({ roomId }: Props) {
     const [answer, setAnswer] = useState<RoomAiAnswer | null>(null);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
+        setNotice("");
         setIsLoading(true);
 
         const form = new FormData(event.currentTarget);
 
         try {
             setAnswer(await askRoomAi(roomId, { question: String(form.get("question") ?? "") }));
+            setNotice("Resposta gerada com fontes da sala.");
             event.currentTarget.reset();
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "Não foi possível obter resposta.");
@@ -606,6 +609,8 @@ export function RoomAiPage({ roomId }: Props) {
                 </button>
             </form>
             {error ? <p role="alert">{error}</p> : null}
+            {notice ? <p role="status">{notice}</p> : null}
+            {!isLoading && !answer ? <p>Ainda não há resposta gerada nesta sessão.</p> : null}
             {answer ? (
                 <section>
                     <p>{answer.answer}</p>
@@ -624,7 +629,7 @@ export function RoomAiPage({ roomId }: Props) {
 
 5. Explicação do código.
 
-    O cliente e a página enviam a pergunta com sessão HttpOnly e mostram resposta ou erro. A UI não decide fontes autorizadas: `sourceIds`, quando forem adicionados à interface, continuam a ser apenas uma preferência do aluno. O backend valida membership, fontes, resposta da IA e persistência da interação antes de devolver `200`.
+    O cliente e a página enviam a pergunta com sessão HttpOnly e mostram resposta, vazio inicial, sucesso ou erro. A UI não decide fontes autorizadas: `sourceIds`, quando forem adicionados à interface, continuam a ser apenas uma preferência do aluno. O backend valida membership, fontes, resposta da IA e persistência da interação antes de devolver `200`.
 
 6. Como validar este passo.
 
@@ -662,6 +667,7 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 - Provider sem `answer` não vazio ou sem fontes autorizadas recebe `503`.
 - A interação fica gravada.
 - A resposta mostra fontes usadas.
+- Frontend mostra vazio inicial, carregamento, sucesso da resposta e erro da API.
 
 6. Como validar este passo.
 
@@ -671,12 +677,27 @@ Não há código novo neste passo. Usa-o para confirmar que os passos anteriores
 
     O erro mais comum é copiar o código sem respeitar a ordem dos BKs: isso cria imports para ficheiros ainda não definidos. Outro erro é quebrar ownership, aceitando IDs vindos do frontend em vez de usar a sessão autenticada ou os services de validação.
 
+## Validação operacional por passo
+
+- Passos 1 e 2: confirmar que a pergunta e a resposta ficam associadas à sala, ao aluno e às fontes da sala.
+- Passos 3 e 4: validar que só membros perguntam e que o prompt usa apenas `RoomShare.usableByAi`.
+- Passos 5 e 6: confirmar provider isolado, validação runtime da resposta e persistência apenas quando há fontes autorizadas.
+- Passo 7: validar vazio inicial, carregamento, sucesso da resposta e erro da API.
+
+## Cenários negativos específicos
+
+- Não membro recebe `403`.
+- Sala sem fontes textuais utilizáveis devolve `422`.
+- `sourceIds` de outra sala são ignorados.
+- Provider sem resposta ou com fontes inventadas devolve `503`.
+
 ## Expected results
 - `POST /api/study-rooms/:roomId/ai/answers` por membro com fontes válidas devolve `201` com `answer` não vazio e `sources` autorizadas.
 - `POST /api/study-rooms/:roomId/ai/answers` por não membro devolve `403`.
 - Sala sem `RoomShare.usableByAi` devolve `422` e não chama a IA.
 - Provider indisponível ou resposta sem `answer`/fontes autorizadas devolve `503` e não grava interação.
 - `sourceIds` de outra sala não entram no prompt nem nas fontes devolvidas.
+- Frontend mostra vazio inicial, carregamento, sucesso da resposta e erro da API.
 
 ## Critérios de aceite
 - Membership é validada antes da IA.
