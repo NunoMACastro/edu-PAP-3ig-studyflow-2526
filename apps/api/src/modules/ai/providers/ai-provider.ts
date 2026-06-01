@@ -1,5 +1,10 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import {
+    BadGatewayException,
+    Injectable,
+    ServiceUnavailableException,
+} from "@nestjs/common";
 import OpenAI from "openai";
+import { StudyToolType } from "../dto/create-study-tool.dto";
 
 export type AiSource = {
     materialId: string;
@@ -17,28 +22,49 @@ export const AI_PROVIDER = Symbol("AI_PROVIDER");
 
 export interface AiProvider {
     generateSummary(input: { prompt: string }): Promise<SummaryResult>;
+    generateStudyTool(input: {
+        prompt: string;
+        type: StudyToolType;
+    }): Promise<Record<string, unknown>>;
 }
 
 @Injectable()
 export class OpenAiProvider implements AiProvider {
-    private readonly client = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    });
-
     async generateSummary(input: { prompt: string }): Promise<SummaryResult> {
-        if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_MODEL) {
+        return this.createJsonResponse<SummaryResult>(input.prompt);
+    }
+
+    async generateStudyTool(input: {
+        prompt: string;
+        type: StudyToolType;
+    }): Promise<Record<string, unknown>> {
+        return this.createJsonResponse<Record<string, unknown>>(input.prompt);
+    }
+
+    private async createJsonResponse<T>(prompt: string): Promise<T> {
+        const apiKey = process.env.OPENAI_API_KEY;
+        const model = process.env.OPENAI_MODEL;
+
+        if (!apiKey || !model) {
             throw new ServiceUnavailableException({
                 code: "AI_PROVIDER_NOT_CONFIGURED",
                 message: "O serviço de IA ainda não está configurado.",
             });
         }
 
-        const response = await this.client.responses.create({
-            model: process.env.OPENAI_MODEL,
-            input: input.prompt,
+        const client = new OpenAI({ apiKey });
+        const response = await client.responses.create({
+            model,
+            input: prompt,
         });
 
-        // A Responses API expõe output_text no SDK oficial de JavaScript.
-        return JSON.parse(response.output_text ?? "{}") as SummaryResult;
+        try {
+            return JSON.parse(response.output_text ?? "{}") as T;
+        } catch {
+            throw new BadGatewayException({
+                code: "AI_PROVIDER_INVALID_JSON",
+                message: "A IA devolveu uma resposta inválida.",
+            });
+        }
     }
 }

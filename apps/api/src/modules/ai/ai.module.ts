@@ -6,6 +6,8 @@ import { AiAreaProfileController } from "./ai-area-profile.controller";
 import { AiAreaProfileService } from "./ai-area-profile.service";
 import { SummariesController } from "./summaries.controller";
 import { SummariesService } from "./summaries.service";
+import { StudyToolsController } from "./study-tools.controller";
+import { StudyToolsService } from "./study-tools.service";
 import { AI_PROVIDER, OpenAiProvider } from "./providers/ai-provider";
 import {
     AiAreaProfile,
@@ -22,12 +24,22 @@ import { AiArtifact, AiArtifactSchema } from "./schemas/ai-artifact.schema";
         StudyAreasModule,
         MaterialsModule,
     ],
-    controllers: [AiAreaProfileController, SummariesController],
+    controllers: [
+        AiAreaProfileController,
+        SummariesController,
+        StudyToolsController,
+    ],
     providers: [
         AiAreaProfileService,
         SummariesService,
+        StudyToolsService,
         { provide: AI_PROVIDER, useClass: OpenAiProvider },
     ],
-    exports: [AiAreaProfileService, SummariesService],
+    exports: [
+        AI_PROVIDER,
+        AiAreaProfileService,
+        SummariesService,
+        StudyToolsService,
+    ],
 })
 export class AiModule {}

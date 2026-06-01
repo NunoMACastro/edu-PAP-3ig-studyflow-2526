@@ -125,3 +125,47 @@ export async function generateSummary(studyAreaId: string) {
         throw new Error(data?.message ?? "Não foi possível gerar resumo.");
     return data;
 }
+
+export type StudyToolType = "EXPLANATION" | "FLASHCARDS" | "QUIZ";
+
+export type AiArtifact = {
+    _id: string;
+    type: "SUMMARY" | StudyToolType;
+    contentJson: Record<string, unknown>;
+    sourcesJson: Array<{ materialId: string; title: string }>;
+};
+
+export async function listStudyTools(
+    studyAreaId: string,
+    type?: StudyToolType,
+): Promise<AiArtifact[]> {
+    const suffix = type ? `?type=${type}` : "";
+    const response = await fetch(
+        `/api/study-areas/${studyAreaId}/study-tools${suffix}`,
+        { credentials: "include" },
+    );
+    if (!response.ok)
+        throw new Error("Não foi possível carregar ferramentas de estudo.");
+    return (await response.json()) as AiArtifact[];
+}
+
+export async function generateStudyTool(
+    studyAreaId: string,
+    payload: { type: StudyToolType; topic?: string },
+): Promise<AiArtifact> {
+    const response = await fetch(
+        `/api/study-areas/${studyAreaId}/study-tools`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+        },
+    );
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(
+            data?.message ?? "Não foi possível gerar ferramenta de estudo.",
+        );
+    return data as AiArtifact;
+}
