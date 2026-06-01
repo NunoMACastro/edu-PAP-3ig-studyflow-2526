@@ -36,7 +36,7 @@ export class SessionGuard implements CanActivate {
 
         if (!sessionId) {
             throw new UnauthorizedException({
-                code: "SESSION_REQUIRED",
+                code: "UNAUTHENTICATED",
                 message: "Inicia sessão para continuar.",
             });
         }

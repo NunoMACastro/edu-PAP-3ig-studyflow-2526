@@ -4,6 +4,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import { csrfMiddleware } from "./common/middleware/csrf.middleware.js";
+import { mf0ValidationExceptionFactory } from "./common/validation/mf0-validation-exception.factory.js";
 
 /**
  * Arranca a API StudyFlow com os contratos transversais usados pela MF0.
@@ -24,6 +25,7 @@ async function bootstrap(): Promise<void> {
             whitelist: true,
             forbidNonWhitelisted: true,
             transform: true,
+            exceptionFactory: mf0ValidationExceptionFactory,
         }),
     );
     app.enableCors({

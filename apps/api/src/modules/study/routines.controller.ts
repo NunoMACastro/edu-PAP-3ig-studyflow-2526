@@ -38,6 +38,17 @@ export class RoutinesController {
     }
 
     /**
+     * Lista objetivos pessoais.
+     *
+     * @param request Pedido autenticado.
+     * @returns Objetivos ativos do aluno.
+     */
+    @Get("goals")
+    listGoals(@Req() request: AuthenticatedRequest) {
+        return this.routinesService.listGoals(request.user!.id);
+    }
+
+    /**
      * Cria uma rotina pessoal.
      *
      * @param request Pedido autenticado.

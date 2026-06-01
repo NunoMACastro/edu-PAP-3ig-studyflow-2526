@@ -14,6 +14,7 @@ import { SessionGuard } from "../../common/guards/session.guard.js";
 import { AuthenticatedRequest } from "../../common/types/authenticated-request.js";
 import { CreateMaterialDto } from "./dto/create-material.dto.js";
 import { MaterialsService } from "./materials.service.js";
+import { MATERIAL_UPLOAD_OPTIONS } from "./validators/material-upload.validator.js";
 
 /**
  * Controller de materiais associados a uma área de estudo.
@@ -48,7 +49,7 @@ export class MaterialsController {
      * @returns Material criado.
      */
     @Post("file")
-    @UseInterceptors(FileInterceptor("file"))
+    @UseInterceptors(FileInterceptor("file", MATERIAL_UPLOAD_OPTIONS))
     uploadFile(
         @Req() request: AuthenticatedRequest,
         @Param("studyAreaId") studyAreaId: string,

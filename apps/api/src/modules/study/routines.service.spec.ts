@@ -1,4 +1,9 @@
+import { BadRequestException, ValidationPipe } from "@nestjs/common";
 import { Types } from "mongoose";
+import {
+    CreateRoutineDto,
+    UpdateRoutineDto,
+} from "./dto/create-routine.dto.js";
 import { RoutinesService } from "./routines.service.js";
 
 describe("RoutinesService", () => {
@@ -36,6 +41,32 @@ describe("RoutinesService", () => {
             userId: expect.any(Types.ObjectId),
             archived: false,
         });
+    });
+
+    /**
+     * Confirma que a listagem dedicada de objetivos usa sessão e arquivo lógico.
+     */
+    it("lista objetivos do utilizador autenticado no endpoint dedicado", async () => {
+        const goalLean = jest.fn().mockResolvedValue([{ title: "Meta" }]);
+        const goalSort = jest.fn().mockReturnValue({ lean: goalLean });
+        const routineModel = {};
+        const goalModel = {
+            find: jest.fn().mockReturnValue({ sort: goalSort }),
+        };
+        const service = new RoutinesService(
+            routineModel as never,
+            goalModel as never,
+            { recordEvent: jest.fn() } as never,
+        );
+
+        await expect(service.listGoals(userId)).resolves.toEqual([
+            { title: "Meta" },
+        ]);
+        expect(goalModel.find).toHaveBeenCalledWith({
+            userId: expect.any(Types.ObjectId),
+            archived: false,
+        });
+        expect(goalSort).toHaveBeenCalledWith({ createdAt: -1 });
     });
 
     /**
@@ -105,5 +136,48 @@ describe("RoutinesService", () => {
             "Objetivo atualizado",
             "Meta",
         );
+    });
+
+    /**
+     * Confirma que dias fora do contrato MF0 são rejeitados pelo DTO.
+     */
+    it("rejeita weekdays inválidos no DTO de rotina", async () => {
+        const pipe = new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+        });
+
+        await expect(
+            pipe.transform(
+                {
+                    title: "Estudar matemática",
+                    weekdays: ["monday"],
+                    startTime: "10:00",
+                    durationMinutes: 45,
+                },
+                { type: "body", metatype: CreateRoutineDto },
+            ),
+        ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    /**
+     * Confirma que horas fora de HH:mm 24h são rejeitadas.
+     */
+    it("rejeita startTime inválido no DTO de rotina", async () => {
+        const pipe = new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+        });
+
+        await expect(
+            pipe.transform(
+                {
+                    startTime: "25:61",
+                },
+                { type: "body", metatype: UpdateRoutineDto },
+            ),
+        ).rejects.toBeInstanceOf(BadRequestException);
     });
 });

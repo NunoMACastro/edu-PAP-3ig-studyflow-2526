@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
+import { isMongoDuplicateKeyError } from "../../common/utils/mongo-error.util.js";
 import { HistoryService } from "../study/history.service.js";
 import { CreateStudyAreaDto } from "./dto/create-study-area.dto.js";
 import { UpdateStudyAreaDto } from "./dto/update-study-area.dto.js";
@@ -100,18 +101,23 @@ export class StudyAreasService {
             name,
         });
         if (duplicate) {
-            throw new ConflictException({
-                code: "AREA_NAME_DUPLICATED",
-                message: "Já tens uma área com esse nome.",
-            });
+            throw this.duplicatedAreaName();
         }
 
-        const area = await this.areaModel.create({
-            userId: new Types.ObjectId(userId),
-            name,
-            description: input.description?.trim(),
-            color: input.color?.trim(),
-        });
+        let area: StudyAreaDocument;
+        try {
+            area = await this.areaModel.create({
+                userId: new Types.ObjectId(userId),
+                name,
+                description: input.description?.trim(),
+                color: input.color?.trim(),
+            });
+        } catch (error) {
+            if (isMongoDuplicateKeyError(error)) {
+                throw this.duplicatedAreaName();
+            }
+            throw error;
+        }
 
         await this.historyService.recordEvent(
             userId,
@@ -139,19 +145,36 @@ export class StudyAreasService {
         if (!Types.ObjectId.isValid(areaId)) throw this.notFound();
 
         const update: UpdateStudyAreaDto = {};
-        if (input.name !== undefined) update.name = input.name.trim();
+        if (input.name !== undefined) {
+            const name = input.name.trim();
+            if (!name) {
+                throw new BadRequestException({
+                    code: "AREA_NAME_REQUIRED",
+                    message: "Indica o nome da área.",
+                });
+            }
+            update.name = name;
+        }
         if (input.description !== undefined)
             update.description = input.description.trim();
         if (input.color !== undefined) update.color = input.color.trim();
         if (input.archived !== undefined) update.archived = input.archived;
 
-        const updated = await this.areaModel
-            .findOneAndUpdate(
-                { _id: areaId, userId: new Types.ObjectId(userId) },
-                { $set: update },
-                { new: true, runValidators: true },
-            )
-            .lean();
+        let updated: StudyArea | null;
+        try {
+            updated = await this.areaModel
+                .findOneAndUpdate(
+                    { _id: areaId, userId: new Types.ObjectId(userId) },
+                    { $set: update },
+                    { new: true, runValidators: true },
+                )
+                .lean();
+        } catch (error) {
+            if (isMongoDuplicateKeyError(error)) {
+                throw this.duplicatedAreaName();
+            }
+            throw error;
+        }
 
         if (!updated) throw this.notFound();
         return updated;
@@ -166,6 +189,18 @@ export class StudyAreasService {
         return new NotFoundException({
             code: "STUDY_AREA_NOT_FOUND",
             message: "Área de estudo não encontrada.",
+        });
+    }
+
+    /**
+     * Cria o erro público para nome de área duplicado.
+     *
+     * @returns Exceção `ConflictException`.
+     */
+    private duplicatedAreaName(): ConflictException {
+        return new ConflictException({
+            code: "AREA_NAME_DUPLICATED",
+            message: "Já tens uma área com esse nome.",
         });
     }
 }

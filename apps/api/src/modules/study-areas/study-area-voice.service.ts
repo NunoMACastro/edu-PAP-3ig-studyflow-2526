@@ -56,7 +56,7 @@ export class StudyAreaVoiceService {
                     $set: {
                         voiceTone: input.voiceTone,
                         voiceDetailLevel: input.voiceDetailLevel,
-                        voiceNotes: input.voiceNotes?.trim(),
+                        voiceNotes: this.sanitizeVoiceNotes(input.voiceNotes),
                     },
                 },
                 { new: true, runValidators: true },
@@ -93,5 +93,21 @@ export class StudyAreaVoiceService {
                 message: "Nível de detalhe inválido.",
             });
         }
+    }
+
+    /**
+     * Normaliza notas livres para texto simples antes de persistir.
+     *
+     * @param value Texto opcional recebido do frontend.
+     * @returns Texto limpo ou `undefined` quando fica vazio.
+     */
+    private sanitizeVoiceNotes(value: string | undefined): string | undefined {
+        const sanitized = String(value ?? "")
+            .replace(/[<>]/g, "")
+            .replace(/[\u0000-\u001f\u007f]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        return sanitized || undefined;
     }
 }

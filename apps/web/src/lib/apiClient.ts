@@ -199,6 +199,15 @@ export function listRoutines(): Promise<{
 }
 
 /**
+ * Lista objetivos do aluno através do endpoint dedicado.
+ *
+ * @returns Objetivos ativos.
+ */
+export function listGoals(): Promise<StudyGoal[]> {
+    return requestJson<StudyGoal[]>("/api/study/goals");
+}
+
+/**
  * Cria uma rotina de estudo.
  *
  * @param input Dados da rotina.
@@ -344,6 +353,38 @@ export function createStudyArea(input: {
         method: "POST",
         body: JSON.stringify(input),
     });
+}
+
+/**
+ * Atualiza campos editáveis de uma área de estudo.
+ *
+ * @param studyAreaId Identificador da área.
+ * @param input Campos editáveis.
+ * @returns Área atualizada.
+ */
+export function updateStudyArea(
+    studyAreaId: string,
+    input: Partial<{
+        name: string;
+        description: string;
+        color: string;
+        archived: boolean;
+    }>,
+): Promise<StudyArea> {
+    return requestJson<StudyArea>(`/api/study-areas/${studyAreaId}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+    });
+}
+
+/**
+ * Arquiva uma área de estudo sem apagar fisicamente.
+ *
+ * @param studyAreaId Identificador da área.
+ * @returns Área arquivada.
+ */
+export function archiveStudyArea(studyAreaId: string): Promise<StudyArea> {
+    return updateStudyArea(studyAreaId, { archived: true });
 }
 
 /**

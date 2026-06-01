@@ -45,7 +45,7 @@ export class SessionService {
         const rawSession = await this.redis.get(this.key(sessionId));
         if (!rawSession) {
             throw new UnauthorizedException({
-                code: "SESSION_EXPIRED",
+                code: "UNAUTHENTICATED",
                 message: "A sessão expirou. Inicia sessão novamente.",
             });
         }

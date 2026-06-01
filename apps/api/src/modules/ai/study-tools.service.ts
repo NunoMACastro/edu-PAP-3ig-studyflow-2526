@@ -48,14 +48,15 @@ export class StudyToolsService {
      * @param type Tipo opcional para filtrar.
      * @returns Artefactos IA da área.
      */
-    async listTools(userId: string, studyAreaId: string, type?: StudyToolType) {
+    async listTools(userId: string, studyAreaId: string, type?: string) {
+        const validatedType = this.validateOptionalStudyToolType(type);
         await this.areasService.getMyStudyArea(userId, studyAreaId);
         const query: Record<string, unknown> = {
             userId: new Types.ObjectId(userId),
             studyAreaId: new Types.ObjectId(studyAreaId),
             type: { $in: ["EXPLANATION", "FLASHCARDS", "QUIZ"] },
         };
-        if (type) query.type = type;
+        if (validatedType) query.type = validatedType;
         return this.artifactModel.find(query).sort({ createdAt: -1 }).lean();
     }
 
@@ -72,12 +73,7 @@ export class StudyToolsService {
         studyAreaId: string,
         input: CreateStudyToolDto,
     ) {
-        if (!STUDY_TOOL_TYPES.includes(input.type)) {
-            throw new BadRequestException({
-                code: "INVALID_STUDY_TOOL_TYPE",
-                message: "Tipo de ferramenta inválido.",
-            });
-        }
+        const type = this.validateRequiredStudyToolType(input.type);
 
         const area = await this.areasService.getMyStudyArea(userId, studyAreaId);
         const profile = await this.profileService.prepareProfile(
@@ -96,10 +92,10 @@ export class StudyToolsService {
 
         try {
             const contentJson = await this.aiProvider.generateStudyTool({
-                type: input.type,
+                type,
                 prompt: buildStudyToolPrompt({
                     areaName: area.name,
-                    type: input.type,
+                    type,
                     topic: input.topic,
                     voiceTone: profile.voiceTone,
                     sources,
@@ -107,12 +103,12 @@ export class StudyToolsService {
             });
 
             const sourceMaterialIds = sources.map(({ materialId }) => materialId);
-            validateStudyToolArtifact(input.type, contentJson, sourceMaterialIds);
+            validateStudyToolArtifact(type, contentJson, sourceMaterialIds);
 
             const artifact = await this.artifactModel.create({
                 userId: new Types.ObjectId(userId),
                 studyAreaId: new Types.ObjectId(studyAreaId),
-                type: input.type,
+                type,
                 contentJson,
                 sourcesJson: sources.map(({ materialId, title }) => ({
                     materialId,
@@ -124,7 +120,7 @@ export class StudyToolsService {
                 userId,
                 "STUDY_TOOL_GENERATED",
                 "Ferramenta de estudo gerada",
-                input.type,
+                type,
             );
 
             return artifact;
@@ -163,5 +159,43 @@ export class StudyToolsService {
             title: material.title,
             contentText: material.contentText!,
         }));
+    }
+
+    /**
+     * Valida o tipo canónico de ferramenta de estudo.
+     *
+     * @param type Tipo recebido por body ou query.
+     * @returns Tipo validado ou `undefined` quando não há filtro.
+     */
+    private validateOptionalStudyToolType(type?: unknown): StudyToolType | undefined {
+        if (type === undefined) return undefined;
+        if (typeof type === "string" && STUDY_TOOL_TYPES.includes(type as StudyToolType)) {
+            return type as StudyToolType;
+        }
+        this.invalidStudyToolType();
+    }
+
+    /**
+     * Valida o tipo obrigatório recebido na geração de ferramenta.
+     *
+     * @param type Tipo recebido no body.
+     * @returns Tipo canónico validado.
+     */
+    private validateRequiredStudyToolType(type: unknown): StudyToolType {
+        const validatedType = this.validateOptionalStudyToolType(type);
+        if (validatedType) return validatedType;
+        this.invalidStudyToolType();
+    }
+
+    /**
+     * Cria o erro público para tipo de ferramenta inválido.
+     *
+     * @returns Nunca retorna; lança exceção.
+     */
+    private invalidStudyToolType(): never {
+        throw new BadRequestException({
+            code: "INVALID_STUDY_TOOL_TYPE",
+            message: "Tipo de ferramenta inválido.",
+        });
     }
 }

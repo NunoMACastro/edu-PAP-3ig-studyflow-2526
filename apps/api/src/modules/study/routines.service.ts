@@ -53,6 +53,22 @@ export class RoutinesService {
     }
 
     /**
+     * Lista objetivos ativos do aluno autenticado.
+     *
+     * @param userId Identificador vindo da sessão.
+     * @returns Objetivos não arquivados do aluno.
+     */
+    async listGoals(userId: string) {
+        return this.goalModel
+            .find({
+                userId: new Types.ObjectId(userId),
+                archived: false,
+            })
+            .sort({ createdAt: -1 })
+            .lean();
+    }
+
+    /**
      * Conta rotinas do aluno para o dashboard individual.
      *
      * @param userId Identificador vindo da sessão.

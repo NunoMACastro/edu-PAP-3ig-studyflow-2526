@@ -1,4 +1,5 @@
 import {
+    BadGatewayException,
     Inject,
     Injectable,
     ServiceUnavailableException,
@@ -83,7 +84,12 @@ export class SummariesService {
 
             return artifact;
         } catch (error) {
-            if (error instanceof UnprocessableEntityException) throw error;
+            if (
+                error instanceof BadGatewayException ||
+                error instanceof UnprocessableEntityException
+            ) {
+                throw error;
+            }
             throw new ServiceUnavailableException({
                 code: "AI_PROVIDER_UNAVAILABLE",
                 message: "A IA está temporariamente indisponível.",

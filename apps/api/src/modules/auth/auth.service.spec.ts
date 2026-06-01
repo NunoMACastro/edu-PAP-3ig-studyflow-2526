@@ -36,6 +36,57 @@ describe("AuthService", () => {
     });
 
     /**
+     * Confirma que email inválido usa o código canónico do BK-MF0-01.
+     */
+    it("rejeita email inválido com código público", async () => {
+        const usersService = {
+            findByEmail: jest.fn(),
+            createStudent: jest.fn(),
+            toPublicUser: jest.fn(),
+        };
+        const service = new AuthService(usersService as never);
+
+        await expect(
+            service.registerStudent({
+                email: "email-invalido",
+                password: "password-segura",
+                confirmPassword: "password-segura",
+            }),
+        ).rejects.toMatchObject({
+            response: {
+                code: "INVALID_EMAIL",
+            },
+        });
+        expect(usersService.findByEmail).not.toHaveBeenCalled();
+        expect(usersService.createStudent).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Confirma que uma corrida no índice único também devolve erro controlado.
+     */
+    it("mapeia duplicado Mongo no create para conflito público", async () => {
+        const usersService = {
+            findByEmail: jest.fn().mockResolvedValue(null),
+            createStudent: jest.fn().mockRejectedValue({ code: 11000 }),
+            toPublicUser: jest.fn(),
+        };
+        const service = new AuthService(usersService as never);
+
+        await expect(
+            service.registerStudent({
+                email: "aluno@example.com",
+                password: "password-segura",
+                confirmPassword: "password-segura",
+            }),
+        ).rejects.toMatchObject({
+            response: {
+                code: "EMAIL_ALREADY_REGISTERED",
+            },
+        });
+        expect(usersService.toPublicUser).not.toHaveBeenCalled();
+    });
+
+    /**
      * Confirma que passwords fracas são rejeitadas antes de persistir.
      */
     it("rejeita password fraca no registo", async () => {
@@ -52,7 +103,37 @@ describe("AuthService", () => {
                 password: "curta",
                 confirmPassword: "curta",
             }),
-        ).rejects.toBeInstanceOf(BadRequestException);
+        ).rejects.toMatchObject({
+            response: {
+                code: "WEAK_PASSWORD",
+            },
+        });
+        expect(usersService.findByEmail).not.toHaveBeenCalled();
+        expect(usersService.createStudent).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Confirma que valores não-textuais de password não chegam ao bcrypt.
+     */
+    it("rejeita password não textual com código público", async () => {
+        const usersService = {
+            findByEmail: jest.fn(),
+            createStudent: jest.fn(),
+            toPublicUser: jest.fn(),
+        };
+        const service = new AuthService(usersService as never);
+
+        await expect(
+            service.registerStudent({
+                email: "aluno@example.com",
+                password: 1234567890 as unknown as string,
+                confirmPassword: 1234567890 as unknown as string,
+            }),
+        ).rejects.toMatchObject({
+            response: {
+                code: "WEAK_PASSWORD",
+            },
+        });
         expect(usersService.findByEmail).not.toHaveBeenCalled();
         expect(usersService.createStudent).not.toHaveBeenCalled();
     });

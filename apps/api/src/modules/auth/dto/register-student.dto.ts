@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from "class-validator";
+import { Allow } from "class-validator";
 
 /**
  * Dados aceites no registo público de aluno.
@@ -7,14 +7,12 @@ import { IsEmail, IsString, MinLength } from "class-validator";
  * `authProvider` nunca devem vir do frontend no registo público.
  */
 export class RegisterStudentDto {
-    @IsEmail()
+    @Allow()
     email!: string;
 
-    @IsString()
-    @MinLength(10)
+    @Allow()
     password!: string;
 
-    @IsString()
-    @MinLength(10)
+    @Allow()
     confirmPassword!: string;
 }

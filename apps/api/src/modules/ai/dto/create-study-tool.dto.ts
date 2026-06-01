@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { Allow, IsOptional, IsString, MaxLength } from "class-validator";
 
 export type StudyToolType = "EXPLANATION" | "FLASHCARDS" | "QUIZ";
 
@@ -15,7 +15,7 @@ export const STUDY_TOOL_TYPES: StudyToolType[] = [
  * processáveis, porque a MF0 exige respostas baseadas nos materiais enviados.
  */
 export class CreateStudyToolDto {
-    @IsIn(STUDY_TOOL_TYPES)
+    @Allow()
     type!: StudyToolType;
 
     @IsOptional()

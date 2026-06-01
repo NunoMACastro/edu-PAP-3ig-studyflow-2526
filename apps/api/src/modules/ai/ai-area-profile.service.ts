@@ -50,9 +50,13 @@ export class AiAreaProfileService {
             userId,
             studyAreaId,
         );
-        const processable = materials.filter(
-            (material) => material.status === "READY",
-        );
+        const processable =
+            materials.length === 0
+                ? []
+                : await this.materialsService.listReadyTextSources(
+                      userId,
+                      studyAreaId,
+                  );
         const status = this.calculateStatus(
             materials.length,
             processable.length,

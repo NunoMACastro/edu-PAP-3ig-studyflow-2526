@@ -5,6 +5,7 @@ import {
     UnauthorizedException,
 } from "@nestjs/common";
 import bcrypt from "bcrypt";
+import { isMongoDuplicateKeyError } from "../../common/utils/mongo-error.util.js";
 import { PublicUserDto, UsersService } from "../users/users.service.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RegisterStudentDto } from "./dto/register-student.dto.js";
@@ -43,8 +44,18 @@ export class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(input.password, 12);
-        const user = await this.usersService.createStudent(email, passwordHash);
-        return this.usersService.toPublicUser(user);
+        try {
+            const user = await this.usersService.createStudent(
+                email,
+                passwordHash,
+            );
+            return this.usersService.toPublicUser(user);
+        } catch (error) {
+            if (isMongoDuplicateKeyError(error)) {
+                throw this.emailAlreadyRegistered();
+            }
+            throw error;
+        }
     }
 
     /**
@@ -103,7 +114,11 @@ export class AuthService {
         password: string,
         confirmPassword: string,
     ): void {
-        if (String(password ?? "").length < MIN_PASSWORD_LENGTH) {
+        if (
+            typeof password !== "string" ||
+            typeof confirmPassword !== "string" ||
+            password.length < MIN_PASSWORD_LENGTH
+        ) {
             throw new BadRequestException({
                 code: "WEAK_PASSWORD",
                 message: "A password deve ter pelo menos 10 caracteres.",
@@ -127,6 +142,18 @@ export class AuthService {
         return new UnauthorizedException({
             code: "INVALID_CREDENTIALS",
             message: "Email ou password inválidos.",
+        });
+    }
+
+    /**
+     * Cria o erro público para email duplicado.
+     *
+     * @returns Exceção `ConflictException`.
+     */
+    private emailAlreadyRegistered(): ConflictException {
+        return new ConflictException({
+            code: "EMAIL_ALREADY_REGISTERED",
+            message: "Já existe uma conta com este email.",
         });
     }
 }

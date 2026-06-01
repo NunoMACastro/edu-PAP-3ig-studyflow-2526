@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
+import { DEFAULT_HISTORY_LIMIT } from "./dto/history-query.dto.js";
 import { StudyEventDto, StudyEventType } from "./dto/study-event.dto.js";
 import {
     StudyEvent,
@@ -24,13 +25,17 @@ export class HistoryService {
      * Lista os eventos do aluno autenticado por ordem cronológica inversa.
      *
      * @param userId Identificador vindo da sessão.
+     * @param limit Número máximo de eventos a devolver.
      * @returns Lista de eventos formatados para a API.
      */
-    async listMyEvents(userId: string): Promise<StudyEventDto[]> {
+    async listMyEvents(
+        userId: string,
+        limit = DEFAULT_HISTORY_LIMIT,
+    ): Promise<StudyEventDto[]> {
         const events = await this.eventModel
             .find({ userId: new Types.ObjectId(userId) })
             .sort({ occurredAt: -1 })
-            .limit(50)
+            .limit(limit)
             .lean();
 
         return events.map((event) => ({
