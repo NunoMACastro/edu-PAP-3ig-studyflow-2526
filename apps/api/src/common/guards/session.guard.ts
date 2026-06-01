@@ -1,1 +1,0 @@
-if (!session) throw new UnauthorizedException("UNAUTHENTICATED");

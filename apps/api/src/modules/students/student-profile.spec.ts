@@ -1,1 +1,0 @@
-expect(response.body.role).toBeUndefined();

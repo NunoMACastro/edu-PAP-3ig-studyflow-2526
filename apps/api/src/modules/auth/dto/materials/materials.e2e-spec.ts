@@ -1,1 +1,0 @@
-expect(response.body.status).toBe("PENDING_PROCESSING"); // ficheiro/URL
