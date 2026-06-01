@@ -89,3 +89,28 @@ export async function updateStudyAreaVoice(
         );
     return data;
 }
+
+
+export type AiAreaProfile = {
+    id: string;
+    studyAreaId: string;
+    status: "MISSING_MATERIALS" | "PENDING_PROCESSING" | "READY_FOR_GENERATION";
+    sourceCount: number;
+    processableSourceCount: number;
+    voiceTone?: string;
+};
+
+export async function prepareAiAreaProfile(
+    studyAreaId: string,
+): Promise<AiAreaProfile> {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/ai-profile`, {
+        method: "POST",
+        credentials: "include",
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(
+            data?.message ?? "Não foi possível preparar o perfil IA.",
+        );
+    return data as AiAreaProfile;
+}
