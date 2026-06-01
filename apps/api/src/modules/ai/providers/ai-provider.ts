@@ -1,5 +1,6 @@
 import {
     BadGatewayException,
+    GatewayTimeoutException,
     Injectable,
     ServiceUnavailableException,
 } from "@nestjs/common";
@@ -19,6 +20,7 @@ export type SummaryResult = {
 };
 
 export const AI_PROVIDER = Symbol("AI_PROVIDER");
+export const DEFAULT_OPENAI_TIMEOUT_MS = 4000;
 
 /**
  * Contrato isolado do provider de IA.
@@ -80,11 +82,12 @@ export class OpenAiProvider implements AiProvider {
             });
         }
 
-        const client = new OpenAI({ apiKey });
-        const response = await client.responses.create({
-            model,
-            input: prompt,
+        const client = new OpenAI({
+            apiKey,
+            maxRetries: 0,
+            timeout: this.getTimeoutMs(),
         });
+        const response = await this.createResponse(client, model, prompt);
 
         try {
             return JSON.parse(response.output_text ?? "{}") as T;
@@ -94,5 +97,64 @@ export class OpenAiProvider implements AiProvider {
                 message: "A IA devolveu uma resposta inválida.",
             });
         }
+    }
+
+    /**
+     * Executa o pedido ao provider e mapeia timeouts para erro público.
+     *
+     * @param client Cliente OpenAI configurado.
+     * @param model Modelo configurado por ambiente.
+     * @param prompt Prompt final.
+     * @returns Resposta da Responses API.
+     */
+    private async createResponse(
+        client: OpenAI,
+        model: string,
+        prompt: string,
+    ) {
+        try {
+            return await client.responses.create({
+                model,
+                input: prompt,
+            });
+        } catch (error) {
+            if (this.isTimeoutError(error)) {
+                throw new GatewayTimeoutException({
+                    code: "AI_PROVIDER_TIMEOUT",
+                    message: "A IA demorou demasiado tempo a responder.",
+                });
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Obtém o timeout configurado para a chamada IA.
+     *
+     * @returns Timeout em milissegundos.
+     */
+    private getTimeoutMs(): number {
+        const parsed = Number.parseInt(process.env.OPENAI_TIMEOUT_MS ?? "", 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+            return parsed;
+        }
+        return DEFAULT_OPENAI_TIMEOUT_MS;
+    }
+
+    /**
+     * Deteta timeouts vindos do SDK/fetch sem depender de uma classe específica.
+     *
+     * @param error Erro desconhecido lançado pelo provider.
+     * @returns Verdadeiro quando representa timeout/cancelamento.
+     */
+    private isTimeoutError(error: unknown): boolean {
+        if (!(error instanceof Error)) {
+            return false;
+        }
+        return (
+            error.name === "TimeoutError" ||
+            error.name === "AbortError" ||
+            /timeout|timed out|aborted/i.test(error.message)
+        );
     }
 }

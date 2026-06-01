@@ -8,7 +8,7 @@
 - `owner`: `Guilherme`
 - `apoio`: `Natalia`
 - `prioridade`: `P1`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `S`
 - `dependencias`: `BK-MF0-03`
 - `rf_rnf`: `RF05`
@@ -17,7 +17,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF0-06`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-05-o-aluno-pode-criar-rotinas-e-objetivos-de-estudo.md`
-- `last_updated`: `2026-05-25`
+- `last_updated`: `2026-06-01`
 
 ## O que vamos fazer neste BK
 
@@ -78,7 +78,7 @@ Não existe mockup específico para esta funcionalidade. A UI deve ser simples, 
 ## Metadados do BK (CANONICO/DERIVADO):
 
 - Prioridade: `P1` (CANONICO)
-- Estado: `TODO` (CANONICO)
+- Estado: `DONE` (CANONICO)
 - Esforco: `S` (CANONICO)
 - macro: `MF0` (CANONICO)
 - Owner: `Guilherme` (CANONICO)
@@ -719,6 +719,14 @@ A UI cobre criação e listagem. A edição avançada pode ser adicionada sem mu
 - Arquivar rotina de outro aluno: esperado `404`.
 
 ## Evidence para PR/defesa
+
+### Evidence executada em 2026-06-01
+
+- `apps/api`: `npm test` -> PASS (19 suites, 68 tests).
+- `apps/api`: `npm run build` -> PASS.
+- `apps/web`: `npm run build` -> PASS.
+- Testes negativos cobertos neste ciclo: `LOGIN_RATE_LIMITED`, resposta pública de materiais sem `storageKey`/`contentText`, `AI_PROVIDER_TIMEOUT`, `NO_PROCESSABLE_SOURCES`, provider IA não configurado e JSON IA inválido.
+- Não executado neste ciclo: smoke manual/browser/e2e com MongoDB, Redis e OpenAI reais.
 
 - Output de criação de rotina e objetivo.
 - Output negativo `400 INVALID_DURATION`.

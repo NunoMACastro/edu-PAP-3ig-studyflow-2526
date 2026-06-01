@@ -1,6 +1,7 @@
 import {
     BadGatewayException,
     BadRequestException,
+    GatewayTimeoutException,
     Inject,
     Injectable,
     ServiceUnavailableException,
@@ -128,6 +129,7 @@ export class StudyToolsService {
             if (
                 error instanceof BadGatewayException ||
                 error instanceof BadRequestException ||
+                error instanceof GatewayTimeoutException ||
                 error instanceof UnprocessableEntityException
             ) {
                 throw error;

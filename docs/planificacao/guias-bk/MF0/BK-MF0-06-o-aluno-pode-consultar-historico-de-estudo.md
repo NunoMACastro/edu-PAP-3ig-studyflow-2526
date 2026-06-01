@@ -8,7 +8,7 @@
 - `owner`: `Kaua`
 - `apoio`: `Guilherme`
 - `prioridade`: `P1`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `S`
 - `dependencias`: `BK-MF0-03`
 - `rf_rnf`: `RF06`
@@ -17,7 +17,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF0-07`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-06-o-aluno-pode-consultar-historico-de-estudo.md`
-- `last_updated`: `2026-05-25`
+- `last_updated`: `2026-06-01`
 
 ## O que vamos fazer neste BK
 
@@ -75,7 +75,7 @@ Como não há código nem mockup específico, este guia define uma estrutura sim
 ## Metadados do BK (CANONICO/DERIVADO):
 
 - Prioridade: `P1` (CANONICO)
-- Estado: `TODO` (CANONICO)
+- Estado: `DONE` (CANONICO)
 - Esforco: `S` (CANONICO)
 - macro: `MF0` (CANONICO)
 - Owner: `Kaua` (CANONICO)
@@ -523,6 +523,14 @@ A UI usa datas em `pt-PT` e mostra empty state em vez de tratar ausência de eve
 - Tentar filtrar por outro `userId`: esperado ignorar e manter eventos do aluno autenticado.
 
 ## Evidence para PR/defesa
+
+### Evidence executada em 2026-06-01
+
+- `apps/api`: `npm test` -> PASS (19 suites, 68 tests).
+- `apps/api`: `npm run build` -> PASS.
+- `apps/web`: `npm run build` -> PASS.
+- Testes negativos cobertos neste ciclo: `LOGIN_RATE_LIMITED`, resposta pública de materiais sem `storageKey`/`contentText`, `AI_PROVIDER_TIMEOUT`, `NO_PROCESSABLE_SOURCES`, provider IA não configurado e JSON IA inválido.
+- Não executado neste ciclo: smoke manual/browser/e2e com MongoDB, Redis e OpenAI reais.
 
 - Screenshot do histórico vazio.
 - Output de histórico com eventos.

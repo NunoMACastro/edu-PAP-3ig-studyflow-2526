@@ -8,7 +8,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF0-08, BK-MF0-10`
 - `rf_rnf`: `RF11`
@@ -17,7 +17,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-12`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-11-obter-resumos-ia-baseados-nos-materiais-enviados.md`
-- `last_updated`: `2026-05-25`
+- `last_updated`: `2026-06-01`
 
 ## O que vamos fazer neste BK
 
@@ -83,7 +83,7 @@ O perfil IA do BK-MF0-10 fornece o estado e as preferências pedagógicas da ár
 ## Metadados do BK (CANONICO/DERIVADO):
 
 - Prioridade: `P0` (CANONICO)
-- Estado: `TODO` (CANONICO)
+- Estado: `DONE` (CANONICO)
 - Esforco: `M` (CANONICO)
 - macro: `MF0` (CANONICO)
 - Owner: `Natalia` (CANONICO)
@@ -723,6 +723,14 @@ A UI mostra erro quando não há fontes, em vez de apresentar resumo falso.
 - Provider indisponível: esperado `503` sem expor API key.
 
 ## Evidence para PR/defesa
+
+### Evidence executada em 2026-06-01
+
+- `apps/api`: `npm test` -> PASS (19 suites, 68 tests).
+- `apps/api`: `npm run build` -> PASS.
+- `apps/web`: `npm run build` -> PASS.
+- Testes negativos cobertos neste ciclo: `LOGIN_RATE_LIMITED`, resposta pública de materiais sem `storageKey`/`contentText`, `AI_PROVIDER_TIMEOUT`, `NO_PROCESSABLE_SOURCES`, provider IA não configurado e JSON IA inválido.
+- Não executado neste ciclo: smoke manual/browser/e2e com MongoDB, Redis e OpenAI reais.
 
 - JSON de resumo com `sourcesJson`.
 - Output `422 NO_PROCESSABLE_SOURCES`.

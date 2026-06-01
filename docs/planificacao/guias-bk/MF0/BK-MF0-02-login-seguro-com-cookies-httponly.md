@@ -8,7 +8,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `-`
 - `rf_rnf`: `RF02`
@@ -17,7 +17,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-03`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-02-login-seguro-com-cookies-httponly.md`
-- `last_updated`: `2026-05-24`
+- `last_updated`: `2026-06-01`
 
 ## O que vamos fazer neste BK
 
@@ -80,7 +80,7 @@ O mockup existente cobre diretamente este BK: ecrã central com marca `StudyFlow
 ## Metadados do BK (CANONICO/DERIVADO):
 
 - Prioridade: `P0` (CANONICO)
-- Estado: `TODO` (CANONICO)
+- Estado: `DONE` (CANONICO)
 - Esforco: `M` (CANONICO)
 - macro: `MF0` (CANONICO)
 - Owner: `Natalia` (CANONICO)
@@ -962,6 +962,14 @@ describe("SessionService", () => {
 O teste valida o contrato de sessão sem precisar de Redis real. O e2e do projeto deve confirmar o cabeçalho `Set-Cookie` quando o scaffold de testes estiver disponível.
 
 ## Evidence para PR/defesa
+
+### Evidence executada em 2026-06-01
+
+- `apps/api`: `npm test` -> PASS (19 suites, 68 tests).
+- `apps/api`: `npm run build` -> PASS.
+- `apps/web`: `npm run build` -> PASS.
+- Testes negativos cobertos neste ciclo: `LOGIN_RATE_LIMITED`, resposta pública de materiais sem `storageKey`/`contentText`, `AI_PROVIDER_TIMEOUT`, `NO_PROCESSABLE_SOURCES`, provider IA não configurado e JSON IA inválido.
+- Não executado neste ciclo: smoke manual/browser/e2e com MongoDB, Redis e OpenAI reais.
 
 - Print do `Set-Cookie` com `HttpOnly` e `SameSite`.
 - Output de `/api/auth/me -> 200`.

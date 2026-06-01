@@ -6,11 +6,13 @@ import {
     Post,
     Req,
     Res,
+    UnauthorizedException,
     UseGuards,
 } from "@nestjs/common";
-import { Response } from "express";
+import { Request, Response } from "express";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { AuthenticatedRequest } from "../../common/types/authenticated-request.js";
+import { PublicUserDto } from "../users/users.service.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RegisterStudentDto } from "./dto/register-student.dto.js";
 import {
@@ -19,6 +21,7 @@ import {
     SessionService,
 } from "./session.service.js";
 import { AuthService } from "./auth.service.js";
+import { LoginAttemptsService } from "./login-attempts.service.js";
 
 /**
  * Controller de autenticação da MF0.
@@ -31,6 +34,7 @@ export class AuthController {
     constructor(
         private readonly authService: AuthService,
         private readonly sessionService: SessionService,
+        private readonly loginAttemptsService: LoginAttemptsService,
     ) {}
 
     /**
@@ -47,14 +51,35 @@ export class AuthController {
     /**
      * Valida credenciais e define o cookie HttpOnly.
      *
+     * @param request Pedido Express usado para obter o IP.
      * @param body Credenciais locais.
      * @param response Resposta Express usada para configurar o cookie.
      * @returns Utilizador público autenticado.
      */
     @Post("login")
     @HttpCode(200)
-    async login(@Body() body: LoginDto, @Res({ passthrough: true }) response: Response) {
-        const user = await this.authService.validateLogin(body);
+    async login(
+        @Req() request: Request,
+        @Body() body: LoginDto,
+        @Res({ passthrough: true }) response: Response,
+    ) {
+        const clientIp = this.getClientIp(request);
+        await this.loginAttemptsService.assertCanAttempt(body.email, clientIp);
+
+        let user: PublicUserDto;
+        try {
+            user = await this.authService.validateLogin(body);
+        } catch (error) {
+            if (error instanceof UnauthorizedException) {
+                await this.loginAttemptsService.recordFailedLogin(
+                    body.email,
+                    clientIp,
+                );
+            }
+            throw error;
+        }
+
+        await this.loginAttemptsService.clearEmailFailures(body.email);
         const sessionId = await this.sessionService.createSession(user);
         this.setSessionCookie(response, sessionId);
         return user;
@@ -115,5 +140,15 @@ export class AuthController {
             maxAge: SESSION_TTL_SECONDS * 1000,
             path: "/",
         });
+    }
+
+    /**
+     * Resolve o IP usado no rate limit sem confiar em dados vindos do body.
+     *
+     * @param request Pedido Express.
+     * @returns IP observado ou marcador estável quando indisponível.
+     */
+    private getClientIp(request: Request): string {
+        return request.ip ?? request.socket.remoteAddress ?? "unknown";
     }
 }

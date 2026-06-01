@@ -1,5 +1,6 @@
 import {
     BadGatewayException,
+    GatewayTimeoutException,
     UnprocessableEntityException,
 } from "@nestjs/common";
 import { SummariesService } from "./summaries.service.js";
@@ -95,5 +96,69 @@ describe("SummariesService", () => {
         ).rejects.toBeInstanceOf(BadGatewayException);
         expect(artifactModel.create).not.toHaveBeenCalled();
         expect(historyService.recordEvent).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Confirma que timeout do provider mantém o código público específico.
+     */
+    it("preserva GatewayTimeoutException do provider IA", async () => {
+        const artifactModel = { create: jest.fn() };
+        const aiProvider = {
+            generateSummary: jest.fn().mockRejectedValue(
+                new GatewayTimeoutException({
+                    code: "AI_PROVIDER_TIMEOUT",
+                    message: "A IA demorou demasiado tempo a responder.",
+                }),
+            ),
+        };
+        const materialsService = {
+            listReadyTextSources: jest.fn().mockResolvedValue([
+                {
+                    _id: "507f1f77bcf86cd799439015",
+                    title: "Fonte",
+                    contentText: "Texto processável.",
+                },
+            ]),
+        };
+        const areasService = {
+            getMyStudyArea: jest.fn().mockResolvedValue({
+                _id: "507f1f77bcf86cd799439011",
+                name: "Matemática",
+            }),
+        };
+        const profileService = {
+            prepareProfile: jest.fn().mockResolvedValue({
+                status: "READY_FOR_GENERATION",
+                voiceTone: "directo",
+            }),
+        };
+        const historyService = { recordEvent: jest.fn() };
+
+        const service = new SummariesService(
+            artifactModel as never,
+            aiProvider as never,
+            materialsService as never,
+            areasService as never,
+            profileService as never,
+            historyService as never,
+        );
+
+        await expect(
+            service.generateSummary(
+                "507f1f77bcf86cd799439012",
+                "507f1f77bcf86cd799439011",
+            ),
+        ).rejects.toMatchObject({
+            response: {
+                code: "AI_PROVIDER_TIMEOUT",
+            },
+        });
+        await expect(
+            service.generateSummary(
+                "507f1f77bcf86cd799439012",
+                "507f1f77bcf86cd799439011",
+            ),
+        ).rejects.toBeInstanceOf(GatewayTimeoutException);
+        expect(artifactModel.create).not.toHaveBeenCalled();
     });
 });

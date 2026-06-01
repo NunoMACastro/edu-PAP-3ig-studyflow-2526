@@ -17,7 +17,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-02`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-01-registo-do-aluno-email-password-ou-sso-escolar.md`
-- `last_updated`: `2026-05-25`
+- `last_updated`: `2026-06-01`
 
 ## O que vamos fazer neste BK
 
@@ -84,7 +84,7 @@ O mockup existente mostra o ecrã de autenticação com marca `StudyFlow`, fundo
 ## Metadados do BK (CANONICO/DERIVADO):
 
 - Prioridade: `P0` (CANONICO)
-- Estado: `TODO` (CANONICO)
+- Estado: `DONE` (CANONICO)
 - Esforco: `M` (CANONICO)
 - macro: `MF0` (CANONICO)
 - Owner: `Natalia` (CANONICO)
@@ -897,6 +897,14 @@ Erros esperados:
 - Confirmar que a resposta nunca inclui `password`, `confirmPassword` ou `passwordHash`.
 
 ## Evidence para PR/defesa
+
+### Evidence executada em 2026-06-01
+
+- `apps/api`: `npm test` -> PASS (19 suites, 68 tests).
+- `apps/api`: `npm run build` -> PASS.
+- `apps/web`: `npm run build` -> PASS.
+- Testes negativos cobertos neste ciclo: `LOGIN_RATE_LIMITED`, resposta pública de materiais sem `storageKey`/`contentText`, `AI_PROVIDER_TIMEOUT`, `NO_PROCESSABLE_SOURCES`, provider IA não configurado e JSON IA inválido.
+- Não executado neste ciclo: smoke manual/browser/e2e com MongoDB, Redis e OpenAI reais.
 
 - Screenshot da página `Criar conta StudyFlow`.
 - Output do pedido `POST /api/auth/register -> 201`.

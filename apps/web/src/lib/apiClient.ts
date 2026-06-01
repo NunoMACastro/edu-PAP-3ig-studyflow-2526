@@ -56,7 +56,8 @@ export type StudyMaterial = {
     type: "PDF" | "DOCX" | "URL" | "TOPIC";
     status: "PENDING_PROCESSING" | "READY" | "FAILED";
     url?: string;
-    contentText?: string;
+    sizeBytes?: number;
+    createdAt?: string;
 };
 
 export type StudyToolType = "EXPLANATION" | "FLASHCARDS" | "QUIZ";

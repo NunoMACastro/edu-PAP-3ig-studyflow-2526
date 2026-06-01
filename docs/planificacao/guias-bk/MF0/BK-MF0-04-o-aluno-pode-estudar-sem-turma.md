@@ -8,7 +8,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF0-03`
 - `rf_rnf`: `RF04`
@@ -17,7 +17,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF0-05`
 - `guia_path`: `docs/planificacao/guias-bk/MF0/BK-MF0-04-o-aluno-pode-estudar-sem-turma.md`
-- `last_updated`: `2026-05-25`
+- `last_updated`: `2026-06-01`
 
 ## O que vamos fazer neste BK
 
@@ -74,7 +74,7 @@ Como não há mockup para o dashboard do aluno, este BK deve criar uma interface
 ## Metadados do BK (CANONICO/DERIVADO):
 
 - Prioridade: `P0` (CANONICO)
-- Estado: `TODO` (CANONICO)
+- Estado: `DONE` (CANONICO)
 - Esforco: `M` (CANONICO)
 - macro: `MF0` (CANONICO)
 - Owner: `Natalia` (CANONICO)
@@ -613,6 +613,14 @@ Erros esperados:
 - Pedido com `userId` no query: esperado ignorar query e devolver estado do dono da sessão.
 
 ## Evidence para PR/defesa
+
+### Evidence executada em 2026-06-01
+
+- `apps/api`: `npm test` -> PASS (19 suites, 68 tests).
+- `apps/api`: `npm run build` -> PASS.
+- `apps/web`: `npm run build` -> PASS.
+- Testes negativos cobertos neste ciclo: `LOGIN_RATE_LIMITED`, resposta pública de materiais sem `storageKey`/`contentText`, `AI_PROVIDER_TIMEOUT`, `NO_PROCESSABLE_SOURCES`, provider IA não configurado e JSON IA inválido.
+- Não executado neste ciclo: smoke manual/browser/e2e com MongoDB, Redis e OpenAI reais.
 
 - Screenshot do dashboard com texto “Podes estudar mesmo sem turma associada.”
 - Output `GET /api/study/solo -> 200` com `hasClass: false`.

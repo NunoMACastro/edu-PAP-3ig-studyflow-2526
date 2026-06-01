@@ -1,6 +1,7 @@
 import {
     BadGatewayException,
     BadRequestException,
+    GatewayTimeoutException,
     UnprocessableEntityException,
 } from "@nestjs/common";
 import { Types } from "mongoose";
@@ -114,6 +115,35 @@ describe("StudyToolsService", () => {
         ).rejects.toBeInstanceOf(BadGatewayException);
         expect(artifactModel.create).not.toHaveBeenCalled();
         expect(historyService.recordEvent).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Confirma que timeout do provider não é convertido para erro genérico.
+     */
+    it("preserva GatewayTimeoutException do provider IA", async () => {
+        const { artifactModel, aiProvider, service } = makeService();
+        aiProvider.generateStudyTool.mockRejectedValue(
+            new GatewayTimeoutException({
+                code: "AI_PROVIDER_TIMEOUT",
+                message: "A IA demorou demasiado tempo a responder.",
+            }),
+        );
+
+        await expect(
+            service.generateStudyTool(userId, studyAreaId, {
+                type: "EXPLANATION",
+            }),
+        ).rejects.toMatchObject({
+            response: {
+                code: "AI_PROVIDER_TIMEOUT",
+            },
+        });
+        await expect(
+            service.generateStudyTool(userId, studyAreaId, {
+                type: "EXPLANATION",
+            }),
+        ).rejects.toBeInstanceOf(GatewayTimeoutException);
+        expect(artifactModel.create).not.toHaveBeenCalled();
     });
 });
 

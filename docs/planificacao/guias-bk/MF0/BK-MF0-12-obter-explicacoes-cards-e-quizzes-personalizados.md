@@ -8,7 +8,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF0-11`
 - `rf_rnf`: `RF12`
@@ -85,7 +85,7 @@ O output deste BK fecha tecnicamente a fundação de IA da MF0 e prepara a MF1. 
 ## Metadados do BK (CANONICO/DERIVADO):
 
 - Prioridade: `P0` (CANONICO)
-- Estado: `TODO` (CANONICO)
+- Estado: `DONE` (CANONICO)
 - Esforco: `M` (CANONICO)
 - macro: `MF0` (CANONICO)
 - Owner: `Natalia` (CANONICO)
@@ -1257,6 +1257,14 @@ describe("StudyToolsService", () => {
 Este teste prova a regra mais importante: sem fontes, não há chamada útil à IA nem conteúdo inventado.
 
 ## Evidence para PR/defesa
+
+### Evidence executada em 2026-06-01
+
+- `apps/api`: `npm test` -> PASS (19 suites, 68 tests).
+- `apps/api`: `npm run build` -> PASS.
+- `apps/web`: `npm run build` -> PASS.
+- Testes negativos cobertos neste ciclo: `LOGIN_RATE_LIMITED`, resposta pública de materiais sem `storageKey`/`contentText`, `AI_PROVIDER_TIMEOUT`, `NO_PROCESSABLE_SOURCES`, provider IA não configurado e JSON IA inválido.
+- Não executado neste ciclo: smoke manual/browser/e2e com MongoDB, Redis e OpenAI reais.
 
 - Output `201` de explicação com `sourcesJson`.
 - Output `201` de flashcards com `cards`.

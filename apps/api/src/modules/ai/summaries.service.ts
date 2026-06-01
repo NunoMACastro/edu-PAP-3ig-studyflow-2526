@@ -1,5 +1,6 @@
 import {
     BadGatewayException,
+    GatewayTimeoutException,
     Inject,
     Injectable,
     ServiceUnavailableException,
@@ -86,6 +87,7 @@ export class SummariesService {
         } catch (error) {
             if (
                 error instanceof BadGatewayException ||
+                error instanceof GatewayTimeoutException ||
                 error instanceof UnprocessableEntityException
             ) {
                 throw error;

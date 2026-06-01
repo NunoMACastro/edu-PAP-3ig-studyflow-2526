@@ -8,6 +8,7 @@ import { Model, Types } from "mongoose";
 import { HistoryService } from "../study/history.service.js";
 import { StudyAreasService } from "../study-areas/study-areas.service.js";
 import { CreateMaterialDto } from "./dto/create-material.dto.js";
+import { PublicMaterialDto } from "./dto/public-material.dto.js";
 import { Material, MaterialDocument } from "./schemas/material.schema.js";
 import { MaterialStorageService } from "./material-storage.service.js";
 import {
@@ -35,15 +36,21 @@ export class MaterialsService {
      * @param studyAreaId Identificador da área.
      * @returns Materiais da área.
      */
-    async listByArea(userId: string, studyAreaId: string) {
+    async listByArea(
+        userId: string,
+        studyAreaId: string,
+    ): Promise<PublicMaterialDto[]> {
         await this.assertOwnArea(userId, studyAreaId);
-        return this.materialModel
+        const materials = await this.materialModel
             .find({
                 userId: new Types.ObjectId(userId),
                 studyAreaId: new Types.ObjectId(studyAreaId),
             })
+            .select("_id title type status url sizeBytes createdAt")
             .sort({ createdAt: -1 })
             .lean();
+
+        return materials.map((material) => this.toPublicMaterial(material));
     }
 
     /**
@@ -92,7 +99,7 @@ export class MaterialsService {
         studyAreaId: string,
         file: Express.Multer.File,
         title?: string,
-    ) {
+    ): Promise<PublicMaterialDto> {
         await this.assertOwnArea(userId, studyAreaId);
         validateMaterialUpload(file);
 
@@ -116,7 +123,7 @@ export class MaterialsService {
             material.title,
         );
 
-        return material;
+        return this.toPublicMaterial(material.toObject());
     }
 
     /**
@@ -131,7 +138,7 @@ export class MaterialsService {
         userId: string,
         studyAreaId: string,
         input: CreateMaterialDto,
-    ) {
+    ): Promise<PublicMaterialDto> {
         await this.assertOwnArea(userId, studyAreaId);
         const title = input.title?.trim();
         if (!title) {
@@ -157,7 +164,7 @@ export class MaterialsService {
                 "URL submetido",
                 title,
             );
-            return material;
+            return this.toPublicMaterial(material.toObject());
         }
 
         if (input.type === "TOPIC") {
@@ -183,7 +190,7 @@ export class MaterialsService {
                 "Tópico submetido",
                 title,
             );
-            return material;
+            return this.toPublicMaterial(material.toObject());
         }
 
         throw new BadRequestException({
@@ -234,5 +241,33 @@ export class MaterialsService {
                 message: "Indica um URL http ou https válido.",
             });
         }
+    }
+
+    /**
+     * Converte material interno no contrato público do BK-MF0-08.
+     *
+     * @param material Documento ou objeto lean vindo do Mongo.
+     * @returns Material sem campos internos/sensíveis.
+     */
+    private toPublicMaterial(material: {
+        _id: unknown;
+        title: string;
+        type: PublicMaterialDto["type"];
+        status: PublicMaterialDto["status"];
+        url?: string;
+        sizeBytes?: number;
+        createdAt?: Date;
+    }): PublicMaterialDto {
+        return {
+            _id: String(material._id),
+            title: material.title,
+            type: material.type,
+            status: material.status,
+            ...(material.url ? { url: material.url } : {}),
+            ...(material.sizeBytes !== undefined
+                ? { sizeBytes: material.sizeBytes }
+                : {}),
+            ...(material.createdAt ? { createdAt: material.createdAt } : {}),
+        };
     }
 }
