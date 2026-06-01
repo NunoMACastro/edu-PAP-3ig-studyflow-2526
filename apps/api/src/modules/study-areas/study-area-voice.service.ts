@@ -1,0 +1,97 @@
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { UpdateStudyAreaVoiceDto } from "./dto/update-study-area-voice.dto.js";
+import {
+    StudyArea,
+    StudyAreaDocument,
+    StudyAreaVoiceDetailLevel,
+    StudyAreaVoiceTone,
+} from "./schemas/study-area.schema.js";
+import { StudyAreasService } from "./study-areas.service.js";
+
+const VALID_TONES: StudyAreaVoiceTone[] = [
+    "simple",
+    "rigorous",
+    "step_by_step",
+    "examples_first",
+];
+const VALID_DETAIL_LEVELS: StudyAreaVoiceDetailLevel[] = [
+    "short",
+    "normal",
+    "detailed",
+];
+
+/**
+ * Serviço da voz pedagógica por área de estudo.
+ */
+@Injectable()
+export class StudyAreaVoiceService {
+    constructor(
+        @InjectModel(StudyArea.name)
+        private readonly areaModel: Model<StudyAreaDocument>,
+        private readonly studyAreasService: StudyAreasService,
+    ) {}
+
+    /**
+     * Atualiza o tom e nível de detalhe da área autenticada.
+     *
+     * @param userId Identificador vindo da sessão.
+     * @param areaId Identificador da área.
+     * @param input Preferências de voz.
+     * @returns Área atualizada com campos de voz.
+     */
+    async updateVoice(
+        userId: string,
+        areaId: string,
+        input: UpdateStudyAreaVoiceDto,
+    ) {
+        await this.studyAreasService.getMyStudyArea(userId, areaId);
+        this.validateVoice(input);
+
+        const updated = await this.areaModel
+            .findOneAndUpdate(
+                { _id: areaId, userId: new Types.ObjectId(userId) },
+                {
+                    $set: {
+                        voiceTone: input.voiceTone,
+                        voiceDetailLevel: input.voiceDetailLevel,
+                        voiceNotes: input.voiceNotes?.trim(),
+                    },
+                },
+                { new: true, runValidators: true },
+            )
+            .lean();
+
+        if (!updated) {
+            throw new BadRequestException({
+                code: "VOICE_NOT_SAVED",
+                message: "Não foi possível guardar a voz da área.",
+            });
+        }
+
+        return updated;
+    }
+
+    /**
+     * Valida enums de voz sem depender apenas de validação Mongoose.
+     *
+     * @param input Preferências enviadas pelo frontend.
+     * @returns Nada quando os valores são válidos.
+     */
+    private validateVoice(input: UpdateStudyAreaVoiceDto): void {
+        if (!VALID_TONES.includes(input.voiceTone)) {
+            throw new BadRequestException({
+                code: "INVALID_VOICE_TONE",
+                message: "Tom de explicação inválido.",
+            });
+        }
+
+        if (!VALID_DETAIL_LEVELS.includes(input.voiceDetailLevel)) {
+            throw new BadRequestException({
+                code: "INVALID_DETAIL_LEVEL",
+                message: "Nível de detalhe inválido.",
+            });
+        }
+    }
+}
