@@ -114,3 +114,14 @@ export async function prepareAiAreaProfile(
         );
     return data as AiAreaProfile;
 }
+
+export async function generateSummary(studyAreaId: string) {
+    const response = await fetch(`/api/study-areas/${studyAreaId}/summaries`, {
+        method: "POST",
+        credentials: "include",
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok)
+        throw new Error(data?.message ?? "Não foi possível gerar resumo.");
+    return data;
+}
