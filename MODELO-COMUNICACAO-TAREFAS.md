@@ -1,414 +1,351 @@
-# Modelo Universal de Comunicação de Tarefas - PAPs
+# Plano de Execucao - MF1 StudyFlow
 
-## 0) Identificação rápida
+Snapshot do backlog: `2026-04-19` (`studyflow/docs/planificacao/backlogs/BACKLOG-MVP.md`).
 
-PAP: `{{PAP_NOME}}`
+Guias MF1 refinados/reauditados: `2026-05-31` (`studyflow/docs/planificacao/guias-bk/MF1/`).
 
-Repositório: `{{REPO_URL_OU_NOME}}`
+Data de conclusão: `05-Junho-2026 às 13:00`.
 
-Base branch: `main`
+## 1) Contexto principal
 
-Modo de trabalho:
+A `MF1` da StudyFlow e a primeira macrofase de nucleo funcional real depois das fundacoes da `MF0`.
 
-- `MF completa`: `{{MF_ID}} - {{MF_TITULO}}`
-- `Conjunto de BKs`: `{{BK_INICIAL}}..{{BK_FINAL}}` ou `{{LISTA_BKS}}`
+Esta macro junta dois eixos de produto:
 
-Snapshot dos documentos: `{{DATA_SNAPSHOT}}`
+- estudo colaborativo entre alunos, com salas, partilhas e IA da sala;
+- fluxo docente, com turmas, disciplinas, materiais oficiais, voz docente, IA limitada e publicacoes.
 
-Documentos principais:
+Ao contrario da `MF0`, que cria a base de autenticacao, perfil, areas de estudo, materiais e IA individual, a `MF1` transforma essa base numa experiencia colaborativa e numa experiencia professor/turma. A regra principal e reutilizar o que ja existe na `MF0`, sem criar estruturas paralelas nem contratos novos de autenticacao.
 
-- `{{PATH_PLANO_IMPLEMENTACAO}}`
-- `{{PATH_BACKLOG}}`
-- `{{PATH_MF_VIEWS}}`
-- `{{PATH_GUIAS_BK}}`
-- `{{PATH_RF}}`
-- `{{PATH_RNF}}`
+Stack/contrato tecnico previsto:
 
----
-
-## 1) Branches a usar
-
-Antes de começar, criar sempre uma branch nova a partir de `main`.
-
-### Regra de nomes
-
-Usar sempre nomes curtos, previsíveis e em minúsculas:
-
-```text
-feat/{{pap-slug}}-{{mf-id}}-{{bk-num}}-{{bk-slug}}-{{owner-slug}}
-```
-
-Para uma MF completa:
-
-```text
-feat/{{pap-slug}}-{{mf-id}}-{{mf-slug}}-{{grupo-ou-owner}}
-```
-
-Para um conjunto de BKs:
-
-```text
-feat/{{pap-slug}}-{{mf-id}}-{{bk-inicial}}-{{bk-final}}-{{tema}}-{{owner-slug}}
-```
-
-Para correções:
-
-```text
-fix/{{pap-slug}}-{{mf-id}}-{{bk-num}}-{{problema}}
-```
-
-### Branches desta comunicação
-
-Preencher esta tabela antes de enviar a tarefa ao grupo/agente.
-
-| Unidade                           | Owner          | Branch                                                              |
-| --------------------------------- | -------------- | ------------------------------------------------------------------- |
-| `{{BK_ID_01}}` - {{BK_TITULO_01}} | `{{OWNER_01}}` | `feat/{{pap-slug}}-{{mf-id}}-{{bk-num}}-{{bk-slug}}-{{owner-slug}}` |
-| `{{BK_ID_02}}` - {{BK_TITULO_02}} | `{{OWNER_02}}` | `feat/{{pap-slug}}-{{mf-id}}-{{bk-num}}-{{bk-slug}}-{{owner-slug}}` |
-| `{{BK_ID_03}}` - {{BK_TITULO_03}} | `{{OWNER_03}}` | `feat/{{pap-slug}}-{{mf-id}}-{{bk-num}}-{{bk-slug}}-{{owner-slug}}` |
-
-Exemplo:
-
-| Unidade                        | Owner       | Branch                                   |
-| ------------------------------ | ----------- | ---------------------------------------- |
-| `BK-MF0-01` - Registo do aluno | `Natalia`   | `feat/studyflow-mf0-01-registo-natalia`  |
-| `BK-MF0-02` - Login seguro     | `Natalia`   | `feat/studyflow-mf0-02-login-natalia`    |
-| `BK-MF0-03` - Perfil editável  | `Guilherme` | `feat/studyflow-mf0-03-perfil-guilherme` |
+- Node.js + NestJS;
+- React + Vite;
+- MongoDB/Mongoose;
+- sessao por cookie `HttpOnly`;
+- frontend com `credentials: "include"`;
+- separacao por modulos de dominio;
+- provider de IA herdado por `AI_PROVIDER`;
+- backend em `apps/api`;
+- frontend em `apps/web`;
+- evidence obrigatoria por BK.
 
 ---
 
-## 2) Guia rápido: trabalhar no VS Code
+## 2) Tutorial Git/GitHub por BK (VS Code ou Codespaces)
 
-### 2.1 Abrir o projeto
+Esta e a rotina obrigatoria para cada BK da `MF1`. O objetivo e garantir que cada aluno trabalha sempre sobre codigo atualizado, numa branch isolada, com commits pequenos e PR para `main`.
 
-1. Abrir o VS Code.
-2. Escolher `File > Open Folder`.
-3. Abrir a pasta raiz da PAP/repositório.
-4. Abrir o terminal integrado com `Terminal > New Terminal`.
+Podes fazer isto no VS Code local ou no GitHub Codespaces. Em ambos os casos, usa o terminal integrado:
 
-Confirmar que estás na pasta certa:
+- VS Code: `Terminal > New Terminal`;
+- Codespaces: abrir o repositorio da PAP no GitHub, escolher `Code > Codespaces`, entrar no codespace e usar o terminal integrado.
+
+### Passo 1 - Pull antes de trabalhar
+
+Antes de tocar no codigo, confirmar que estas na `main` e que tens a versao mais recente.
 
 ```bash
 git status
 ```
 
-### 2.2 Atualizar a branch principal
+Se aparecerem alteracoes tuas por guardar, nao fazer pull ainda. Primeiro confirmar se sao para commit, se sao temporarias ou se pertencem a outro BK.
 
-Antes de criar uma branch nova:
+Depois, ir para a `main` e atualizar:
 
 ```bash
-git checkout main
+git switch main
 git pull origin main
 ```
 
-Se o projeto usar outra branch base, substituir `main` por `{{BASE_BRANCH}}`.
+Regra: a branch do BK deve nascer depois deste pull. Assim evita-se trabalhar em cima de codigo antigo.
 
-### 2.3 Criar a branch da tarefa
+### Passo 2 - Escolher o BK e criar a branch
+
+Escolher o BK que vai ser implementado e criar a branch correspondente:
+
+- `BK-MF1-01`: `feat/studyflow-mf1-01-ia-adaptativa-natalia`
+- `BK-MF1-02`: `feat/studyflow-mf1-02-salas-estudo-kaua`
+- `BK-MF1-03`: `feat/studyflow-mf1-03-partilhas-sala-guilherme`
+- `BK-MF1-04`: `feat/studyflow-mf1-04-ia-sala-daniel`
+- `BK-MF1-07`: `feat/studyflow-mf1-07-turmas-guilherme`
+- `BK-MF1-08`: `feat/studyflow-mf1-08-disciplinas-natalia`
+- `BK-MF1-09`: `feat/studyflow-mf1-09-materiais-oficiais-kaua`
+- `BK-MF1-10`: `feat/studyflow-mf1-10-voz-docente-natalia`
+- `BK-MF1-11`: `feat/studyflow-mf1-11-ia-limitada-turma-natalia`
+- `BK-MF1-12`: `feat/studyflow-mf1-12-avisos-publicacoes-kaua`
+
+Exemplo para o `BK-MF1-01`:
 
 ```bash
-git checkout -b {{BRANCH_DA_TAREFA}}
+git switch -c feat/studyflow-mf1-01-ia-adaptativa-natalia
 ```
 
-Exemplo:
+Confirmar que a branch ativa e a correta:
 
 ```bash
-git checkout -b feat/studyflow-mf0-01-registo-natalia
+git branch --show-current
 ```
 
-### 2.4 Implementar em ciclos curtos
+### Passo 3 - Implementar em ciclos pequenos
 
-Durante o trabalho:
+Antes de escrever codigo:
+
+1. Ler o guia do BK em `docs/planificacao/guias-bk/MF1/`.
+2. Confirmar dependencias e scope-out.
+3. Confirmar se o BK pertence ao eixo colaborativo de alunos ou ao eixo docente/turma.
+4. Adaptar paths dos guias para a estrutura real quando necessario:
+    - `server/src/...` => `apps/api/src/...`;
+    - `client/src/...` => `apps/web/src/...`.
+5. Implementar uma parte pequena.
+6. Verificar o que mudou.
+
+Comandos uteis:
+
+```bash
+git status
+git diff
+```
+
+Regra: nao misturar varios BKs na mesma branch. Uma branch, um BK.
+
+### Passo 4 - Testar antes de commit
+
+Correr os testes relevantes ao tipo de alteracao.
+
+Comandos pedidos nos guias MF1:
+
+```bash
+npm run test:unit
+npm run test:integration
+```
+
+Nota operacional: neste workspace, os `package.json` observados ainda nao expõem estes scripts no nivel raiz. Se os comandos ainda nao existirem quando o BK for implementado, registar como blocker de infraestrutura ou alinhar scripts antes de fechar o BK.
+
+Se o BK tiver UI, validar tambem o fluxo no frontend e guardar evidence sanitizada, sem cookies, passwords, screenshots com dados reais ou dados pessoais de alunos.
+
+Se um teste falhar, corrigir antes de fazer commit. Se a falha for de infraestrutura externa, registar isso nas notas/evidence.
+
+### Passo 5 - Fazer commits claros
+
+Ver primeiro os ficheiros alterados:
 
 ```bash
 git status
 ```
 
-Ver alterações:
+Adicionar apenas ficheiros do BK:
 
 ```bash
-git diff
+git add apps/api/src/modules/caminho/do/ficheiro.ts
+git add apps/web/src/caminho/do/ficheiro.tsx
+git add docs/planificacao/caminho/do/ficheiro.md
 ```
 
-Validar o que vai ser incluído:
+Ou, se todas as alteracoes pertencerem mesmo ao BK:
 
 ```bash
-git diff --staged
+git add .
 ```
 
-### 2.5 Adicionar ficheiros ao commit
-
-Adicionar apenas ficheiros relacionados com a tarefa:
+Antes do commit, confirmar que nao entrou nada sensivel:
 
 ```bash
-git add {{ficheiro_ou_pasta}}
+git diff --cached
 ```
 
-Exemplo:
+Criar commit com mensagem curta e ligada ao BK:
 
 ```bash
-git add apps/api/src/auth
-git add apps/web/src/pages/Login.tsx
+git commit -m "feat(mf1-01): add adaptive learning flow"
 ```
 
-Evitar `git add .` quando houver alterações que não pertencem à tarefa.
+Boas regras para commits:
 
-### 2.6 Criar commit
+- um commit deve representar uma unidade logica;
+- nao juntar formatter, refactor grande e feature no mesmo commit sem necessidade;
+- nao commitar `.env`, cookies, tokens, imagens reais ou evidence sensivel;
+- se houver mais trabalho no mesmo BK, repetir ciclo: alterar, testar, `git add`, `git commit`.
 
-Usar uma mensagem curta e objetiva:
+### Passo 6 - Push da branch
+
+Quando o BK estiver pronto localmente:
 
 ```bash
-git commit -m "{{tipo}}: {{resumo_da_tarefa}}"
+git push -u origin feat/studyflow-mf1-01-ia-adaptativa-natalia
 ```
 
-Exemplos:
-
-```bash
-git commit -m "feat: add student registration"
-git commit -m "fix: validate login cookie session"
-git commit -m "test: cover study area ownership checks"
-```
-
-Tipos recomendados:
-
-- `feat`: nova funcionalidade;
-- `fix`: correção;
-- `test`: testes;
-- `docs`: documentação;
-- `refactor`: refatoração sem mudança de comportamento;
-- `chore`: manutenção sem impacto funcional.
-
-### 2.7 Enviar branch para o GitHub
-
-Na primeira vez:
-
-```bash
-git push -u origin {{BRANCH_DA_TAREFA}}
-```
-
-Nas vezes seguintes:
+Nos pushes seguintes da mesma branch, basta:
 
 ```bash
 git push
 ```
 
-### 2.8 Abrir Pull Request
+### Passo 7 - Abrir PR para `main`
 
-1. Abrir o repositório no GitHub.
-2. Clicar em `Compare & pull request`.
+No GitHub:
+
+1. Abrir o repositorio.
+2. Clicar em `Compare & pull request`, ou ir a `Pull requests > New pull request`.
 3. Confirmar:
     - base: `main`;
-    - compare: `{{BRANCH_DA_TAREFA}}`.
-4. Preencher título, descrição, testes e evidence.
-5. Criar o PR.
-6. Nunca fazer merge sem validação/revisão.
+    - compare: branch do BK.
+4. Titulo recomendado:
 
----
-
-## 3) Guia rápido: trabalhar em GitHub Codespaces
-
-### 3.1 Criar ou abrir Codespace
-
-1. Abrir o repositório no GitHub.
-2. Clicar em `Code`.
-3. Abrir o separador `Codespaces`.
-4. Criar um novo Codespace ou abrir um existente.
-
-### 3.2 Confirmar estado inicial
-
-No terminal do Codespace:
-
-```bash
-git status
-git branch
+```text
+BK-MF1-01 - IA adaptativa do aluno
 ```
 
-Atualizar a branch base:
+5. Na descricao do PR, preencher:
+    - BK implementado;
+    - RF/RNF;
+    - resumo tecnico;
+    - ficheiros principais;
+    - smoke test;
+    - negativos;
+    - comandos executados;
+    - screenshots, se houver UI;
+    - notas de seguranca/privacidade.
+6. Criar Pull Request.
+
+Regra: o PR e sempre para `main`, nunca diretamente para outra branch sem combinacao previa.
+
+### Passo 8 - Rever checks e responder a feedback
+
+Depois de abrir o PR:
+
+1. Esperar pelos checks.
+2. Se falharem, abrir logs e corrigir na mesma branch.
+3. Fazer novo commit.
+4. Fazer `git push`.
+
+O PR atualiza automaticamente.
+
+### Passo 9 - Depois do merge
+
+Quando o PR for aprovado e merged:
 
 ```bash
-git checkout main
+git switch main
 git pull origin main
 ```
 
-### 3.3 Criar branch da tarefa
+Se a branch local ja nao for necessaria:
 
 ```bash
-git checkout -b {{BRANCH_DA_TAREFA}}
+git branch -d feat/studyflow-mf1-01-ia-adaptativa-natalia
 ```
 
-### 3.4 Instalar dependências, se necessário
-
-Usar apenas o comando previsto no projeto.
-
-Exemplos possíveis:
-
-```bash
-npm install
-npm ci
-```
-
-Não instalar dependências novas sem autorização ou sem justificar a necessidade.
-
-### 3.5 Trabalhar, validar e commitar
-
-Ver alterações:
-
-```bash
-git status
-git diff
-```
-
-Executar validações previstas:
-
-```bash
-npm test
-npm run lint
-```
-
-Adicionar ficheiros:
-
-```bash
-git add {{ficheiro_ou_pasta}}
-```
-
-Criar commit:
-
-```bash
-git commit -m "{{tipo}}: {{resumo_da_tarefa}}"
-```
-
-Enviar branch:
-
-```bash
-git push -u origin {{BRANCH_DA_TAREFA}}
-```
-
-### 3.6 Abrir PR no Codespaces
-
-Opção A: pelo GitHub no browser.
-
-Opção B: pelo painel `Source Control` do VS Code/Codespaces, quando disponível.
-
-O PR deve apontar sempre para `main` ou para a branch base definida pela equipa.
-
-### 3.7 Fechar ou parar Codespace
-
-Depois de terminar:
-
-1. Confirmar que o código foi enviado com `git push`.
-2. Confirmar que o PR existe.
-3. Parar o Codespace no GitHub se já não for necessário.
+No proximo BK, repetir o processo desde o Passo 1.
 
 ---
 
-## 4) Contexto principal
+## 3) BKs da MF1
 
-A `{{MF_ID}}` da `{{PAP_NOME}}` corresponde a:
+Owners P0 da MF1: `Guilherme`, `Natalia` e `Kaua`.
 
-```text
-{{DESCRICAO_CURTA_DA_MF_OU_CONJUNTO_DE_BKS}}
-```
+Equipa envolvida na MF1: `Natalia`, `Guilherme`, `Kaua` e `Daniel`.
 
-Nesta tarefa entram:
+| BK          | Titulo                                                            | Owner     | Apoio     | Pri | Esforco | Dependencias             | RF   |
+| ----------- | ----------------------------------------------------------------- | --------- | --------- | --- | ------- | ------------------------ | ---- |
+| `BK-MF1-01` | A IA deve adaptar explicacoes ao ritmo/dificuldades do aluno      | Natalia   | Guilherme | P1  | S       | `BK-MF0-12`              | RF13 |
+| `BK-MF1-02` | Criar salas de estudo com outros alunos, livres ou por disciplina | Kaua      | Guilherme | P1  | S       | `BK-MF0-03`              | RF14 |
+| `BK-MF1-03` | Partilhar materiais e apontamentos na sala                        | Guilherme | Natalia   | P1  | S       | `BK-MF1-02`              | RF15 |
+| `BK-MF1-04` | IA partilhada da sala, misturando areas dos membros               | Daniel    | Kaua      | P2  | S       | `BK-MF1-02`, `BK-MF1-03` | RF16 |
+| `BK-MF1-07` | Criar turmas                                                      | Guilherme | Natalia   | P0  | M       | -                        | RF19 |
+| `BK-MF1-08` | Criar disciplinas e associa-las as turmas                         | Natalia   | Guilherme | P0  | M       | `BK-MF1-07`              | RF20 |
+| `BK-MF1-09` | Submeter materiais da disciplina, versao oficial                  | Kaua      | Natalia   | P0  | M       | `BK-MF1-08`              | RF21 |
+| `BK-MF1-10` | Configurar voz textual da IA docente                              | Natalia   | Guilherme | P1  | S       | `BK-MF1-09`              | RF22 |
+| `BK-MF1-11` | O aluno inscrito numa turma recebe versao limitada da IA          | Natalia   | Guilherme | P0  | M       | `BK-MF1-10`              | RF23 |
+| `BK-MF1-12` | Professores podem enviar avisos e publicacoes                     | Kaua      | Guilherme | P1  | S       | `BK-MF1-07`              | RF24 |
 
-- `{{ITEM_IN_SCOPE_01}}`;
-- `{{ITEM_IN_SCOPE_02}}`;
-- `{{ITEM_IN_SCOPE_03}}`.
+Planeamento: `S03-S04`, com a maior parte dos BKs em `S03` e `BK-MF1-03` em `S04`.
 
-Fica fora desta tarefa:
+Ordem canonica de PRs:
 
-- `{{ITEM_OUT_OF_SCOPE_01}}`;
-- `{{ITEM_OUT_OF_SCOPE_02}}`;
-- `{{ITEM_OUT_OF_SCOPE_03}}`.
-
-Stack/contrato técnico previsto:
-
-- frontend: `{{FRONTEND_STACK}}`;
-- backend: `{{BACKEND_STACK}}`;
-- base de dados: `{{DATABASE_STACK}}`;
-- autenticação/autorização: `{{AUTH_STACK}}`;
-- integrações externas: `{{INTEGRACOES}}`;
-- estrutura esperada: `{{ESTRUTURA_ESPERADA}}`;
-- evidence obrigatória por BK: `sim`.
-
----
-
-## 5) BKs abrangidos
-
-Se for uma MF completa, listar todos os BKs da MF.
-
-Se for um conjunto de BKs, listar apenas os BKs atribuídos nesta comunicação.
-
-Macro: `{{MF_ID}} - {{MF_TITULO}}`
-
-Janela planeada: `{{SPRINTS_OU_DATAS}}`
-
-| BK             | Título           | Owner        | Apoio        | Prioridade | Esforço        | Dependências        | RF/RNF        | Sprint        | Branch          |
-| -------------- | ---------------- | ------------ | ------------ | ---------- | -------------- | ------------------- | ------------- | ------------- | --------------- |
-| `{{BK_ID_01}}` | {{BK_TITULO_01}} | {{OWNER_01}} | {{APOIO_01}} | {{PRI_01}} | {{ESFORCO_01}} | {{DEPENDENCIAS_01}} | {{RF_RNF_01}} | {{SPRINT_01}} | `{{BRANCH_01}}` |
-| `{{BK_ID_02}}` | {{BK_TITULO_02}} | {{OWNER_02}} | {{APOIO_02}} | {{PRI_02}} | {{ESFORCO_02}} | {{DEPENDENCIAS_02}} | {{RF_RNF_02}} | {{SPRINT_02}} | `{{BRANCH_02}}` |
-| `{{BK_ID_03}}` | {{BK_TITULO_03}} | {{OWNER_03}} | {{APOIO_03}} | {{PRI_03}} | {{ESFORCO_03}} | {{DEPENDENCIAS_03}} | {{RF_RNF_03}} | {{SPRINT_03}} | `{{BRANCH_03}}` |
-
-Usar sempre os nomes canónicos do backlog:
-
-- `{{NOME_CANONICO_01}}`;
-- `{{NOME_CANONICO_02}}`;
-- `{{NOME_CANONICO_03}}`.
+1. `BK-MF1-01`
+2. `BK-MF1-02`
+3. `BK-MF1-03`
+4. `BK-MF1-04`
+5. `BK-MF1-07`
+6. `BK-MF1-08`
+7. `BK-MF1-09`
+8. `BK-MF1-10`
+9. `BK-MF1-11`
+10. `BK-MF1-12`
 
 ---
 
-## 6) Regra principal obrigatória
+## 4) Regra principal obrigatoria
 
-Antes de começar qualquer BK:
+Antes de comecar qualquer BK:
 
 1. Ler o guia completo do BK.
-2. Confirmar `owner`, `apoio`, `prioridade`, `dependências`, `rf_rnf`, `sprint` e `proximo_bk`.
-3. Perceber o que entra e o que fica fora.
-4. Confirmar se existem dependências ainda não concluídas.
-5. Conseguir explicar o plano de implementação em 2-3 frases.
-6. Confirmar com o professor/responsável antes de implementar ou fechar o BK, quando isso estiver definido como obrigatório.
+2. Confirmar `owner`, `apoio`, `prioridade`, `dependencias`, `rf_rnf`, `sprint` e `proximo_bk`.
+3. Confirmar se o BK pertence ao eixo colaborativo de alunos ou ao eixo docente/turma.
+4. Perceber o que entra e o que fica fora.
+5. Confirmar se dependencias anteriores estao merged.
+6. Conseguir explicar o plano de implementacao em 2-3 frases.
+7. Confirmar comigo antes de implementar ou fechar o BK.
 
 Nenhum BK pode ficar `DONE` sem:
 
-- smoke test;
-- testes negativos;
-- validação técnica;
+- smoke;
+- negativos;
+- validacao tecnica;
 - evidence `pr`, `proof`, `neg`;
-- validação da planificação sem drift;
+- validacao de seguranca/privacidade quando houver dados de utilizador;
+- validacao da planificacao sem drift;
 - PR criado e revisto.
 
 ---
 
-## 7) Estrutura técnica
+## 5) Atencao obrigatoria a paths e estrutura
 
-Estrutura esperada do projeto:
+A estrutura real desta PAP e:
 
-- `{{PATH_FRONTEND}}` para frontend;
-- `{{PATH_BACKEND}}` para backend;
-- `{{PATH_DOCS}}` para documentação;
-- `{{PATH_TESTS}}` para testes;
-- `{{PATH_SCRIPTS}}` para scripts de validação.
+- backend/API: `apps/api/src/...`;
+- frontend: `apps/web/src/...`;
+- planificacao: `docs/planificacao/...`;
+- scripts: `scripts/...` e `docs/planificacao/scripts/...`.
 
-Regras:
+Regra:
 
-1. Reutilizar a estrutura existente.
-2. Não criar pastas paralelas como `server/`, `client/`, `frontend/` ou `backend/` se o projeto já tiver outra organização.
-3. Não misturar frameworks sem decisão explícita.
-4. Não alterar contratos públicos sem confirmar impacto nos BKs dependentes.
-5. Não refatorar código não relacionado com a tarefa.
-6. Manter responsabilidades separadas por domínio/módulo.
+1. A estrutura real da app tem prioridade.
+2. Adaptar qualquer referencia `server/src/...` para `apps/api/src/...`.
+3. Adaptar qualquer referencia `client/src/...` para `apps/web/src/...`.
+4. Nao criar duas apps paralelas.
+5. Se um guia mencionar um ficheiro equivalente ja existente, editar o existente.
+6. Se houver duvida de arquitetura, parar e perguntar.
+
+Isto e blocker de arquitetura. Nao e detalhe cosmetico.
 
 ---
 
-## 8) Dados, segurança e variáveis de ambiente
+## 6) Dados, privacidade e variaveis de ambiente
 
-Nunca colocar segredos no repositório.
+Nunca meter segredos no repositorio.
 
 Usar apenas `.env` local para:
 
-- `{{ENV_VAR_01}}`;
-- `{{ENV_VAR_02}}`;
-- `{{ENV_VAR_03}}`.
+- `MONGODB_URI`;
+- `SESSION_SECRET` ou segredo equivalente da sessao;
+- `REDIS_URL`, se Redis for usado para sessoes/cache;
+- configuracoes locais de upload/storage, se existirem;
+- chaves de provider IA apenas quando forem explicitamente aprovadas.
 
-Antes de commit:
+Na `MF1`, os riscos principais sao:
+
+- dados pessoais de alunos e professores;
+- ownership de areas, salas, turmas, disciplinas e materiais;
+- membership de salas;
+- inscricao em turmas;
+- materiais oficiais e fontes usadas pela IA;
+- prompts e respostas de IA;
+- screenshots/evidence com dados escolares reais;
+- credenciais locais de MongoDB Atlas no `BK-MF1-07`.
+
+Antes de qualquer commit:
 
 ```bash
 git status
@@ -416,169 +353,348 @@ git status
 
 Confirmar:
 
-- `.env` não está staged;
-- não há tokens, API keys, cookies reais ou URIs privadas;
-- evidence está sanitizada;
-- logs não expõem prompts internos, chaves ou dados pessoais;
-- ficheiros de teste não incluem dados reais sensíveis;
-- uploads ou anexos de teste são fictícios/sanitizados;
-- permissões e ownership foram validados quando há dados de utilizadores.
+- `.env` nao esta staged;
+- nao ha passwords, tokens, URIs privadas ou cookies reais em commits;
+- evidence esta sanitizada;
+- screenshots/logs nao expoem dados sensiveis;
+- documentos escolares reais nao entram no repositorio;
+- IDs enviados pelo frontend nao substituem ownership/membership da sessao;
+- prompts internos e chaves de provider nao aparecem em logs ou PRs.
 
 ---
 
-## 9) Ordem de execução
+## 7) Ordem de execucao
 
 0. Fazer refresh de tabs GitHub/IDE abertas.
-1. Confirmar a branch base:
+1. Ler `studyflow/docs/planificacao/README.md`.
+2. Confirmar hierarquia de verdade:
+    - `MATRIZ-CANONICA-BK`;
+    - `BACKLOG-MVP`;
+    - `PLANO-SPRINTS`;
+    - `SCORECARD-SPRINTS`;
+    - `GUIAO-DOCENTE-SEMANAL`;
+    - `GATES-S4-S8-S12`;
+    - `guias-bk/*`.
+3. Abrir `studyflow/docs/planificacao/PLANO-IMPLEMENTACAO-TOTAL.md`.
+4. Confirmar `MF1 - Nucleo funcional I`.
+5. Abrir `studyflow/docs/planificacao/backlogs/MF-VIEWS.md`.
+6. Confirmar sequencia:
+    - `BK-MF1-01`;
+    - `BK-MF1-02`;
+    - `BK-MF1-03`;
+    - `BK-MF1-04`;
+    - `BK-MF1-07`;
+    - `BK-MF1-08`;
+    - `BK-MF1-09`;
+    - `BK-MF1-10`;
+    - `BK-MF1-11`;
+    - `BK-MF1-12`.
+7. Abrir `studyflow/docs/planificacao/backlogs/BACKLOG-MVP.md`.
+8. Confirmar estado, dependencias, owner, apoio, prioridade, esforco, RF e sprint.
+9. Abrir o guia especifico do BK em `studyflow/docs/planificacao/guias-bk/MF1/`.
+10. Validar o scope-out antes de escrever codigo.
+11. Implementar em ciclos curtos, mantendo PR pequeno.
+12. Validar smoke + negativos + evidence.
+13. Correr validacao documental:
 
 ```bash
-git checkout main
-git pull origin main
+bash scripts/validate-planificacao.sh
 ```
 
-2. Criar a branch da tarefa:
-
-```bash
-git checkout -b {{BRANCH_DA_TAREFA}}
-```
-
-3. Ler `{{PATH_README_PLANIFICACAO}}`.
-4. Confirmar hierarquia canónica e regra de precedência.
-5. Abrir `{{PATH_PLANO_IMPLEMENTACAO}}`.
-6. Confirmar `{{MF_ID}} - {{MF_TITULO}}`.
-7. Abrir `{{PATH_MF_VIEWS}}`.
-8. Confirmar sequência dos BKs abrangidos.
-9. Abrir `{{PATH_BACKLOG}}`.
-10. Confirmar estado, dependências, owner, apoio, prioridade, esforço, RF/RNF e sprint.
-11. Abrir o guia específico de cada BK em `{{PATH_GUIAS_BK}}`.
-12. Validar o scope-out antes de escrever código.
-13. Implementar em ciclos curtos.
-14. Manter o PR pequeno e focado.
-15. Validar smoke + negativos + evidence.
-16. Correr validação documental/técnica:
-
-```bash
-{{COMANDO_VALIDACAO_DOCUMENTAL}}
-```
-
-17. Correr testes:
-
-```bash
-{{COMANDO_TESTES}}
-{{COMANDO_LINT}}
-```
-
-18. Fazer commit e push.
-19. Criar PR para `main`.
+Nota operacional: a auditoria da `MF1` registou um bloqueio externo no script de validacao por caminho inexistente para `../scripts/validate_planificacao_canonica.py`. Se esse erro ainda acontecer, registar como blocker de infraestrutura, nao como falha do BK.
 
 ---
 
-## 10) SSOT mínimo
+## 8) SSOT minimo da MF1
 
-Ler apenas as partes relevantes.
+Ler apenas as partes relevantes:
 
-Documentos funcionais:
+- `studyflow/docs/RF.md`
+    - `RF13..RF16`;
+    - `RF19..RF24`.
 
-- `{{PATH_RF}}`
-    - `{{RF_RELEVANTES}}`.
+- `studyflow/docs/RNF.md`
+    - `RNF16`: sessoes com cookies `HttpOnly + Secure + SameSite`;
+    - `RNF17`: protecoes contra XSS, CSRF, injection e brute force;
+    - `RNF19`: guardrails obrigatorios na IA;
+    - `RNF20`: IA nao acede a dados de outras turmas ou alunos;
+    - `RNF31`: IA explica fontes dos conteudos;
+    - `RNF32`: IA respeita perfis distintos;
+    - `RNF35`: IA nao pode inventar informacao factual;
+    - `RNF42`: interface em portugues de Portugal.
 
-Documentos não funcionais:
+- `studyflow/docs/planificacao/PLANO-IMPLEMENTACAO-TOTAL.md`
+    - calendario macro;
+    - gate `S4` para sincronizacao `MF0-MF1`.
 
-- `{{PATH_RNF}}`
-    - `{{RNF_RELEVANTES}}`.
+- `studyflow/docs/planificacao/backlogs/MATRIZ-CANONICA-BK.md`
+    - linhas `BK-MF1-01..BK-MF1-12` existentes na MF1.
 
-Planificação:
-
-- `{{PATH_PLANO_IMPLEMENTACAO}}`
-    - calendário macro;
-    - gates;
-    - dependências entre fases.
-
-- `{{PATH_BACKLOG}}`
-    - linhas `{{LISTA_BKS}}`;
+- `studyflow/docs/planificacao/backlogs/BACKLOG-MVP.md`
+    - linhas `BK-MF1-01`, `BK-MF1-02`, `BK-MF1-03`, `BK-MF1-04`, `BK-MF1-07`, `BK-MF1-08`, `BK-MF1-09`, `BK-MF1-10`, `BK-MF1-11`, `BK-MF1-12`;
     - snapshot por macro;
-    - prioridades e owners.
+    - prioridades, owners, apoios e dependencias.
 
-- `{{PATH_MF_VIEWS}}`
-    - secção `{{MF_ID}} - {{MF_TITULO}}`.
+- `studyflow/docs/planificacao/backlogs/MF-VIEWS.md`
+    - `## MF1 - Nucleo funcional I`;
+    - ordem canonica de PRs;
+    - regras de modulos acumulados.
 
-- `{{PATH_PLANO_SPRINTS}}`
-    - sprints `{{SPRINTS_RELEVANTES}}`;
-    - matriz mínima de testes por prioridade.
+- `studyflow/docs/planificacao/sprints/PLANO-SPRINTS.md`
+    - `S03` e `S04`;
+    - matriz minima de testes por prioridade;
+    - gate em `S04`.
 
-Guias específicos:
+- `studyflow/docs/planificacao/guias-bk/AUDITORIA-HIDRATACAO-MF1.md`
+    - decisoes tecnicas confirmadas;
+    - drift documental;
+    - bloqueio conhecido no validador documental.
 
-- `{{GUIA_BK_01}}`;
-- `{{GUIA_BK_02}}`;
-- `{{GUIA_BK_03}}`.
+- Guias especificos:
+    - `BK-MF1-01-a-ia-deve-adaptar-explicacoes-ao-ritmo-dificuldades-do-aluno.md`;
+    - `BK-MF1-02-criar-salas-de-estudo-com-outros-alunos-livres-ou-por-disciplina.md`;
+    - `BK-MF1-03-partilhar-materiais-e-apontamentos-na-sala.md`;
+    - `BK-MF1-04-ia-partilhada-da-sala-mistura-das-areas-dos-membros.md`;
+    - `BK-MF1-07-criar-turmas.md`;
+    - `BK-MF1-08-criar-disciplinas-e-associa-las-as-turmas.md`;
+    - `BK-MF1-09-submeter-materiais-da-disciplina-versao-oficial.md`;
+    - `BK-MF1-10-configurar-voz-da-ia-docente.md`;
+    - `BK-MF1-11-o-aluno-inscrito-numa-turma-recebe-versao-limitada-da-ia.md`;
+    - `BK-MF1-12-professores-podem-enviar-avisos-e-publicacoes.md`.
 
 ---
 
-## 11) Validação por BK
+## 9) Validacao por BK
 
-Duplicar este bloco para cada BK da comunicação.
-
-### `{{BK_ID}}` - {{BK_TITULO}}
-
-Owner: `{{OWNER}}`
-
-Apoio: `{{APOIO}}`
-
-Prioridade: `{{PRIORIDADE}}`
-
-Branch: `{{BRANCH}}`
-
-Dependências:
-
-- `{{DEPENDENCIA_01}}`;
-- `{{DEPENDENCIA_02}}`.
-
-Scope:
-
-- `{{SCOPE_01}}`;
-- `{{SCOPE_02}}`;
-- `{{SCOPE_03}}`.
-
-Fora de scope:
-
-- `{{OUT_OF_SCOPE_01}}`;
-- `{{OUT_OF_SCOPE_02}}`.
+### `BK-MF1-01` - IA adaptativa do aluno
 
 Smoke:
 
-- `{{SMOKE_01}}`;
-- `{{SMOKE_02}}`;
-- `{{SMOKE_03}}`.
+- guardar perfil de aprendizagem numa area de estudo propria;
+- gerar explicacao adaptada com pelo menos um material `READY` com texto processavel;
+- resposta devolve fontes e notas de adaptacao;
+- frontend mostra carregamento, sucesso e erro da API.
 
 Negativos:
 
-- `{{NEG_01}}`;
-- `{{NEG_02}}`;
-- `{{NEG_03}}`.
+- area de outro aluno devolve `404`;
+- area sem materiais `READY` com texto processavel devolve `422`;
+- provider indisponivel ou resposta invalida devolve erro controlado.
 
-Validação técnica:
+Bloqueios:
 
-- `{{VALIDACAO_TECNICA_01}}`;
-- `{{VALIDACAO_TECNICA_02}}`;
-- `{{VALIDACAO_TECNICA_03}}`.
+- reutilizar `StudyAreasService.getMyStudyArea`;
+- usar apenas materiais `READY` com `contentText`;
+- preservar `StudyToolsService`, `SummariesService`, `AiAreaProfileService` e `AI_PROVIDER`;
+- nao usar turmas, disciplinas ou salas neste BK.
 
-Bloqueios ou decisões pendentes:
+### `BK-MF1-02` - Salas de estudo
 
-- `{{BLOQUEIO_OU_DECISAO_01}}`;
-- `{{BLOQUEIO_OU_DECISAO_02}}`.
+Smoke:
 
-Critério de conclusão:
+- aluno autenticado cria sala `FREE`;
+- aluno autenticado cria sala `SUBJECT` com `disciplineName`;
+- criador fica como primeiro membro;
+- membro adicionado por email ve a sala.
 
-- implementação concluída;
-- testes mínimos concluídos;
-- negativos validados;
-- evidence preenchida;
-- PR criado;
-- sem drift documental.
+Negativos:
+
+- sala `SUBJECT` sem `disciplineName` valido devolve `400`;
+- nao membro a adicionar aluno devolve `403`;
+- email sem aluno existente devolve `404`;
+- professor autenticado a usar fluxo de aluno devolve `403`.
+
+Bloqueios:
+
+- `disciplineName` e textual neste BK;
+- nao importar entidade oficial de disciplinas antes do `BK-MF1-08`;
+- `StudyRoomsService.ensureMember` deve ficar exportavel para `BK-MF1-03` e `BK-MF1-04`.
+
+### `BK-MF1-03` - Partilhas na sala
+
+Smoke:
+
+- membro cria apontamento `NOTE` com texto utilizavel por IA;
+- membro cria URL como referencia;
+- membro cria `MATERIAL_REF` para material proprio da MF0;
+- membros listam partilhas da sala.
+
+Negativos:
+
+- nao membro ou professor recebe `403`;
+- `MATERIAL_REF` para material de outro aluno devolve `404`;
+- partilha sem texto processavel nao alimenta IA.
+
+Bloqueios:
+
+- reutilizar `StudyRoomsService.ensureMember`;
+- validar `MATERIAL_REF` contra materiais do proprio aluno;
+- exportar `RoomSharesService` e `findUsableSharesForRoom` para `BK-MF1-04`;
+- nao implementar upload, edicao, remocao ou IA da sala neste BK.
+
+### `BK-MF1-04` - IA partilhada da sala
+
+Smoke:
+
+- membro pergunta a IA da sala;
+- resposta devolve fontes partilhadas da sala;
+- interacao fica gravada;
+- frontend mostra vazio inicial, carregamento, sucesso e erro.
+
+Negativos:
+
+- nao membro recebe `403`;
+- sala sem fontes textuais utilizaveis devolve `422`;
+- `sourceIds` de outra sala nao entram nas fontes;
+- provider sem resposta ou com fontes inventadas devolve `503`.
+
+Bloqueios:
+
+- usar apenas `RoomShare.usableByAi`;
+- validar membership antes da chamada IA;
+- bloquear resposta sem fontes;
+- nao usar materiais privados fora da sala;
+- nao misturar com voz docente.
+
+### `BK-MF1-07` - Turmas
+
+Smoke:
+
+- professor cria turma com `name`, `code` e `schoolYear`;
+- professor lista apenas as suas turmas;
+- professor adiciona aluno existente por email;
+- aluno inscrito ve a turma em `GET /api/student/classes`.
+
+Negativos:
+
+- aluno a criar turma devolve `403`;
+- `code` duplicado nas turmas do mesmo professor devolve `409`;
+- aluno nao inscrito nao ve a turma em `GET /api/student/classes`.
+
+Bloqueios:
+
+- `MONGODB_URI` fica apenas em `.env` local;
+- seed local cria professor e aluno de desenvolvimento e recusa producao;
+- `teacherId` vem sempre da sessao;
+- `ClassesModule` exporta `ClassesService`;
+- nao implementar importacao CSV, horarios, avaliacoes ou convites por email.
+
+### `BK-MF1-08` - Disciplinas em turmas
+
+Smoke:
+
+- professor dono cria disciplina numa turma sua;
+- professor lista disciplinas da turma;
+- frontend mostra carregamento, vazio, sucesso e erro.
+
+Negativos:
+
+- professor sem ownership da turma recebe `404`;
+- aluno autenticado recebe `403`;
+- nome duplicado na mesma turma recebe `409`.
+
+Bloqueios:
+
+- disciplina guarda `classId` e `teacherId`;
+- rota usa `classId` do URL;
+- `teacherId` vem da sessao;
+- nao criar disciplina fora de turma;
+- exportar `SubjectsService` para BKs seguintes.
+
+### `BK-MF1-09` - Materiais oficiais da disciplina
+
+Smoke:
+
+- professor dono cria material `TEXT` com `status: "PROCESSED"`;
+- professor dono cria material `URL` com `status: "REFERENCE_ONLY"`;
+- professor lista materiais oficiais da disciplina.
+
+Negativos:
+
+- professor sem ownership da disciplina recebe `404`;
+- aluno recebe `403`;
+- material `URL` nao alimenta a IA do `BK-MF1-11`;
+- payload com campo livre de notas nao faz drift para schema/DTO.
+
+Bloqueios:
+
+- `textContent` e `sourceUrl` tem responsabilidades separadas;
+- material guarda `subjectId`, `classId` e `teacherId`;
+- `OfficialMaterialsModule` exporta service e schema;
+- nao implementar upload pesado, extracao PDF/DOCX, versionamento ou aprovacao.
+
+### `BK-MF1-10` - Voz textual docente
+
+Smoke:
+
+- professor dono guarda configuracao de voz docente com `PUT`;
+- segundo `PUT` atualiza a mesma configuracao;
+- configuracao fica disponivel para leitura pelo fluxo do `BK-MF1-11`.
+
+Negativos:
+
+- aluno recebe `403`;
+- professor sem ownership da disciplina recebe `404`;
+- regras vazias, excessivas ou invalidas sao validadas/normalizadas.
+
+Bloqueios:
+
+- voz significa estilo pedagogico textual, nao audio;
+- uma configuracao por disciplina;
+- `teacherId` vem da sessao;
+- `TeacherAiModule` exporta `TeacherAiVoiceService`;
+- nao implementar quotas, biometria, clonagem de voz ou politicas globais.
+
+### `BK-MF1-11` - IA limitada para aluno inscrito
+
+Smoke:
+
+- aluno inscrito pergunta a IA da disciplina;
+- resposta usa apenas materiais oficiais `PROCESSED`;
+- resposta aplica voz docente textual;
+- resposta devolve fontes oficiais visiveis;
+- interacao fica gravada.
+
+Negativos:
+
+- aluno nao inscrito ou professor recebe `403`;
+- disciplina sem materiais oficiais `PROCESSED` devolve `422`;
+- provider indisponivel ou resposta invalida devolve erro controlado.
+
+Bloqueios:
+
+- inscricao e validada via `SchoolClass.studentIds`;
+- fontes vem de `OfficialMaterialsService`;
+- voz docente vem de `TeacherAiVoiceService`;
+- importar `AiModule`, sem redefinir provider;
+- nao usar materiais privados do aluno nem conhecimento externo sem fonte oficial.
+
+### `BK-MF1-12` - Avisos e publicacoes
+
+Smoke:
+
+- professor dono cria aviso ou publicacao;
+- professor lista publicacoes da turma;
+- aluno inscrito le publicacoes da turma;
+- frontend separa criacao docente e leitura do aluno.
+
+Negativos:
+
+- professor sem ownership da turma recebe `404`;
+- aluno a criar publicacao recebe `403`;
+- aluno nao inscrito a listar publicacoes recebe `403`;
+- publicacoes de uma turma nao aparecem noutra turma.
+
+Bloqueios:
+
+- escrita exige professor dono da turma;
+- leitura de aluno exige inscricao;
+- `ClassPost` guarda `classId`, `teacherId`, `type`, `title` e `body`;
+- nao implementar notificacoes push, comentarios, reacoes, anexos ou agendamento.
 
 ---
 
-## 12) Evidence obrigatória
+## 10) Evidencia obrigatoria
 
 Cada BK deve preencher:
 
@@ -590,28 +706,11 @@ Cada BK deve preencher:
 - `screenshots`, quando houver UI;
 - `notes`.
 
-Mínimo por prioridade:
+Para prioridades:
 
-- `P0`: `unit + integration + e2e`, mínimo `3` negativos;
-- `P1`: `unit/integration`, mínimo `2` negativos;
-- `P2`: teste focal, mínimo `1` negativo.
-
-Comandos esperados:
-
-```bash
-{{COMANDO_UNIT_TESTS}}
-{{COMANDO_INTEGRATION_TESTS}}
-{{COMANDO_E2E_TESTS}}
-{{COMANDO_LINT}}
-{{COMANDO_VALIDACAO_PLANIFICACAO}}
-```
-
-Quando o BK não pedir E2E, manter pelo menos:
-
-```bash
-{{COMANDO_UNIT_TESTS}}
-{{COMANDO_LINT}}
-```
+- `P0`: `unit + integration + e2e` ou fluxo manual documentado e minimo `3` negativos;
+- `P1`: `unit/integration` e minimo `2` negativos;
+- `P2`: teste focal e minimo `1` negativo.
 
 Evidence nunca pode conter:
 
@@ -620,159 +719,60 @@ Evidence nunca pode conter:
 - cookies reais;
 - URIs privadas;
 - API keys;
-- prompts internos sensíveis;
-- dados pessoais de alunos;
-- documentos escolares reais não sanitizados;
-- screenshots com dados reais sensíveis.
+- dados pessoais reais de alunos ou professores;
+- documentos escolares reais;
+- prompts internos sensiveis;
+- screenshots com dados reais sensiveis;
+- outputs completos de provider com informacao sensivel.
 
 ---
 
-## 13) Template de evidence por BK
+## 11) Decisoes tecnicas confirmadas para MF1
 
-````md
-## Evidence - {{BK_ID}} {{BK_TITULO}}
+- `BK-MF0-12` fecha a fundacao tecnica de IA e exporta `AI_PROVIDER`.
+- `BK-MF1-01` acrescenta adaptacao sem substituir contratos de IA da MF0.
+- A cadeia de sala e acumulada: `BK-MF1-02` cria salas, `BK-MF1-03` acrescenta partilhas e `BK-MF1-04` acrescenta IA da sala.
+- A cadeia docente e acumulada: `BK-MF1-07` turmas, `BK-MF1-08` disciplinas, `BK-MF1-09` materiais oficiais, `BK-MF1-10` voz docente, `BK-MF1-11` IA limitada e `BK-MF1-12` publicacoes.
+- `teacherId`, `studentId`, ownership e membership vem da sessao/base de dados, nao de IDs livres enviados pelo frontend.
+- Voz docente continua a ser estilo pedagogico textual, nao audio.
+- Materiais oficiais `URL` ficam como `REFERENCE_ONLY`.
+- So materiais oficiais `PROCESSED` alimentam IA factual da disciplina.
+- IA privada, IA da sala e IA da turma/disciplina mantem contextos separados.
+- Qualquer geracao IA da MF1 bloqueia quando nao existem fontes processaveis e autorizadas.
+- `BK-MF1-11` importa `AiModule` final em vez de redefinir provider.
 
-### PR
+---
 
-- URL: {{PR_URL}}
-- Branch: {{BRANCH}}
-- Base: main
+## 12) Fecho da MF1
 
-### Proof
+A `MF1` so esta pronta quando:
 
-- {{PROOF_01}}
-- {{PROOF_02}}
-- {{PROOF_03}}
+- todos os BKs da sequencia canonica tem criterios de aceite cumpridos;
+- smoke, negativos e evidence estao completos;
+- nao ha drift entre matriz, backlog, guias e sprints;
+- validacao documental passa ou o blocker externo fica registado;
+- salas, partilhas e IA da sala funcionam sem expor dados de nao membros;
+- turmas, disciplinas, materiais oficiais e publicacoes validam professor dono ou aluno inscrito;
+- IA limitada usa apenas fontes oficiais autorizadas;
+- `BK-MF2-01`, `BK-MF2-04`, `BK-MF2-05`, `BK-MF2-06`, `BK-MF2-07` e `BK-MF2-12` ficam desbloqueados conforme dependencias.
 
-### Negativos
-
-- {{NEG_01}}
-- {{NEG_02}}
-- {{NEG_03}}
-
-### Ficheiros alterados
-
-- {{FILE_01}}
-- {{FILE_02}}
-- {{FILE_03}}
-
-### Comandos executados
+Comando obrigatorio:
 
 ```bash
-{{COMMAND_01}}
-{{COMMAND_02}}
-{{COMMAND_03}}
+bash scripts/validate-planificacao.sh
 ```
 
-### Screenshots
-
-- {{SCREENSHOT_01}}
-- {{SCREENSHOT_02}}
-
-### Notas
-
-- {{NOTA_01}}
-- {{NOTA_02}}
-````
+Nota: se o validador continuar a falhar por ficheiro externo inexistente, registar como blocker de infraestrutura com o output sanitizado.
 
 ---
 
-## 14) Template de PR
+## 13) Se bloquearem mais de 45 minutos
 
-```md
-## Objetivo
+Mandar-me:
 
-Implementa `{{BK_ID}} - {{BK_TITULO}}` no âmbito de `{{MF_ID}} - {{MF_TITULO}}`.
-
-## Alterações
-
-- {{ALTERACAO_01}}
-- {{ALTERACAO_02}}
-- {{ALTERACAO_03}}
-
-## Validação
-
-- [ ] Smoke test concluído
-- [ ] Testes negativos concluídos
-- [ ] Testes unitários/integrados executados
-- [ ] Lint executado
-- [ ] Evidence preenchida
-- [ ] Sem segredos ou dados sensíveis no commit
-- [ ] Sem drift documental
-
-## Evidence
-
-- `pr`: {{PR_URL}}
-- `proof`: {{PROOF_RESUMO}}
-- `neg`: {{NEG_RESUMO}}
-- `files`: {{FILES_RESUMO}}
-- `commands`: {{COMMANDS_RESUMO}}
-- `screenshots`: {{SCREENSHOTS_RESUMO}}
-- `notes`: {{NOTES_RESUMO}}
-
-## Dependências e notas
-
-- Dependências confirmadas: {{DEPENDENCIAS_CONFIRMADAS}}
-- Bloqueios: {{BLOQUEIOS}}
-- Fora de scope: {{FORA_DE_SCOPE}}
-```
-
----
-
-## 15) Instruções para agente adaptar este modelo
-
-Quando um agente receber este modelo, deve:
-
-1. Identificar a PAP correta.
-2. Identificar se o pedido é para uma MF completa ou para um conjunto de BKs.
-3. Ler os documentos SSOT indicados.
-4. Preencher os placeholders com dados confirmados.
-5. Remover linhas que não se aplicam.
-6. Manter a ordem do topo:
-    - identificação;
-    - branches;
-    - VS Code;
-    - Codespaces;
-    - contexto;
-    - BKs;
-    - execução;
-    - validação;
-    - evidence.
-7. Não inventar RFs, RNFs, owners, dependências, endpoints, campos, regras de negócio ou estados.
-8. Se faltar informação crítica, escrever `TODO_CONFIRMAR` e listar a dúvida.
-
-### Pedido-tipo para adaptação
-
-```text
-Adapta o MODELO-COMUNICACAO-TAREFAS-GRUPOS.md para:
-
-- PAP: {{PAP_NOME}}
-- MF: {{MF_ID}} - {{MF_TITULO}}
-- BKs: {{LISTA_BKS}}
-- Grupo/owners: {{GRUPO_OU_OWNERS}}
-- Branch base: main
-
-Usa apenas os documentos da planificação da PAP.
-Coloca no topo os nomes das branches.
-Inclui guia de VS Code, Codespaces, validação, evidence e template de PR.
-Quando faltar informação, usa TODO_CONFIRMAR.
-```
-
----
-
-## 16) Checklist final antes de enviar ao grupo
-
-- [ ] PAP correta.
-- [ ] MF ou BKs corretos.
-- [ ] Branches preenchidas no topo.
-- [ ] Owners e apoios confirmados.
-- [ ] Dependências confirmadas.
-- [ ] RF/RNF relevantes confirmados.
-- [ ] Scope e fora de scope claros.
-- [ ] Guia VS Code incluído.
-- [ ] Guia Codespaces incluído.
-- [ ] Validação por BK incluída.
-- [ ] Evidence obrigatória incluída.
-- [ ] Template de PR incluído.
-- [ ] Não há dados inventados.
-- [ ] `TODO_CONFIRMAR` usado onde falta informação.
+1. 2-3 frases sobre o problema.
+2. BK e path do guia.
+3. Heading/seccao que causou duvida.
+4. Erro/log relevante sem dados sensiveis.
+5. O que ja tentaram.
+6. Se o bloqueio e tecnico, documental, de dependencia, privacidade ou seguranca.
