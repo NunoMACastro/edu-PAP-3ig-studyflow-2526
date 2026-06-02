@@ -6,6 +6,9 @@ import {
 import { SummariesService } from "./summaries.service.js";
 
 describe("SummariesService", () => {
+    const userId = "507f1f77bcf86cd799439012";
+    const studyAreaId = "507f1f77bcf86cd799439011";
+
     /**
      * Confirma que a geração não chama a IA sem fontes processáveis.
      */
@@ -160,5 +163,68 @@ describe("SummariesService", () => {
             ),
         ).rejects.toBeInstanceOf(GatewayTimeoutException);
         expect(artifactModel.create).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Confirma que a listagem de resumos usa ownership e DTO público.
+     */
+    it("lista apenas resumos da área sem expor userId", async () => {
+        const lean = jest.fn().mockResolvedValue([
+            {
+                _id: "507f1f77bcf86cd799439016",
+                userId,
+                studyAreaId,
+                type: "SUMMARY",
+                contentJson: {
+                    title: "Resumo",
+                    bullets: ["Ponto"],
+                    sourceMaterialIds: ["507f1f77bcf86cd799439015"],
+                },
+                sourcesJson: [
+                    {
+                        materialId: "507f1f77bcf86cd799439015",
+                        title: "Fonte",
+                    },
+                ],
+            },
+        ]);
+        const artifactModel = {
+            create: jest.fn(),
+            find: jest.fn().mockReturnValue({
+                sort: jest.fn().mockReturnValue({ lean }),
+            }),
+        };
+        const service = new SummariesService(
+            artifactModel as never,
+            { generateSummary: jest.fn() } as never,
+            { listReadyTextSources: jest.fn() } as never,
+            { getMyStudyArea: jest.fn().mockResolvedValue({ _id: studyAreaId }) } as never,
+            { prepareProfile: jest.fn() } as never,
+            { recordEvent: jest.fn() } as never,
+        );
+
+        await expect(service.listSummaries(userId, studyAreaId)).resolves.toEqual([
+            {
+                _id: "507f1f77bcf86cd799439016",
+                studyAreaId,
+                type: "SUMMARY",
+                contentJson: {
+                    title: "Resumo",
+                    bullets: ["Ponto"],
+                    sourceMaterialIds: ["507f1f77bcf86cd799439015"],
+                },
+                sourcesJson: [
+                    {
+                        materialId: "507f1f77bcf86cd799439015",
+                        title: "Fonte",
+                    },
+                ],
+            },
+        ]);
+        expect(artifactModel.find).toHaveBeenCalledWith({
+            userId: expect.any(Object),
+            studyAreaId: expect.any(Object),
+            type: "SUMMARY",
+        });
     });
 });

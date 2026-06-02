@@ -9,6 +9,7 @@ import { Model, Types } from "mongoose";
 import { isMongoDuplicateKeyError } from "../../common/utils/mongo-error.util.js";
 import { HistoryService } from "../study/history.service.js";
 import { CreateStudyAreaDto } from "./dto/create-study-area.dto.js";
+import { toPublicStudyArea } from "./dto/public-study-area.dto.js";
 import { UpdateStudyAreaDto } from "./dto/update-study-area.dto.js";
 import {
     StudyArea,
@@ -36,10 +37,11 @@ export class StudyAreasService {
      * @returns Áreas não arquivadas ordenadas por nome.
      */
     async listMyStudyAreas(userId: string) {
-        return this.areaModel
+        const areas = await this.areaModel
             .find({ userId: new Types.ObjectId(userId), archived: false })
             .sort({ name: 1 })
             .lean();
+        return areas.map((area) => toPublicStudyArea(area));
     }
 
     /**
@@ -77,7 +79,7 @@ export class StudyAreasService {
             .lean();
 
         if (!area) throw this.notFound();
-        return area;
+        return toPublicStudyArea(area);
     }
 
     /**
@@ -126,7 +128,7 @@ export class StudyAreasService {
             area.name,
         );
 
-        return area;
+        return toPublicStudyArea(area);
     }
 
     /**
@@ -160,7 +162,7 @@ export class StudyAreasService {
         if (input.color !== undefined) update.color = input.color.trim();
         if (input.archived !== undefined) update.archived = input.archived;
 
-        let updated: StudyArea | null;
+        let updated: (StudyArea & { _id: unknown }) | null;
         try {
             updated = await this.areaModel
                 .findOneAndUpdate(
@@ -168,7 +170,7 @@ export class StudyAreasService {
                     { $set: update },
                     { new: true, runValidators: true },
                 )
-                .lean();
+                .lean<StudyArea & { _id: unknown }>();
         } catch (error) {
             if (isMongoDuplicateKeyError(error)) {
                 throw this.duplicatedAreaName();
@@ -177,7 +179,7 @@ export class StudyAreasService {
         }
 
         if (!updated) throw this.notFound();
-        return updated;
+        return toPublicStudyArea(updated);
     }
 
     /**

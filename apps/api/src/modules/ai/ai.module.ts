@@ -11,6 +11,10 @@ import {
     AiAreaProfileSchema,
 } from "./schemas/ai-area-profile.schema.js";
 import { AiArtifact, AiArtifactSchema } from "./schemas/ai-artifact.schema.js";
+import {
+    AiQuizAttempt,
+    AiQuizAttemptSchema,
+} from "./schemas/ai-quiz-attempt.schema.js";
 import { StudyToolsController } from "./study-tools.controller.js";
 import { StudyToolsService } from "./study-tools.service.js";
 import { SummariesController } from "./summaries.controller.js";
@@ -30,6 +34,7 @@ import { SummariesService } from "./summaries.service.js";
         MongooseModule.forFeature([
             { name: AiAreaProfile.name, schema: AiAreaProfileSchema },
             { name: AiArtifact.name, schema: AiArtifactSchema },
+            { name: AiQuizAttempt.name, schema: AiQuizAttemptSchema },
         ]),
     ],
     controllers: [

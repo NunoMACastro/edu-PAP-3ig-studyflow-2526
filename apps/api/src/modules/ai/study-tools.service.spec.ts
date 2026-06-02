@@ -2,6 +2,7 @@ import {
     BadGatewayException,
     BadRequestException,
     GatewayTimeoutException,
+    NotFoundException,
     UnprocessableEntityException,
 } from "@nestjs/common";
 import { Types } from "mongoose";
@@ -9,6 +10,7 @@ import { StudyToolsService } from "./study-tools.service.js";
 
 const userId = "507f1f77bcf86cd799439012";
 const studyAreaId = "507f1f77bcf86cd799439011";
+const artifactId = "507f1f77bcf86cd799439016";
 
 describe("StudyToolsService", () => {
     /**
@@ -82,6 +84,36 @@ describe("StudyToolsService", () => {
     });
 
     /**
+     * Confirma que a listagem usa DTO público e não expõe ownership interno.
+     */
+    it("lista ferramentas sem expor userId", async () => {
+        const { artifactModel, service } = makeService();
+        const lean = jest.fn().mockResolvedValue([
+            {
+                _id: artifactId,
+                userId,
+                studyAreaId,
+                type: "QUIZ",
+                contentJson: { questions: [] },
+                sourcesJson: [],
+            },
+        ]);
+        artifactModel.find.mockReturnValue({
+            sort: jest.fn().mockReturnValue({ lean }),
+        });
+
+        await expect(service.listTools(userId, studyAreaId)).resolves.toEqual([
+            {
+                _id: artifactId,
+                studyAreaId,
+                type: "QUIZ",
+                contentJson: { questions: [] },
+                sourcesJson: [],
+            },
+        ]);
+    });
+
+    /**
      * Confirma que quizzes inválidos vindos do provider ficam em 502.
      */
     it("rejeita quiz inválido devolvido pelo provider", async () => {
@@ -145,6 +177,119 @@ describe("StudyToolsService", () => {
         ).rejects.toBeInstanceOf(GatewayTimeoutException);
         expect(artifactModel.create).not.toHaveBeenCalled();
     });
+
+    /**
+     * Confirma que a tentativa de quiz calcula resultado e regista histórico.
+     */
+    it("regista tentativa de quiz com score e resultados por pergunta", async () => {
+        const { artifactModel, historyService, quizAttemptModel, service } =
+            makeService();
+        artifactModel.findOne.mockReturnValue({
+            lean: jest.fn().mockResolvedValue(makeQuizArtifact()),
+        });
+        quizAttemptModel.create.mockImplementation(async (payload) => ({
+            _id: "507f1f77bcf86cd799439017",
+            ...payload,
+        }));
+
+        await expect(
+            service.submitQuizAttempt(userId, studyAreaId, artifactId, {
+                answers: [1, 0],
+            }),
+        ).resolves.toMatchObject({
+            _id: "507f1f77bcf86cd799439017",
+            artifactId,
+            studyAreaId,
+            correctCount: 1,
+            totalQuestions: 2,
+            scorePercent: 50,
+            results: [
+                {
+                    questionIndex: 0,
+                    selectedOptionIndex: 1,
+                    correctOptionIndex: 1,
+                    isCorrect: true,
+                },
+                {
+                    questionIndex: 1,
+                    selectedOptionIndex: 0,
+                    correctOptionIndex: 2,
+                    isCorrect: false,
+                },
+            ],
+        });
+        expect(historyService.recordEvent).toHaveBeenCalledWith(
+            userId,
+            "QUIZ_ATTEMPT_RECORDED",
+            "Quiz realizado",
+            "1/2",
+        );
+    });
+
+    /**
+     * Confirma que artefactos inacessíveis ou de outro aluno não são usados.
+     */
+    it("rejeita tentativa em artefacto de outro aluno ou área", async () => {
+        const { artifactModel, service } = makeService();
+        artifactModel.findOne.mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null),
+        });
+
+        await expect(
+            service.submitQuizAttempt(userId, studyAreaId, artifactId, {
+                answers: [0],
+            }),
+        ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    /**
+     * Confirma que só artefactos QUIZ aceitam tentativa.
+     */
+    it("rejeita tentativa em artefacto que não é quiz", async () => {
+        const { artifactModel, service } = makeService();
+        artifactModel.findOne.mockReturnValue({
+            lean: jest.fn().mockResolvedValue({
+                ...makeQuizArtifact(),
+                type: "SUMMARY",
+            }),
+        });
+
+        await expect(
+            service.submitQuizAttempt(userId, studyAreaId, artifactId, {
+                answers: [0],
+            }),
+        ).rejects.toMatchObject({
+            response: { code: "ARTIFACT_IS_NOT_QUIZ" },
+        });
+        await expect(
+            service.submitQuizAttempt(userId, studyAreaId, artifactId, {
+                answers: [0],
+            }),
+        ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    /**
+     * Confirma que respostas incompletas ou fora do contrato são rejeitadas.
+     */
+    it("rejeita tentativa com respostas inválidas", async () => {
+        const { artifactModel, service } = makeService();
+        artifactModel.findOne.mockReturnValue({
+            lean: jest.fn().mockResolvedValue(makeQuizArtifact()),
+        });
+
+        await expect(
+            service.submitQuizAttempt(userId, studyAreaId, artifactId, {
+                answers: [4],
+            }),
+        ).rejects.toMatchObject({
+            response: { code: "INVALID_QUIZ_ATTEMPT" },
+        });
+        await expect(
+            service.submitQuizAttempt(userId, studyAreaId, artifactId, {
+                answers: [4],
+            }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+    });
 });
 
 /**
@@ -155,11 +300,17 @@ describe("StudyToolsService", () => {
 function makeService() {
     const artifactModel = {
         create: jest.fn(),
+        findOne: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null),
+        }),
         find: jest.fn().mockReturnValue({
             sort: jest.fn().mockReturnValue({
                 lean: jest.fn().mockResolvedValue([]),
             }),
         }),
+    };
+    const quizAttemptModel = {
+        create: jest.fn(),
     };
     const aiProvider = {
         generateStudyTool: jest.fn(),
@@ -191,6 +342,7 @@ function makeService() {
 
     return {
         artifactModel,
+        quizAttemptModel,
         aiProvider,
         materialsService,
         areasService,
@@ -198,11 +350,45 @@ function makeService() {
         historyService,
         service: new StudyToolsService(
             artifactModel as never,
+            quizAttemptModel as never,
             aiProvider as never,
             materialsService as never,
             areasService as never,
             profileService as never,
             historyService as never,
         ),
+    };
+}
+
+/**
+ * Cria artefacto QUIZ válido para testes de tentativa.
+ *
+ * @returns Artefacto persistido simulado.
+ */
+function makeQuizArtifact() {
+    return {
+        _id: artifactId,
+        userId,
+        studyAreaId,
+        type: "QUIZ",
+        contentJson: {
+            questions: [
+                {
+                    question: "Pergunta 1",
+                    options: ["A", "B", "C", "D"],
+                    correctOptionIndex: 1,
+                    explanation: "Explicação 1.",
+                    sourceMaterialIds: ["507f1f77bcf86cd799439010"],
+                },
+                {
+                    question: "Pergunta 2",
+                    options: ["A", "B", "C", "D"],
+                    correctOptionIndex: 2,
+                    explanation: "Explicação 2.",
+                    sourceMaterialIds: ["507f1f77bcf86cd799439010"],
+                },
+            ],
+        },
+        sourcesJson: [{ materialId: "507f1f77bcf86cd799439010", title: "Fonte" }],
     };
 }

@@ -8,7 +8,8 @@ export type StudyEventType =
     | "MATERIAL_SUBMITTED"
     | "AI_PROFILE_CREATED"
     | "SUMMARY_GENERATED"
-    | "STUDY_TOOL_GENERATED";
+    | "STUDY_TOOL_GENERATED"
+    | "QUIZ_ATTEMPT_RECORDED";
 
 /**
  * Evento apresentado no histórico de estudo do aluno.

@@ -10,6 +10,7 @@ import {
 } from "@nestjs/common";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { AuthenticatedRequest } from "../../common/types/authenticated-request.js";
+import { CreateQuizAttemptDto } from "./dto/create-quiz-attempt.dto.js";
 import { CreateStudyToolDto } from "./dto/create-study-tool.dto.js";
 import { StudyToolsService } from "./study-tools.service.js";
 
@@ -55,6 +56,30 @@ export class StudyToolsController {
         return this.studyToolsService.generateStudyTool(
             request.user!.id,
             id,
+            body,
+        );
+    }
+
+    /**
+     * Regista uma tentativa mínima de quiz para handoff MF1.
+     *
+     * @param request Pedido autenticado.
+     * @param id Identificador da área.
+     * @param artifactId Identificador do artefacto `QUIZ`.
+     * @param body Respostas escolhidas pelo aluno.
+     * @returns Resultado calculado da tentativa.
+     */
+    @Post(":artifactId/quiz-attempts")
+    submitQuizAttempt(
+        @Req() request: AuthenticatedRequest,
+        @Param("id") id: string,
+        @Param("artifactId") artifactId: string,
+        @Body() body: CreateQuizAttemptDto,
+    ) {
+        return this.studyToolsService.submitQuizAttempt(
+            request.user!.id,
+            id,
+            artifactId,
             body,
         );
     }

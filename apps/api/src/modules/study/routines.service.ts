@@ -19,6 +19,10 @@ import {
     StudyRoutine,
     StudyRoutineDocument,
 } from "./schemas/study-routine.schema.js";
+import {
+    toPublicStudyGoal,
+    toPublicStudyRoutine,
+} from "./dto/public-study-plan.dto.js";
 
 /**
  * Serviço de rotinas e objetivos pessoais.
@@ -49,7 +53,10 @@ export class RoutinesService {
             this.goalModel.find(query).sort({ createdAt: -1 }).lean(),
         ]);
 
-        return { routines, goals };
+        return {
+            routines: routines.map((routine) => toPublicStudyRoutine(routine)),
+            goals: goals.map((goal) => toPublicStudyGoal(goal)),
+        };
     }
 
     /**
@@ -59,13 +66,14 @@ export class RoutinesService {
      * @returns Objetivos não arquivados do aluno.
      */
     async listGoals(userId: string) {
-        return this.goalModel
+        const goals = await this.goalModel
             .find({
                 userId: new Types.ObjectId(userId),
                 archived: false,
             })
             .sort({ createdAt: -1 })
             .lean();
+        return goals.map((goal) => toPublicStudyGoal(goal));
     }
 
     /**
@@ -120,7 +128,7 @@ export class RoutinesService {
             title,
         );
 
-        return routine;
+        return toPublicStudyRoutine(routine);
     }
 
     /**
@@ -171,7 +179,7 @@ export class RoutinesService {
         );
 
         if (!updated) throw this.notFound("ROTINA");
-        return updated;
+        return toPublicStudyRoutine(updated);
     }
 
     /**
@@ -237,7 +245,7 @@ export class RoutinesService {
             title,
         );
 
-        return goal;
+        return toPublicStudyGoal(goal);
     }
 
     /**
@@ -293,7 +301,7 @@ export class RoutinesService {
             updated.title,
         );
 
-        return updated;
+        return toPublicStudyGoal(updated);
     }
 
     /**

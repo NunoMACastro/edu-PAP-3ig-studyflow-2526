@@ -65,13 +65,37 @@ export type StudyToolType = "EXPLANATION" | "FLASHCARDS" | "QUIZ";
 export type AiArtifactSource = {
     materialId?: string;
     title?: string;
+    page?: number;
+    section?: string;
 };
 
 export type AiArtifact = {
     _id: string;
+    studyAreaId: string;
     type: "SUMMARY" | StudyToolType;
     contentJson: Record<string, unknown>;
     sourcesJson: AiArtifactSource[];
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+export type QuizAttemptQuestionResult = {
+    questionIndex: number;
+    selectedOptionIndex: number;
+    correctOptionIndex: number;
+    isCorrect: boolean;
+    sourceMaterialIds: string[];
+};
+
+export type QuizAttemptResult = {
+    _id: string;
+    artifactId: string;
+    studyAreaId: string;
+    correctCount: number;
+    totalQuestions: number;
+    scorePercent: number;
+    answeredAt: string;
+    results: QuizAttemptQuestionResult[];
 };
 
 /**
@@ -508,6 +532,18 @@ export function generateSummary(studyAreaId: string): Promise<AiArtifact> {
 }
 
 /**
+ * Lista resumos IA já gerados para uma área.
+ *
+ * @param studyAreaId Identificador da área.
+ * @returns Resumos persistidos.
+ */
+export function listSummaries(studyAreaId: string): Promise<AiArtifact[]> {
+    return requestJson<AiArtifact[]>(
+        `/api/study-areas/${studyAreaId}/summaries`,
+    );
+}
+
+/**
  * Lista ferramentas de estudo já geradas.
  *
  * @param studyAreaId Identificador da área.
@@ -540,6 +576,28 @@ export function generateStudyTool(
         {
             method: "POST",
             body: JSON.stringify(input),
+        },
+    );
+}
+
+/**
+ * Submete respostas de um quiz gerado pela IA.
+ *
+ * @param studyAreaId Identificador da área.
+ * @param artifactId Identificador do artefacto de quiz.
+ * @param answers Índices das opções escolhidas.
+ * @returns Resultado calculado pelo backend.
+ */
+export function submitQuizAttempt(
+    studyAreaId: string,
+    artifactId: string,
+    answers: number[],
+): Promise<QuizAttemptResult> {
+    return requestJson<QuizAttemptResult>(
+        `/api/study-areas/${studyAreaId}/study-tools/${artifactId}/quiz-attempts`,
+        {
+            method: "POST",
+            body: JSON.stringify({ answers }),
         },
     );
 }

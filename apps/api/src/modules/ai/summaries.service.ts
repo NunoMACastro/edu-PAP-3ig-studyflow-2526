@@ -12,6 +12,7 @@ import { HistoryService } from "../study/history.service.js";
 import { MaterialsService } from "../materials/materials.service.js";
 import { StudyAreasService } from "../study-areas/study-areas.service.js";
 import { AiAreaProfileService } from "./ai-area-profile.service.js";
+import { toAiArtifactDto } from "./dto/ai-artifact.dto.js";
 import { buildSummaryPrompt } from "./prompts/summary.prompt.js";
 import { AI_PROVIDER, AiProvider, AiSource } from "./providers/ai-provider.js";
 import {
@@ -83,7 +84,7 @@ export class SummariesService {
                 area.name,
             );
 
-            return artifact;
+            return toAiArtifactDto(artifact);
         } catch (error) {
             if (
                 error instanceof BadGatewayException ||
@@ -119,5 +120,25 @@ export class SummariesService {
             title: material.title,
             contentText: material.contentText!,
         }));
+    }
+
+    /**
+     * Lista resumos persistidos da área do aluno autenticado.
+     *
+     * @param userId Identificador vindo da sessão.
+     * @param studyAreaId Identificador da área.
+     * @returns Artefactos públicos de resumo.
+     */
+    async listSummaries(userId: string, studyAreaId: string) {
+        await this.areasService.getMyStudyArea(userId, studyAreaId);
+        const artifacts = await this.artifactModel
+            .find({
+                userId: new Types.ObjectId(userId),
+                studyAreaId: new Types.ObjectId(studyAreaId),
+                type: "SUMMARY",
+            })
+            .sort({ createdAt: -1 })
+            .lean();
+        return artifacts.map((artifact) => toAiArtifactDto(artifact));
     }
 }

@@ -4,6 +4,7 @@ import {
     GatewayTimeoutException,
     Inject,
     Injectable,
+    NotFoundException,
     ServiceUnavailableException,
     UnprocessableEntityException,
 } from "@nestjs/common";
@@ -18,13 +19,29 @@ import {
     STUDY_TOOL_TYPES,
     StudyToolType,
 } from "./dto/create-study-tool.dto.js";
+import { toAiArtifactDto } from "./dto/ai-artifact.dto.js";
+import { CreateQuizAttemptDto } from "./dto/create-quiz-attempt.dto.js";
+import {
+    QuizAttemptQuestionResultDto,
+    toQuizAttemptResultDto,
+} from "./dto/quiz-attempt.dto.js";
 import { buildStudyToolPrompt } from "./prompts/study-tools.prompt.js";
 import { AI_PROVIDER, AiProvider, AiSource } from "./providers/ai-provider.js";
 import {
     AiArtifact,
     AiArtifactDocument,
 } from "./schemas/ai-artifact.schema.js";
+import {
+    AiQuizAttempt,
+    AiQuizAttemptDocument,
+} from "./schemas/ai-quiz-attempt.schema.js";
 import { validateStudyToolArtifact } from "./validators/ai-artifact.validator.js";
+
+type QuizQuestion = {
+    correctOptionIndex: number;
+    options?: unknown[];
+    sourceMaterialIds?: string[];
+};
 
 /**
  * Serviço de explicações, flashcards e quizzes personalizados.
@@ -34,6 +51,8 @@ export class StudyToolsService {
     constructor(
         @InjectModel(AiArtifact.name)
         private readonly artifactModel: Model<AiArtifactDocument>,
+        @InjectModel(AiQuizAttempt.name)
+        private readonly quizAttemptModel: Model<AiQuizAttemptDocument>,
         @Inject(AI_PROVIDER) private readonly aiProvider: AiProvider,
         private readonly materialsService: MaterialsService,
         private readonly areasService: StudyAreasService,
@@ -58,7 +77,11 @@ export class StudyToolsService {
             type: { $in: ["EXPLANATION", "FLASHCARDS", "QUIZ"] },
         };
         if (validatedType) query.type = validatedType;
-        return this.artifactModel.find(query).sort({ createdAt: -1 }).lean();
+        const artifacts = await this.artifactModel
+            .find(query)
+            .sort({ createdAt: -1 })
+            .lean();
+        return artifacts.map((artifact) => toAiArtifactDto(artifact));
     }
 
     /**
@@ -124,7 +147,7 @@ export class StudyToolsService {
                 type,
             );
 
-            return artifact;
+            return toAiArtifactDto(artifact);
         } catch (error) {
             if (
                 error instanceof BadGatewayException ||
@@ -139,6 +162,69 @@ export class StudyToolsService {
                 message: "A IA está temporariamente indisponível.",
             });
         }
+    }
+
+    /**
+     * Regista respostas do aluno num quiz gerado pela IA.
+     *
+     * @param userId Identificador vindo da sessão.
+     * @param studyAreaId Identificador da área.
+     * @param artifactId Identificador do artefacto `QUIZ`.
+     * @param input Respostas escolhidas pelo aluno.
+     * @returns Resultado público da tentativa.
+     */
+    async submitQuizAttempt(
+        userId: string,
+        studyAreaId: string,
+        artifactId: string,
+        input: CreateQuizAttemptDto,
+    ) {
+        await this.areasService.getMyStudyArea(userId, studyAreaId);
+        if (!Types.ObjectId.isValid(artifactId)) {
+            throw this.artifactNotFound();
+        }
+
+        const artifact = await this.artifactModel
+            .findOne({
+                _id: artifactId,
+                userId: new Types.ObjectId(userId),
+                studyAreaId: new Types.ObjectId(studyAreaId),
+            })
+            .lean();
+        if (!artifact) throw this.artifactNotFound();
+        if (artifact.type !== "QUIZ") {
+            throw new UnprocessableEntityException({
+                code: "ARTIFACT_IS_NOT_QUIZ",
+                message: "Este artefacto não é um quiz.",
+            });
+        }
+
+        const questions = this.getQuizQuestions(artifact.contentJson);
+        this.validateQuizAttemptAnswers(input.answers, questions.length);
+        const results = this.buildQuizAttemptResults(input.answers, questions);
+        const correctCount = results.filter((result) => result.isCorrect).length;
+        const answeredAt = new Date();
+
+        const attempt = await this.quizAttemptModel.create({
+            userId: new Types.ObjectId(userId),
+            studyAreaId: new Types.ObjectId(studyAreaId),
+            artifactId: new Types.ObjectId(artifactId),
+            answers: input.answers,
+            correctCount,
+            totalQuestions: questions.length,
+            scorePercent: Math.round((correctCount / questions.length) * 100),
+            answeredAt,
+            results,
+        });
+
+        await this.historyService.recordEvent(
+            userId,
+            "QUIZ_ATTEMPT_RECORDED",
+            "Quiz realizado",
+            `${correctCount}/${questions.length}`,
+        );
+
+        return toQuizAttemptResultDto(attempt);
     }
 
     /**
@@ -198,6 +284,97 @@ export class StudyToolsService {
         throw new BadRequestException({
             code: "INVALID_STUDY_TOOL_TYPE",
             message: "Tipo de ferramenta inválido.",
+        });
+    }
+
+    /**
+     * Lê perguntas persistidas no artefacto de quiz.
+     *
+     * @param content Conteúdo JSON do artefacto.
+     * @returns Perguntas do quiz.
+     */
+    private getQuizQuestions(content: Record<string, unknown>): QuizQuestion[] {
+        const questions = content.questions;
+        if (!Array.isArray(questions) || questions.length === 0) {
+            throw new BadRequestException({
+                code: "INVALID_QUIZ_ATTEMPT",
+                message: "O quiz não tem perguntas válidas.",
+            });
+        }
+        const quizQuestions = questions as QuizQuestion[];
+        if (
+            !quizQuestions.every(
+                (question) =>
+                    Number.isInteger(question.correctOptionIndex) &&
+                    question.correctOptionIndex >= 0 &&
+                    question.correctOptionIndex <= 3 &&
+                    Array.isArray(question.options) &&
+                    question.options.length === 4,
+            )
+        ) {
+            throw new BadRequestException({
+                code: "INVALID_QUIZ_ATTEMPT",
+                message: "O quiz não tem perguntas válidas.",
+            });
+        }
+        return quizQuestions;
+    }
+
+    /**
+     * Valida respostas recebidas para a tentativa.
+     *
+     * @param answers Respostas escolhidas pelo aluno.
+     * @param expectedLength Número de perguntas do quiz.
+     * @returns Nada quando o payload é válido.
+     */
+    private validateQuizAttemptAnswers(
+        answers: unknown,
+        expectedLength: number,
+    ): asserts answers is number[] {
+        if (
+            !Array.isArray(answers) ||
+            answers.length !== expectedLength ||
+            !answers.every(
+                (answer) =>
+                    Number.isInteger(answer) && answer >= 0 && answer <= 3,
+            )
+        ) {
+            throw new BadRequestException({
+                code: "INVALID_QUIZ_ATTEMPT",
+                message: "Responde a todas as perguntas com uma opção válida.",
+            });
+        }
+    }
+
+    /**
+     * Calcula o resultado por pergunta.
+     *
+     * @param answers Respostas escolhidas pelo aluno.
+     * @param questions Perguntas persistidas no artefacto.
+     * @returns Resultados individuais.
+     */
+    private buildQuizAttemptResults(
+        answers: number[],
+        questions: QuizQuestion[],
+    ): QuizAttemptQuestionResultDto[] {
+        return questions.map((question, questionIndex) => ({
+            questionIndex,
+            selectedOptionIndex: answers[questionIndex],
+            correctOptionIndex: question.correctOptionIndex,
+            isCorrect: answers[questionIndex] === question.correctOptionIndex,
+            sourceMaterialIds: question.sourceMaterialIds ?? [],
+        }));
+    }
+
+    /**
+     * Cria erro de artefacto inexistente ou inacessível.
+     *
+     * @returns Exceção pública.
+     */
+    private artifactNotFound(): NotFoundException {
+        return new NotFoundException({
+            code: "AI_ARTIFACT_NOT_FOUND",
+            message: "Artefacto IA não encontrado.",
         });
     }
 }

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { UpdateStudyAreaVoiceDto } from "./dto/update-study-area-voice.dto.js";
+import { toPublicStudyArea } from "./dto/public-study-area.dto.js";
 import {
     StudyArea,
     StudyAreaDocument,
@@ -70,7 +71,7 @@ export class StudyAreaVoiceService {
             });
         }
 
-        return updated;
+        return toPublicStudyArea(updated);
     }
 
     /**

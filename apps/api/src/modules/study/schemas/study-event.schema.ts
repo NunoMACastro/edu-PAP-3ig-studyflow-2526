@@ -25,6 +25,7 @@ export class StudyEvent {
             "AI_PROFILE_CREATED",
             "SUMMARY_GENERATED",
             "STUDY_TOOL_GENERATED",
+            "QUIZ_ATTEMPT_RECORDED",
         ],
     })
     type!: StudyEventType;

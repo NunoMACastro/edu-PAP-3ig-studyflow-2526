@@ -47,7 +47,14 @@ describe("RoutinesService", () => {
      * Confirma que a listagem dedicada de objetivos usa sessão e arquivo lógico.
      */
     it("lista objetivos do utilizador autenticado no endpoint dedicado", async () => {
-        const goalLean = jest.fn().mockResolvedValue([{ title: "Meta" }]);
+        const goalLean = jest.fn().mockResolvedValue([
+            {
+                _id: goalId,
+                userId,
+                title: "Meta",
+                archived: false,
+            },
+        ]);
         const goalSort = jest.fn().mockReturnValue({ lean: goalLean });
         const routineModel = {};
         const goalModel = {
@@ -60,7 +67,11 @@ describe("RoutinesService", () => {
         );
 
         await expect(service.listGoals(userId)).resolves.toEqual([
-            { title: "Meta" },
+            {
+                _id: goalId,
+                title: "Meta",
+                archived: false,
+            },
         ]);
         expect(goalModel.find).toHaveBeenCalledWith({
             userId: expect.any(Types.ObjectId),

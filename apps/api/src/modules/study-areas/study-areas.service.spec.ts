@@ -62,4 +62,33 @@ describe("StudyAreasService", () => {
             }),
         ).rejects.toBeInstanceOf(ConflictException);
     });
+
+    it("lista áreas sem expor userId", async () => {
+        const areaModel = {
+            find: jest.fn().mockReturnValue({
+                sort: jest.fn().mockReturnValue({
+                    lean: jest.fn().mockResolvedValue([
+                        {
+                            _id: "507f1f77bcf86cd799439013",
+                            userId,
+                            name: "Matemática",
+                            archived: false,
+                        },
+                    ]),
+                }),
+            }),
+        };
+        const service = new StudyAreasService(
+            areaModel as never,
+            { recordEvent: jest.fn() } as never,
+        );
+
+        await expect(service.listMyStudyAreas(userId)).resolves.toEqual([
+            {
+                _id: "507f1f77bcf86cd799439013",
+                name: "Matemática",
+                archived: false,
+            },
+        ]);
+    });
 });
