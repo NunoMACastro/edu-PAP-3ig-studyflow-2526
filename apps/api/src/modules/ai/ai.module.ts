@@ -1,51 +1,52 @@
+// apps/api/src/modules/ai/ai.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { MaterialsModule } from "../materials/materials.module.js";
-import { HistoryModule } from "../study/history.module.js";
-import { StudyAreasModule } from "../study-areas/study-areas.module.js";
-import { AiAreaProfileController } from "./ai-area-profile.controller.js";
-import { AiAreaProfileService } from "./ai-area-profile.service.js";
-import { AI_PROVIDER, OpenAiProvider } from "./providers/ai-provider.js";
+import { MaterialsModule } from "../materials/materials.module";
+import { Material, MaterialSchema } from "../materials/schemas/material.schema";
+import { StudyAreasModule } from "../study-areas/study-areas.module";
+import { AdaptiveLearningController } from "./adaptive-learning.controller";
+import { AdaptiveLearningService } from "./adaptive-learning.service";
+import { AiAreaProfileController } from "./ai-area-profile.controller";
+import { AiAreaProfileService } from "./ai-area-profile.service";
+import { AI_PROVIDER, OpenAiProvider } from "./providers/ai-provider";
+import {
+    AdaptiveExplanation,
+    AdaptiveExplanationSchema,
+} from "./schemas/adaptive-explanation.schema";
 import {
     AiAreaProfile,
     AiAreaProfileSchema,
-} from "./schemas/ai-area-profile.schema.js";
-import { AiArtifact, AiArtifactSchema } from "./schemas/ai-artifact.schema.js";
-import {
-    AiQuizAttempt,
-    AiQuizAttemptSchema,
-} from "./schemas/ai-quiz-attempt.schema.js";
-import { StudyToolsController } from "./study-tools.controller.js";
-import { StudyToolsService } from "./study-tools.service.js";
-import { SummariesController } from "./summaries.controller.js";
-import { SummariesService } from "./summaries.service.js";
+} from "./schemas/ai-area-profile.schema";
+import { AiArtifact, AiArtifactSchema } from "./schemas/ai-artifact.schema";
+import { LearningProfile, LearningProfileSchema } from "./schemas/learning-profile.schema";
+import { StudyToolsController } from "./study-tools.controller";
+import { StudyToolsService } from "./study-tools.service";
+import { SummariesController } from "./summaries.controller";
+import { SummariesService } from "./summaries.service";
 
-/**
- * Módulo de IA da MF0.
- *
- * Este é o contrato herdável para MF1: preserva `AiAreaProfileService`,
- * `SummariesService`, `StudyToolsService` e exporta `AI_PROVIDER`.
- */
 @Module({
     imports: [
-        StudyAreasModule,
-        MaterialsModule,
-        HistoryModule,
         MongooseModule.forFeature([
             { name: AiAreaProfile.name, schema: AiAreaProfileSchema },
             { name: AiArtifact.name, schema: AiArtifactSchema },
-            { name: AiQuizAttempt.name, schema: AiQuizAttemptSchema },
+            { name: LearningProfile.name, schema: LearningProfileSchema },
+            { name: AdaptiveExplanation.name, schema: AdaptiveExplanationSchema },
+            { name: Material.name, schema: MaterialSchema },
         ]),
+        StudyAreasModule,
+        MaterialsModule,
     ],
     controllers: [
         AiAreaProfileController,
         SummariesController,
         StudyToolsController,
+        AdaptiveLearningController,
     ],
     providers: [
         AiAreaProfileService,
         SummariesService,
         StudyToolsService,
+        AdaptiveLearningService,
         { provide: AI_PROVIDER, useClass: OpenAiProvider },
     ],
     exports: [
@@ -53,6 +54,7 @@ import { SummariesService } from "./summaries.service.js";
         AiAreaProfileService,
         SummariesService,
         StudyToolsService,
+        AdaptiveLearningService,
     ],
 })
 export class AiModule {}
