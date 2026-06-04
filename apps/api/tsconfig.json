@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "moduleResolution": "node",
     "target": "ES2022",
     "declaration": true,
     "removeComments": false,
@@ -12,7 +11,7 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "baseUrl": "./src"
+    "rootDir": "./src"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]
