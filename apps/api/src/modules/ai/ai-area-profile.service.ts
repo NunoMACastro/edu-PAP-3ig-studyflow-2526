@@ -3,7 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { MaterialsService } from "../materials/materials.service.js";
 import { HistoryService } from "../study/history.service.js";
-import { StudyAreasService } from "../study-areas/study-areas.service.js";
+import { StudyAreasService } from "../study-rooms/study-rooms.service.js";
 import { AiAreaProfileDto } from "./dto/ai-area-profile.dto.js";
 import {
     AiAreaProfile,

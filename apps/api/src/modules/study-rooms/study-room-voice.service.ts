@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { UpdateStudyAreaVoiceDto } from "./dto/update-study-area-voice.dto.js";
-import { toPublicStudyArea } from "./dto/public-study-area.dto.js";
+import { UpdateStudyAreaVoiceDto } from "./dto/update-study-room-voice.dto.js";
+import { toPublicStudyArea } from "./dto/public-study-room.dto.js";
 import {
     StudyArea,
     StudyAreaDocument,
     StudyAreaVoiceDetailLevel,
     StudyAreaVoiceTone,
 } from "./schemas/study-area.schema.js";
-import { StudyAreasService } from "./study-areas.service.js";
+import { StudyAreasService } from "./study-rooms.service.js";
 
 const VALID_TONES: StudyAreaVoiceTone[] = [
     "simple",

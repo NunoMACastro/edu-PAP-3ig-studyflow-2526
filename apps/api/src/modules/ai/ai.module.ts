@@ -3,7 +3,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { MaterialsModule } from "../materials/materials.module";
 import { Material, MaterialSchema } from "../materials/schemas/material.schema";
-import { StudyAreasModule } from "../study-areas/study-areas.module";
+import { StudyAreasModule } from "../study-rooms/study-areas.module";
 import { AdaptiveLearningController } from "./adaptive-learning.controller";
 import { AdaptiveLearningService } from "./adaptive-learning.service";
 import { AiAreaProfileController } from "./ai-area-profile.controller";

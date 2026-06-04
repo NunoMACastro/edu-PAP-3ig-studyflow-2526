@@ -10,9 +10,9 @@ import {
 } from "@nestjs/common";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { AuthenticatedRequest } from "../../common/types/authenticated-request.js";
-import { CreateStudyAreaDto } from "./dto/create-study-area.dto.js";
-import { UpdateStudyAreaDto } from "./dto/update-study-area.dto.js";
-import { StudyAreasService } from "./study-areas.service.js";
+import { CreateStudyRoomDto } from "./dto/create-study-room.dto.js";
+import { UpdateStudyAreaDto } from "./dto/update-study-room.dto.js";
+import { StudyAreasService } from "./study-rooms.service.js";
 
 /**
  * Controller das áreas de estudo pessoais.
@@ -43,9 +43,9 @@ export class StudyAreasController {
     @Post()
     create(
         @Req() request: AuthenticatedRequest,
-        @Body() body: CreateStudyAreaDto,
+        @Body() body: CreateStudyRoomDto,
     ) {
-        return this.studyAreasService.createStudyArea(request.user!.id, body);
+        return this.studyAreasService.createStudyArea(request.user!.id, body as any);
     }
 
     /**

@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "../auth/auth.module.js";
 import { HistoryModule } from "../study/history.module.js";
-import { StudyAreasModule } from "../study-areas/study-areas.module.js";
+import { StudyAreasModule } from "../study-rooms/study-rooms.module.js";
 import { MaterialStorageService } from "./material-storage.service.js";
 import { MaterialsController } from "./materials.controller.js";
 import { MaterialsService } from "./materials.service.js";

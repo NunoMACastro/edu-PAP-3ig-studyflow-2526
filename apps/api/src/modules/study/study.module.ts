@@ -3,7 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "../auth/auth.module.js";
 import { MaterialsModule } from "../materials/materials.module.js";
 import { StudentsModule } from "../students/students.module.js";
-import { StudyAreasModule } from "../study-areas/study-areas.module.js";
+import { StudyAreasModule } from "../study-rooms/study-rooms.module.js";
 import { HistoryModule } from "./history.module.js";
 import { RoutinesController } from "./routines.controller.js";
 import { RoutinesService } from "./routines.service.js";

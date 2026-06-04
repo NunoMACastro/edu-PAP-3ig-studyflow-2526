@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { MaterialsService } from "../materials/materials.service.js";
 import { StudentProfileService } from "../students/student-profile.service.js";
-import { StudyAreasService } from "../study-areas/study-areas.service.js";
+import { StudyAreasService } from "../study-rooms/study-rooms.service.js";
 import { SoloStudyStateDto } from "./dto/solo-study-state.dto.js";
 import { RoutinesService } from "./routines.service.js";
 

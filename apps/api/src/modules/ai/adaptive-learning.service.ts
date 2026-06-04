@@ -9,7 +9,7 @@ import {
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { Material, MaterialDocument } from "../materials/schemas/material.schema";
-import { StudyAreasService } from "../study-areas/study-areas.service";
+import { StudyAreasService } from "../study-rooms/study-areas.service";
 import { AskAdaptiveExplanationDto } from "./dto/ask-adaptive-explanation.dto";
 import { UpdateLearningProfileDto } from "./dto/update-learning-profile.dto";
 import { AI_PROVIDER, AiProvider } from "./providers/ai-provider";
@@ -193,7 +193,7 @@ export class AdaptiveLearningService {
         };
     }
 
-    private toProfileView(profile: LearningProfile | LearningProfileDocument) {
+    private toProfileView(profile: any) {
         return {
             id: profile._id.toString(),
             studyAreaId: profile.studyAreaId.toString(),

@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { StudyAreaVoiceService } from "./study-area-voice.service.js";
+import { StudyAreaVoiceService } from "./study-room-voice.service.js";
 
 describe("StudyAreaVoiceService", () => {
     const userId = "507f1f77bcf86cd799439012";

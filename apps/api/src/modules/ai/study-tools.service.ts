@@ -12,7 +12,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { HistoryService } from "../study/history.service.js";
 import { MaterialsService } from "../materials/materials.service.js";
-import { StudyAreasService } from "../study-areas/study-areas.service.js";
+import { StudyAreasService } from "../study-rooms/study-rooms.service.js";
 import { AiAreaProfileService } from "./ai-area-profile.service.js";
 import {
     CreateStudyToolDto,

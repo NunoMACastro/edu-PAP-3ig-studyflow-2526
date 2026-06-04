@@ -1,8 +1,8 @@
 import { Body, Controller, Param, Patch, Req, UseGuards } from "@nestjs/common";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { AuthenticatedRequest } from "../../common/types/authenticated-request.js";
-import { UpdateStudyAreaVoiceDto } from "./dto/update-study-area-voice.dto.js";
-import { StudyAreaVoiceService } from "./study-area-voice.service.js";
+import { UpdateStudyAreaVoiceDto } from "./dto/update-study-room-voice.dto.js";
+import { StudyAreaVoiceService } from "./study-room-voice.service.js";
 
 /**
  * Controller de configuração de voz da IA por área.
