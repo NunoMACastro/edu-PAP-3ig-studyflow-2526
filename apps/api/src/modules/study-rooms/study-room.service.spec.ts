@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
-import { StudyAreasService } from "./study-areas.service.js";
+import { StudyAreasService } from "./study-rooms.service.js";
 
 describe("StudyAreasService", () => {
     const userId = "507f1f77bcf86cd799439012";

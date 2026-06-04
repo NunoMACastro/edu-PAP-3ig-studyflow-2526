@@ -3,9 +3,9 @@ import { User } from "../lib/apiClient.js";
 import { ProfilePage } from "../pages/student/ProfilePage.js";
 import { RoutinesPage } from "../pages/student/RoutinesPage.js";
 import { SoloStudyDashboard } from "../pages/student/SoloStudyDashboard.js";
-import { StudyAreasPage } from "../pages/student/StudyAreasPage.js";
-import { StudyAreaDetailPage } from "../pages/student/StudyAreaDetailPage.js";
-import { StudyAreaMaterialsPage } from "../pages/student/StudyAreaMaterialsPage.js";
+import { StudyRoomsPage } from "../pages/student/StudyRoomsPage.js";
+import { StudyAreaDetailPage } from "../pages/student/StudyRoomsDetailPage.js";
+import { StudyAreaMaterialsPage } from "../pages/student/StudyRoomsMaterialsPage.js";
 import { StudyHistoryPage } from "../pages/student/StudyHistoryPage.js";
 import { StudyToolsPage } from "../pages/student/StudyToolsPage.js";
 
@@ -39,7 +39,7 @@ function resolveProtectedPage(pathname: string) {
     if (pathname === "/app/perfil") return <ProfilePage />;
     if (pathname === "/app/rotinas") return <RoutinesPage />;
     if (pathname === "/app/historico") return <StudyHistoryPage />;
-    if (pathname === "/app/areas") return <StudyAreasPage />;
+    if (pathname === "/app/areas") return <StudyRoomsPage />;
     return <SoloStudyDashboard />;
 }
 
