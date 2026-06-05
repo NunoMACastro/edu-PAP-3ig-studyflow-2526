@@ -7,7 +7,7 @@
 - `owner`: `Kaua`
 - `apoio`: `Natalia`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF1-08`
 - `rf_rnf`: `RF21`
