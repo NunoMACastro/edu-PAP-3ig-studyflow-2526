@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { StudyArea } from "../../lib/apiClient.js";
+import { StudyArea } from "../../lib/api/apiClient.js";
 
 type StudyAreaFormValues = {
     name: string;

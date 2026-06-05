@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { User } from "../../lib/apiClient.js";
+import { User } from "../../lib/api/apiClient.js";
 
 type AppShellProps = {
     user: User;

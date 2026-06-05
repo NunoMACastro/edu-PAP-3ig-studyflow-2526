@@ -10,7 +10,7 @@ import {
     listStudyTools,
     listSummaries,
     StudyToolType,
-} from "../../lib/apiClient.js";
+} from "../../lib/api/apiClient.js";
 
 type StudyToolsPageProps = {
     studyAreaId: string;

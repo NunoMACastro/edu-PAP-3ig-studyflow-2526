@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSoloStudyState, SoloStudyState } from "../../lib/apiClient.js";
+import { getSoloStudyState, SoloStudyState } from "../../lib/api/apiClient.js";
 
 /**
  * Dashboard do modo individual sem turma obrigatória.

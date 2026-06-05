@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { StudyArea, updateStudyAreaVoice } from "../../lib/apiClient.js";
+import { StudyArea, updateStudyAreaVoice } from "../../lib/api/apiClient.js";
 
 type StudyAreaVoiceFormProps = {
     area: StudyArea;

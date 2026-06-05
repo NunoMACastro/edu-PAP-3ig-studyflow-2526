@@ -1,4 +1,4 @@
-import { AiArtifactSource } from "../../lib/apiClient.js";
+import { AiArtifactSource } from "../../lib/api/apiClient.js";
 
 type ArtifactSourcesProps = {
     sources: AiArtifactSource[];

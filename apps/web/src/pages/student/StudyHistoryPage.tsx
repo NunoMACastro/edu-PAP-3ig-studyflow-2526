@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { StudyHistoryList } from "../../components/study/StudyHistoryList.js";
-import { listStudyHistory } from "../../lib/apiClient.js";
+import { listStudyHistory } from "../../lib/api/apiClient.js";
 
 /**
  * Página do histórico de estudo.

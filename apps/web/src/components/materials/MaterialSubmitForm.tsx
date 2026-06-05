@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { submitFileMaterial, submitTextMaterial } from "../../lib/apiClient.js";
+import { submitFileMaterial, submitTextMaterial } from "../../lib/api/apiClient.js";
 
 type MaterialSubmitFormProps = {
     studyAreaId: string;

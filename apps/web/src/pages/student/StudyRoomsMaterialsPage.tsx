@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MaterialList } from "../../components/materials/MaterialList.js";
 import { MaterialSubmitForm } from "../../components/materials/MaterialSubmitForm.js";
-import { listMaterials, StudyMaterial } from "../../lib/apiClient.js";
+import { listMaterials, StudyMaterial } from "../../lib/api/apiClient.js";
 
 type StudyAreaMaterialsPageProps = {
     studyAreaId: string;

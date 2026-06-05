@@ -1,5 +1,5 @@
 import { AppShell } from "../components/layout/AppShell.js";
-import { User } from "../lib/apiClient.js";
+import { User } from "../lib/api/apiClient.js";
 import { ProfilePage } from "../pages/student/ProfilePage.js";
 import { RoutinesPage } from "../pages/student/RoutinesPage.js";
 import { SoloStudyDashboard } from "../pages/student/SoloStudyDashboard.js";

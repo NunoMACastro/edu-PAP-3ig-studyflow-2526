@@ -7,7 +7,7 @@ import {
     getStudyArea,
     StudyArea,
     updateStudyArea,
-} from "../../lib/apiClient.js";
+} from "../../lib/api/apiClient.js";
 
 type StudyAreaDetailPageProps = {
     studyAreaId: string;

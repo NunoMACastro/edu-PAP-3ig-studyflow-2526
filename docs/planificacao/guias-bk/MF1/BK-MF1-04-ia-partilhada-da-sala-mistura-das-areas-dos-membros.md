@@ -7,7 +7,7 @@
 - `owner`: `Daniel`
 - `apoio`: `Kaua`
 - `prioridade`: `P2`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `S`
 - `dependencias`: `BK-MF1-02, BK-MF1-03`
 - `rf_rnf`: `RF16`

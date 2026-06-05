@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { getProfile, StudentProfile, updateProfile } from "../../lib/apiClient.js";
+import { getProfile, StudentProfile, updateProfile } from "../../lib/api/apiClient.js";
 
 /**
  * Página de edição do perfil do aluno.

@@ -3,7 +3,7 @@ import {
     AiArtifact,
     QuizAttemptResult,
     submitQuizAttempt,
-} from "../../lib/apiClient.js";
+} from "../../lib/api/apiClient.js";
 import { ArtifactSources } from "./ArtifactSources.js";
 
 type QuizPanelProps = {

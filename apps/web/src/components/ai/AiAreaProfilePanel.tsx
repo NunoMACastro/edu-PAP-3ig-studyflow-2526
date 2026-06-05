@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { prepareAiProfile } from "../../lib/apiClient.js";
+import { prepareAiProfile } from "../../lib/api/apiClient.js";
 
 type AiAreaProfilePanelProps = {
     studyAreaId: string;

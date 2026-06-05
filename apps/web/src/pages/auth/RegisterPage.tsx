@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { registerStudent } from "../../lib/apiClient.js";
+import { registerStudent } from "../../lib/api/apiClient.js";
 
 /**
  * Página de registo de aluno.

@@ -1,4 +1,4 @@
-import { StudyMaterial } from "../../lib/apiClient.js";
+import { StudyMaterial } from "../../lib/api/apiClient.js";
 
 type MaterialListProps = {
     materials: StudyMaterial[];

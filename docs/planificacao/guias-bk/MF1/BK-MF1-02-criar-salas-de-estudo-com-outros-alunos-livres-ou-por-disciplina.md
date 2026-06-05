@@ -7,7 +7,7 @@
 - `owner`: `Kaua`
 - `apoio`: `Guilherme`
 - `prioridade`: `P1`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `S`
 - `dependencias`: `BK-MF0-03`
 - `rf_rnf`: `RF14`

@@ -1,4 +1,4 @@
-import { AiArtifact } from "../../lib/apiClient.js";
+import { AiArtifact } from "../../lib/api/apiClient.js";
 import { ArtifactSources } from "./ArtifactSources.js";
 
 type ExplanationPanelProps = {

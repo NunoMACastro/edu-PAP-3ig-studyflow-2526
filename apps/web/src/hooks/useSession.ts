@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCurrentUser, logout, User } from "../lib/apiClient.js";
+import { getCurrentUser, logout, User } from "../lib/api/apiClient.js";
 
 /**
  * Hook que mantém o estado de sessão do frontend.

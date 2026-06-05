@@ -9,7 +9,7 @@ import {
     StudyRoutine,
     updateGoal,
     updateRoutine,
-} from "../../lib/apiClient.js";
+} from "../../lib/api/apiClient.js";
 
 type RoutineFormState = {
     title: string;

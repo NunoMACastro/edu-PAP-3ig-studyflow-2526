@@ -7,7 +7,7 @@
 - `owner`: `Guilherme`
 - `apoio`: `Natalia`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `-`
 - `rf_rnf`: `RF19`

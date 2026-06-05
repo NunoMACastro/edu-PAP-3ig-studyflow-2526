@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { login } from "../../lib/apiClient.js";
+import { login } from "../../lib/api/apiClient.js";
 
 type LoginPageProps = {
     onLoggedIn: () => Promise<void>;
