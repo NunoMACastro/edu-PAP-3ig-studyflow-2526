@@ -13,7 +13,7 @@ export class CreateClassPostDto {
     title!: string;
 
     @IsString()
-    @MinLength(2)
+    @MinLength(5)
     @MaxLength(4000)
     body!: string;
 }

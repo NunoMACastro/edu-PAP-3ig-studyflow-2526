@@ -103,7 +103,8 @@ export type LearningProfile = {
     studyAreaId: string;
     pace: "SLOW" | "BALANCED" | "FAST";
     level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
-    difficultyNotes?: string;
+    difficulties: string[];
+    preferredExplanationStyle: string;
 };
 
 export type AdaptiveExplanation = {
@@ -728,7 +729,8 @@ export function updateLearningProfile(
     input: {
         pace: LearningProfile["pace"];
         level: LearningProfile["level"];
-        difficultyNotes?: string;
+        difficulties?: string[];
+        preferredExplanationStyle?: string;
     },
 ): Promise<LearningProfile> {
     return requestJson<LearningProfile>(

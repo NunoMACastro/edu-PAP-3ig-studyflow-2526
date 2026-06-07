@@ -21,7 +21,7 @@ export class ClassPost {
     @Prop({ required: true, trim: true, maxlength: 160 })
     title!: string;
 
-    @Prop({ required: true, trim: true, maxlength: 4000 })
+    @Prop({ required: true, trim: true, minlength: 5, maxlength: 4000 })
     body!: string;
 }
 

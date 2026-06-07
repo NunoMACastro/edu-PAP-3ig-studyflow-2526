@@ -1,9 +1,4 @@
-import {
-    BadGatewayException,
-    BadRequestException,
-    Injectable,
-    NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
@@ -76,7 +71,7 @@ export class RoomSharesService {
             const share = await this.shareModel.create({
                 ...base,
                 url,
-                textContent: copiedText,
+                textContent: copiedText || undefined,
                 usableByAi: Boolean(copiedText),
             });
             return this.toShareView(share.toObject());
@@ -178,8 +173,8 @@ export class RoomSharesService {
         }
     }
 
-    private invalidSharePayload(): BadGatewayException {
-        return new BadGatewayException({
+    private invalidSharePayload(): BadRequestException {
+        return new BadRequestException({
             code: "INVALID_ROOM_SHARE_PAYLOAD",
             message: "A partilha não tem conteúdo válido.",
         });

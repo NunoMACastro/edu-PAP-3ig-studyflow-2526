@@ -53,7 +53,10 @@ export class OfficialMaterialsService {
             title: input.title.trim(),
             type: input.type,
             status: input.type === "TEXT" ? "PROCESSED" : "REFERENCE_ONLY",
-            textContent: input.type === "TEXT" ? input.textContent?.trim() : undefined,
+            textContent:
+                input.type === "TEXT"
+                    ? this.cleanTextContent(input.textContent)
+                    : undefined,
             sourceUrl:
                 input.type === "URL" ? this.parseSafeUrl(input.sourceUrl) : undefined,
         });
@@ -102,6 +105,17 @@ export class OfficialMaterialsService {
                 message: "Indica um URL http ou https válido.",
             });
         }
+    }
+
+    private cleanTextContent(value?: string): string {
+        const textContent = value?.trim() ?? "";
+        if (textContent.length < 20) {
+            throw new BadRequestException({
+                code: "INVALID_OFFICIAL_MATERIAL_TEXT",
+                message: "Indica texto oficial com conteúdo suficiente.",
+            });
+        }
+        return textContent;
     }
 
     private assertTeacher(actor: AuthenticatedUser): void {

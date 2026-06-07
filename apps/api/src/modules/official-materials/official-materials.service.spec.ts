@@ -110,6 +110,19 @@ describe("OfficialMaterialsService", () => {
         ).rejects.toBeInstanceOf(BadRequestException);
         expect(materialModel.create).not.toHaveBeenCalled();
     });
+
+    it("rejeita material TEXT sem conteúdo útil depois de trim", async () => {
+        const { materialModel, service } = makeService();
+
+        await expect(
+            service.createOfficialMaterial(teacher, subjectId, {
+                title: "Derivadas",
+                type: "TEXT",
+                textContent: "                        ",
+            }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(materialModel.create).not.toHaveBeenCalled();
+    });
 });
 
 function makeService() {

@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Types } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
 import { RoomSharesService } from "./room-shares.service.js";
@@ -45,6 +45,52 @@ describe("RoomSharesService", () => {
                 usableByAi: false,
             }),
         );
+    });
+
+    it("não persiste texto copiado quando URL recebe apenas whitespace", async () => {
+        const { shareModel, service } = makeService();
+        shareModel.create.mockResolvedValue({
+            toObject: () => ({
+                _id: shareId,
+                roomId,
+                authorStudentId: student.id,
+                type: "URL",
+                title: "Artigo",
+                url: "https://example.test/artigo",
+                usableByAi: false,
+            }),
+        });
+
+        await expect(
+            service.createShare(student, roomId, {
+                type: "URL",
+                title: "Artigo",
+                url: "https://example.test/artigo",
+                copiedText: "     ",
+            }),
+        ).resolves.toMatchObject({
+            type: "URL",
+            usableByAi: false,
+        });
+        expect(shareModel.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                textContent: undefined,
+                usableByAi: false,
+            }),
+        );
+    });
+
+    it("rejeita apontamentos sem conteúdo útil com 400", async () => {
+        const { shareModel, service } = makeService();
+
+        await expect(
+            service.createShare(student, roomId, {
+                type: "NOTE",
+                title: "Apontamentos",
+                textContent: "     ",
+            }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(shareModel.create).not.toHaveBeenCalled();
     });
 
     it("usa apenas materiais próprios como referência para IA da sala", async () => {

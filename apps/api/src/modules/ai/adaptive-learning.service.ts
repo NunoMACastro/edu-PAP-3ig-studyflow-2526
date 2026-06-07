@@ -36,7 +36,8 @@ type LearningProfileView = {
     studyAreaId: string;
     pace: LearningPace;
     level: LearningLevel;
-    difficultyNotes?: string;
+    difficulties: string[];
+    preferredExplanationStyle: string;
 };
 
 /**
@@ -79,7 +80,8 @@ export class AdaptiveLearningService {
                 studyAreaId,
                 pace: "BALANCED",
                 level: "INTERMEDIATE",
-                difficultyNotes: "",
+                difficulties: [],
+                preferredExplanationStyle: "",
             };
         }
 
@@ -104,7 +106,8 @@ export class AdaptiveLearningService {
         const update = {
             pace: input.pace ?? "BALANCED",
             level: input.level ?? "INTERMEDIATE",
-            difficultyNotes: input.difficultyNotes?.trim() ?? "",
+            difficulties: this.cleanDifficulties(input.difficulties),
+            preferredExplanationStyle: input.preferredExplanationStyle?.trim() ?? "",
         };
 
         const profile = await this.profileModel
@@ -159,7 +162,8 @@ export class AdaptiveLearningService {
                     question: input.question.trim(),
                     pace: profile.pace,
                     level: profile.level,
-                    difficultyNotes: profile.difficultyNotes,
+                    difficulties: profile.difficulties,
+                    preferredExplanationStyle: profile.preferredExplanationStyle,
                     sources,
                 }),
             });
@@ -268,14 +272,47 @@ export class AdaptiveLearningService {
         studyAreaId: unknown;
         pace: LearningPace;
         level: LearningLevel;
+        difficulties?: string[];
         difficultyNotes?: string;
+        preferredExplanationStyle?: string;
     }): LearningProfileView {
         return {
             _id: profile._id ? String(profile._id) : undefined,
             studyAreaId: String(profile.studyAreaId),
             pace: profile.pace,
             level: profile.level,
-            difficultyNotes: profile.difficultyNotes ?? "",
+            difficulties: this.cleanDifficulties(
+                profile.difficulties ?? this.legacyDifficultyNotes(profile.difficultyNotes),
+            ),
+            preferredExplanationStyle: profile.preferredExplanationStyle?.trim() ?? "",
         };
+    }
+
+    /**
+     * Normaliza dificuldades declaradas para o contrato público do BK-MF1-01.
+     *
+     * @param difficulties Lista recebida do cliente ou persistida.
+     * @returns Lista sem vazios, limitada ao contrato do DTO.
+     */
+    private cleanDifficulties(difficulties?: string[]): string[] {
+        return (difficulties ?? [])
+            .map((difficulty) => difficulty.trim())
+            .filter((difficulty) => difficulty.length > 0)
+            .slice(0, 8);
+    }
+
+    /**
+     * Converte dados antigos que ainda possam existir com difficultyNotes.
+     *
+     * @param difficultyNotes Campo legado anterior ao contrato canónico.
+     * @returns Lista compatível com difficulties.
+     */
+    private legacyDifficultyNotes(difficultyNotes?: string): string[] {
+        return difficultyNotes
+            ? difficultyNotes
+                  .split(/\r?\n/)
+                  .map((difficulty) => difficulty.trim())
+                  .filter((difficulty) => difficulty.length > 0)
+            : [];
     }
 }

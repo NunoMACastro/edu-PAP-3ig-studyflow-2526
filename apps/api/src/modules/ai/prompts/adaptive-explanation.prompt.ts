@@ -9,7 +9,8 @@ type BuildAdaptiveExplanationPromptInput = {
     question: string;
     pace: LearningPace;
     level: LearningLevel;
-    difficultyNotes?: string;
+    difficulties: string[];
+    preferredExplanationStyle?: string;
     sources: AiSource[];
 };
 
@@ -36,7 +37,8 @@ export function buildAdaptiveExplanationPrompt(
         `Área de estudo: ${input.areaName}`,
         `Ritmo: ${input.pace}`,
         `Nível: ${input.level}`,
-        `Dificuldades declaradas: ${input.difficultyNotes?.trim() || "Não indicadas"}`,
+        `Dificuldades declaradas: ${input.difficulties.length > 0 ? input.difficulties.join(", ") : "Não indicadas"}`,
+        `Estilo preferido de explicação: ${input.preferredExplanationStyle?.trim() || "Não indicado"}`,
         `Pergunta do aluno: ${input.question}`,
         "Fontes autorizadas:",
         sources,

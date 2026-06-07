@@ -43,6 +43,85 @@ describe("AdaptiveLearningService", () => {
         expect(explanationModel.create).not.toHaveBeenCalled();
         expect(historyService.recordEvent).not.toHaveBeenCalled();
     });
+
+    it("guarda dificuldades e estilo preferido no perfil adaptativo", async () => {
+        const { profileModel, service } = makeService();
+        profileModel.findOneAndUpdate.mockReturnValue(
+            leanResult({
+                _id: "507f1f77bcf86cd799439016",
+                studyAreaId,
+                pace: "SLOW",
+                level: "BEGINNER",
+                difficulties: ["frações", "interpretação de enunciados"],
+                preferredExplanationStyle: "Passo a passo com exemplos",
+            }),
+        );
+
+        const profile = await service.updateLearningProfile(student.id, studyAreaId, {
+            pace: "SLOW",
+            level: "BEGINNER",
+            difficulties: [" frações ", "", "interpretação de enunciados"],
+            preferredExplanationStyle: " Passo a passo com exemplos ",
+        });
+
+        expect(profileModel.findOneAndUpdate).toHaveBeenCalledWith(
+            expect.any(Object),
+            expect.objectContaining({
+                $set: {
+                    pace: "SLOW",
+                    level: "BEGINNER",
+                    difficulties: ["frações", "interpretação de enunciados"],
+                    preferredExplanationStyle: "Passo a passo com exemplos",
+                },
+            }),
+            expect.any(Object),
+        );
+        expect(profile).toMatchObject({
+            difficulties: ["frações", "interpretação de enunciados"],
+            preferredExplanationStyle: "Passo a passo com exemplos",
+        });
+    });
+
+    it("inclui dificuldades e estilo preferido no prompt adaptativo", async () => {
+        const { aiProvider, explanationModel, historyService, profileModel, service } =
+            makeService();
+        profileModel.findOne.mockReturnValueOnce(
+            leanResult({
+                _id: "507f1f77bcf86cd799439016",
+                studyAreaId,
+                pace: "SLOW",
+                level: "BEGINNER",
+                difficulties: ["frações"],
+                preferredExplanationStyle: "explicações com analogias",
+            }),
+        );
+        aiProvider.generateAdaptiveExplanation.mockResolvedValue({
+            answer: "Uma função relaciona valores.",
+            suggestedNextSteps: ["Resolver um exercício guiado."],
+            sourceMaterialIds: [materialId],
+        });
+        explanationModel.create.mockResolvedValue({
+            _id: "507f1f77bcf86cd799439017",
+            question: "Explica funções.",
+            answer: "Uma função relaciona valores.",
+            suggestedNextSteps: ["Resolver um exercício guiado."],
+            toObject: () => ({ createdAt: new Date("2026-01-01T00:00:00.000Z") }),
+        });
+
+        await service.askAdaptiveExplanation(student.id, studyAreaId, {
+            question: "Explica funções.",
+        });
+
+        expect(aiProvider.generateAdaptiveExplanation).toHaveBeenCalledWith({
+            prompt: expect.stringContaining("Dificuldades declaradas: frações"),
+        });
+        expect(aiProvider.generateAdaptiveExplanation).toHaveBeenCalledWith({
+            prompt: expect.stringContaining(
+                "Estilo preferido de explicação: explicações com analogias",
+            ),
+        });
+        expect(historyService.recordEvent).toHaveBeenCalled();
+    });
 });
 
 function makeService() {

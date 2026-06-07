@@ -104,10 +104,34 @@ export function AdaptiveLearningPage({ studyAreaId }: AdaptiveLearningPageProps)
                     Dificuldades
                     <textarea
                         rows={5}
-                        value={profile?.difficultyNotes ?? ""}
+                        value={profile?.difficulties.join("\n") ?? ""}
                         onChange={(event) =>
                             setProfile((current) =>
-                                current ? { ...current, difficultyNotes: event.target.value } : current,
+                                current
+                                    ? {
+                                          ...current,
+                                          difficulties: event.target.value
+                                              .split(/\r?\n/)
+                                              .map((difficulty) => difficulty.trim())
+                                              .filter((difficulty) => difficulty.length > 0),
+                                      }
+                                    : current,
+                            )
+                        }
+                    />
+                </label>
+                <label className="block">
+                    Estilo preferido
+                    <input
+                        value={profile?.preferredExplanationStyle ?? ""}
+                        onChange={(event) =>
+                            setProfile((current) =>
+                                current
+                                    ? {
+                                          ...current,
+                                          preferredExplanationStyle: event.target.value,
+                                      }
+                                    : current,
                             )
                         }
                     />

@@ -1,4 +1,11 @@
-import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import {
+    ArrayMaxSize,
+    IsArray,
+    IsIn,
+    IsOptional,
+    IsString,
+    MaxLength,
+} from "class-validator";
 
 /**
  * Dados editáveis do perfil de aprendizagem.
@@ -13,7 +20,14 @@ export class UpdateLearningProfileDto {
     level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 
     @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(8)
+    @IsString({ each: true })
+    @MaxLength(120, { each: true })
+    difficulties?: string[];
+
+    @IsOptional()
     @IsString()
-    @MaxLength(600)
-    difficultyNotes?: string;
+    @MaxLength(200)
+    preferredExplanationStyle?: string;
 }

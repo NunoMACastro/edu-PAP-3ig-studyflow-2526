@@ -38,8 +38,19 @@ export class LearningProfile {
     })
     level!: LearningLevel;
 
-    @Prop({ trim: true, maxlength: 600 })
-    difficultyNotes?: string;
+    @Prop({
+        type: [String],
+        default: [],
+        validate: {
+            validator: (values: string[]) =>
+                values.every((value) => value.trim().length <= 120),
+            message: "Cada dificuldade deve ter no máximo 120 caracteres.",
+        },
+    })
+    difficulties!: string[];
+
+    @Prop({ trim: true, maxlength: 200, default: "" })
+    preferredExplanationStyle!: string;
 }
 
 export const LearningProfileSchema = SchemaFactory.createForClass(LearningProfile);
