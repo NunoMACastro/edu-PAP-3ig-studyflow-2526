@@ -16,613 +16,621 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF3-01`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-12-assistente-ia-da-disciplina-turma-com-voz-docente.md`
-- `last_updated`: `2026-06-07`
+- `last_updated`: `2026-06-08`
 
-## O que vamos fazer neste BK
+## Objetivo do BK
 
-Neste BK vais implementar assistente de disciplina de forma incremental, usando os contratos já definidos em MF0 e MF1. O objetivo é que o aluno consiga criar os ficheiros, ligar backend e frontend, validar permissões e preparar o próximo BK sem adivinhar peças técnicas.
+Estender a IA da disciplina/turma com voz docente, usando apenas materiais oficiais aprovados e a configuração criada pelo professor.
 
-## Porque é que isto é importante
+## Importância
 
-- Dá implementação concreta a `RF36`.
-- Mantém separados aluno, professor, turma, disciplina, material e IA.
-- Aplica ownership ou membership no backend antes de devolver dados.
-- Prepara `BK-MF3-01` com exports e endpoints estáveis.
+Este BK fecha a MF2 com um assistente oficial de disciplina. Ele tem impacto directo em segurança, confiança pedagógica e macros futuras de guardrails, citações e limites docentes.
 
-## O que entra (scope)
+## Scope-in
 
-- Backend NestJS com schema, DTO, service, controller e módulo.
-- Frontend React/TypeScript com cliente API e página mínima.
-- Endpoint principal: `POST /api/student/subjects/:subjectId/ai/answers`.
-- Validação de sessão, papel e contexto.
-- Evidence de sucesso e negativos.
+- Editar o domínio `class-ai` já criado em `BK-MF1-11`.
+- Usar `SubjectsService.findSubjectForStudent`, `OfficialMaterialsService.findProcessedBySubject` e `TeacherAiVoiceService.findForSubject`.
+- Aplicar regras de voz docente no prompt.
+- Guardar resposta com materiais oficiais e regras usadas.
 
-## O que não entra (scope-out)
+## Scope-out
 
-- Alterar IDs, owners, prioridades, sprints ou dependências canónicas.
-- Criar integrações externas não documentadas.
-- Misturar materiais privados, oficiais e de turma.
-- Usar IA sem fontes processáveis e autorizadas.
+- Redefinir provider de IA.
+- Criar novo domínio concorrente para IA da turma.
+- Usar materiais privados do aluno como fonte oficial.
 
 ## Estado antes
 
-O guia anterior estava em estado `CRÍTICO`: tinha passos genéricos, não indicava ficheiros completos e não permitia implementar `RF36` com segurança.
+`BK-MF1-11` já criou `ClassAiModule` com IA limitada da turma. A versão actual precisa ser estendida sem substituir o módulo nem duplicar o provider.
 
 ## Estado depois
 
-O guia passa a ter estrutura MF0, código integrado, validação por passo, expected results, critérios de aceite, evidence e handoff.
+`ClassAiService` passa a suportar o assistente da disciplina com voz docente, mantendo o import de `AiModule` e as validações de aluno, disciplina, materiais oficiais e voz.
 
-## Metadados do BK (CANONICO/DERIVADO)
+## Pré-requisitos
 
-- Prioridade, owner, apoio, esforço, dependências, RF/RNF, sprint e próximo BK: CANONICO, definidos em `MATRIZ-CANONICA-BK.md` e `CONTRATO-CAMPOS-BK.md`.
-- Stack técnica NestJS, Mongoose, React e TypeScript: CANONICO, definida nos RNF.
-- Endpoints, nomes de ficheiros, services e componentes: DERIVADO, escolhidos para implementar o requisito sem contrariar a documentação.
-- Regras de sessão, ownership, membership e bloqueio de IA sem fontes: CANONICO/DERIVADO a partir de RF, RNF e BKs anteriores.
+- `TeacherAiModule` exporta `TeacherAiVoiceService`.
+- `SubjectsModule` exporta `SubjectsService.findSubjectForStudent`.
+- `OfficialMaterialsModule` exporta `OfficialMaterialsService.findProcessedBySubject`.
+- `AiModule` exporta `AI_PROVIDER`.
 
-## Pré-requisitos concretos
+## Glossário
 
-- Dependências concluídas: `BK-MF1-10`.
-- `SessionGuard` e `AuthenticatedUser` criados em MF0.
-- Contratos relevantes disponíveis: `TeacherAiVoiceService` e `MaterialIndexService`.
-- Stack canónica: NestJS, Mongoose, React, TypeScript e cookies HttpOnly.
+- Voz docente: regras de tom e estilo configuradas pelo professor.
+- Material oficial: fonte da disciplina aprovada ou processada pelo professor.
+- Assistente da disciplina: IA acessível ao aluno inscrito, limitada à disciplina.
 
-## Glossário rápido
+## Conceitos teóricos
 
-- **assistente de disciplina**: recurso ou fluxo implementado neste BK.
-- **Ownership**: garantia de que um utilizador só gere dados que controla.
-- **Membership**: garantia de que um aluno pertence à turma antes de ver dados dessa turma.
-- **DTO**: classe que valida payloads de entrada.
-- **Service**: camada onde vivem regras de negócio e segurança.
-- **Controller**: camada HTTP que recebe pedidos e delega no service.
+- **Extensão acumulada.** editar módulo existente preserva comportamento anterior. Este conceito vem de `RF36` e das dependências `BK-MF1-10`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-12 - Assistente IA da disciplina/turma com voz docente.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Fonte oficial obrigatória.** a resposta deve vir dos materiais da disciplina. Este conceito vem de `RF36` e das dependências `BK-MF1-10`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-12 - Assistente IA da disciplina/turma com voz docente.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Perfil de IA.** regras docentes condicionam tom, nível de detalhe e limites. Este conceito vem de `RF36` e das dependências `BK-MF1-10`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-12 - Assistente IA da disciplina/turma com voz docente.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Backend, validação e segurança.** O backend recebe a identidade pela sessão autenticada, valida DTOs antes do service e confirma ownership ou membership nos services herdados. Esta regra vem da fundação MF0/MF1 e segue para os BKs seguintes como contrato de segurança. Serve para impedir leitura ou escrita entre alunos, professores, turmas e disciplinas diferentes.
+- **Frontend tipado e sessão real.** O frontend usa cliente API tipado em `apps/web/src/lib/api/...`, envia cookies com `credentials: "include"`, mostra estados de carregamento, erro, vazio e sucesso, e não guarda tokens em `localStorage`. Isto evita chamadas anónimas, dados de actor no body e payloads sem tipo claro.
+- **IA, fontes e guardrails.** Este BK só envolve provider de IA quando o próprio requisito o pede. Quando não há chamada de IA, o guia limita-se a preparar fontes, autorização ou contexto sem prometer geração automática; quando há chamada de IA, o provider vem de `AiModule`/`AI_PROVIDER`, as fontes são recolhidas antes da chamada e a resposta só é persistida depois de validação mínima.
 
-## Conceitos teóricos essenciais
+## Decisões documentais
 
-**Domínio StudyFlow.** assistente de disciplina existe para concretizar `RF36`. O contexto vem da rota e da sessão autenticada; nunca vem de campos livres escolhidos pelo frontend.
-
-**Backend.** O schema define persistência MongoDB, o DTO valida entrada, o service aplica regras e o controller expõe endpoints protegidos. Esta separação evita controllers grandes e facilita testes.
-
-**Frontend.** O cliente usa `fetch` com `credentials: "include"` para enviar o cookie HttpOnly. A página mostra loading, erro, vazio e sucesso para o aluno perceber o estado real do pedido.
-
-**Segurança.** O backend valida sessão, papel e contexto antes de consultar ou criar dados. Sem sessão deve haver `401`; papel errado deve gerar `403`; contexto inexistente ou fora do utilizador deve gerar `404`.
-
-**IA.** Quando este BK tocar IA, o provider só pode receber fontes autorizadas. Sem fontes processáveis, a resposta correta é bloquear com erro claro.
+- `CANONICO`: `BK-MF2-12`, `RF36`, prioridade `P0`, owner `Natalia`, apoio `Guilherme`, sprint `S05`, dependências `BK-MF1-10` e próximo BK `BK-MF3-01` vêm da matriz, backlog e contrato de campos.
+- `CANONICO`: o domínio funcional é `BK-MF2-12 - Assistente IA da disciplina/turma com voz docente.`; este BK preserva a sequência da MF2 e não altera IDs, RF/RNF, prioridades, owners ou dependências.
+- `DERIVADO`: os nomes de módulos, services, DTOs, schemas, clientes API e páginas resultam dos passos deste guia e mantêm a convenção já usada no próprio código documentado.
+- `DERIVADO`: os caminhos frontend previstos usam `apps/web/src/lib/api/...` para clientes HTTP e `apps/web/src/pages/mf2/...` para páginas, porque essa é a localização usada nos passos de implementação.
 
 ## Arquitetura do BK
 
-- Ficheiros principais: `apps/api/src/modules/class-ai/...`, `apps/web/src/lib/api/class-ai.ts`, `apps/web/src/pages/mf2/ClassAiInteractionPage.tsx`.
-- Exports produzidos: `ClassAiInteractionService`, `ClassAiInteractionModule`.
-- Imports consumidos: `TeacherAiVoiceService`, `MaterialIndexService`, `SessionGuard`.
-- Endpoint principal: `POST /api/student/subjects/:subjectId/ai/answers`.
+`ClassAiService` valida inscrição na disciplina, recolhe materiais oficiais, carrega voz docente, chama `AI_PROVIDER` e grava `ClassAiAnswer`. O módulo `ClassAiModule` continua a importar `AiModule`, `SubjectsModule`, `OfficialMaterialsModule` e `TeacherAiModule`.
+
+## Ficheiros previstos
+
+- `apps/api/src/modules/class-ai/schemas/class-ai-answer.schema.ts`
+- `apps/api/src/modules/class-ai/dto/class-ai-answer.dto.ts`
+- `apps/api/src/modules/class-ai/class-ai.service.ts`
+- `apps/api/src/modules/class-ai/class-ai.controller.ts`
+- `apps/api/src/modules/class-ai/class-ai.module.ts`
+- `apps/web/src/lib/api/class-ai.ts`
+- `apps/web/src/pages/mf2/ClassAiPage.tsx`
 
 ## Guia linear de implementação
+
+Segue os passos por ordem. Cada passo indica objetivo, ficheiros, ação concreta, código completo, explicação, validação e erro comum. Não saltes passos: a sequência preserva os contratos herdados dos BKs anteriores e prepara o BK seguinte sem criar endpoints, schemas ou services paralelos.
 
 ### Passo 1 - Criar schema e DTO
 
 1. Explicação simples do objetivo.
 
-    Definir a estrutura persistida para assistente de disciplina e validar os dados de entrada antes de chegarem ao service.
+    Definir a estrutura persistida e validar a entrada de assistente IA da disciplina no backend.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/api/src/modules/class-ai/schemas/class-ai.schema.ts`
-    - CRIAR: `apps/api/src/modules/class-ai/dto/create-class-ai.dto.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
+    - CRIAR: `apps/api/src/modules/class-ai/schemas/class-ai-answer.schema.ts`
+    - CRIAR: `apps/api/src/modules/class-ai/dto/class-ai-answer.dto.ts`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `TeacherAiVoiceService` e `MaterialIndexService` existem ou foram definidos nos BKs anteriores.
+    Cria os ficheiros indicados e mantém os nomes de classes usados nos passos seguintes.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/class-ai/schemas/class-ai.schema.ts
+~~~ts
+// apps/api/src/modules/class-ai/schemas/class-ai-answer.schema.ts
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-export type ClassAiInteractionDocument = HydratedDocument<ClassAiInteraction>;
-export type ClassAiInteractionStatus = "ACTIVE" | "ARCHIVED";
+export type ClassAiAnswerDocument = HydratedDocument<ClassAiAnswer>;
 
-@Schema({ timestamps: true, collection: "class_ai" })
-export class ClassAiInteraction {
+@Schema({ timestamps: true, collection: "class_ai_answers" })
+export class ClassAiAnswer {
     @Prop({ type: Types.ObjectId, required: true, index: true })
-    contextId!: Types.ObjectId;
+    subjectId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, required: true, index: true })
+    classId!: Types.ObjectId;
 
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
-    createdBy!: Types.ObjectId;
+    studentId!: Types.ObjectId;
 
-    @Prop({ required: true, trim: true, minlength: 3, maxlength: 160 })
-    title!: string;
+    @Prop({ required: true, trim: true, minlength: 3, maxlength: 4000 })
+    question!: string;
 
-    @Prop({ trim: true, maxlength: 4000 })
-    description?: string;
+    @Prop({ required: true, trim: true, minlength: 3, maxlength: 20000 })
+    answer!: string;
 
-    @Prop({ required: true, enum: ["ACTIVE", "ARCHIVED"], default: "ACTIVE" })
-    status!: ClassAiInteractionStatus;
+    @Prop({ type: [String], default: [] })
+    officialMaterialIds!: string[];
+
+    @Prop({ type: [String], default: [] })
+    teacherVoiceRules!: string[];
 }
 
-export const ClassAiInteractionSchema = SchemaFactory.createForClass(ClassAiInteraction);
-ClassAiInteractionSchema.index({ contextId: 1, createdAt: -1 });
+export const ClassAiAnswerSchema = SchemaFactory.createForClass(ClassAiAnswer);
+ClassAiAnswerSchema.index({ subjectId: 1, studentId: 1, createdAt: -1 });
 
-// apps/api/src/modules/class-ai/dto/create-class-ai.dto.ts
-import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+// apps/api/src/modules/class-ai/dto/class-ai-answer.dto.ts
+import { IsString, MaxLength, MinLength } from "class-validator";
 
-export class CreateClassAiInteractionDto {
+export class CreateClassAiAnswerDto {
     @IsString()
     @MinLength(3)
-    @MaxLength(160)
-    title!: string;
-
-    @IsOptional()
-    @IsString()
     @MaxLength(4000)
-    description?: string;
+    question!: string;
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa assistente de disciplina para RF36. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este bloco separa persistência e entrada HTTP. O schema define os campos guardados em MongoDB, índices e estados que os BKs seguintes podem consultar. O DTO valida o corpo do pedido antes de chegar ao service, por isso dados vazios, demasiado longos ou com formato errado falham com `400 Bad Request`. A regra de segurança é simples: IDs de utilizador, aluno ou professor nunca vêm do body; vêm sempre da sessão autenticada.
 
 6. Como validar este passo.
 
-    Confirma que os campos obrigatórios rejeitam strings vazias e que os índices estão orientados ao contexto.
+    Arranca a API depois de integrar o module e confirma que um body vazio devolve 400.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar schema sem índice por contexto dificulta isolamento e consultas por turma, disciplina ou área.
+    Não aceites actorId, teacherId ou studentId no body; esses valores vêm da sessão autenticada.
 
-### Passo 2 - Criar service
+### Passo 2 - Criar service com autorização
 
 1. Explicação simples do objetivo.
 
-    Concentrar a regra de negócio de assistente de disciplina, incluindo validação de sessão e contexto.
+    Centralizar regras de negócio, validação de contexto e erros de domínio.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/api/src/modules/class-ai/class-ai.service.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
+    - EDITAR: `apps/api/src/modules/class-ai/class-ai.service.ts`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `TeacherAiVoiceService` e `MaterialIndexService` existem ou foram definidos nos BKs anteriores.
+    Implementa o service usando os métodos herdados de MF0/MF1 e nunca confies em IDs de utilizador enviados pelo cliente.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/class-ai/class-ai.service.ts
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, ServiceUnavailableException, UnprocessableEntityException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { CreateClassAiInteractionDto } from "./dto/create-class-ai.dto";
-import { ClassAiInteraction, ClassAiInteractionDocument } from "./schemas/class-ai.schema";
+import { AI_PROVIDER, AiProvider } from "../ai/providers/ai-provider";
+import { OfficialMaterialsService } from "../official-materials/official-materials.service";
+import { SubjectsService } from "../subjects/subjects.service";
+import { TeacherAiVoiceService } from "../teacher-ai/teacher-ai-voice.service";
+import { CreateClassAiAnswerDto } from "./dto/class-ai-answer.dto";
+import { ClassAiAnswer, ClassAiAnswerDocument } from "./schemas/class-ai-answer.schema";
 
 @Injectable()
-export class ClassAiInteractionService {
+export class ClassAiService {
     constructor(
-        @InjectModel(ClassAiInteraction.name)
-        private readonly model: Model<ClassAiInteractionDocument>,
+        @InjectModel(ClassAiAnswer.name)
+        private readonly answers: Model<ClassAiAnswerDocument>,
+        private readonly subjectsService: SubjectsService,
+        private readonly officialMaterialsService: OfficialMaterialsService,
+        private readonly teacherAiVoiceService: TeacherAiVoiceService,
+        @Inject(AI_PROVIDER) private readonly aiProvider: AiProvider,
     ) {}
 
-    async create(actor: AuthenticatedUser, contextId: string, dto: CreateClassAiInteractionDto) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const created = await this.model.create({
-            contextId: new Types.ObjectId(contextId),
-            createdBy: new Types.ObjectId(actor.id),
-            title: dto.title.trim(),
-            description: dto.description?.trim(),
-            status: "ACTIVE",
-        });
-
-        return this.toView(created);
+    async ask(actor: AuthenticatedUser, subjectId: string, dto: CreateClassAiAnswerDto) {
+        this.assertStudent(actor);
+        const subject = await this.subjectsService.findSubjectForStudent(actor.id, subjectId);
+        const materials = await this.officialMaterialsService.findProcessedBySubject(subject);
+        if (materials.length === 0) {
+            throw new UnprocessableEntityException("Disciplina sem materiais oficiais processados.");
+        }
+        const voice = await this.teacherAiVoiceService.findForSubject(subject);
+        const rules = voice?.rules ?? [];
+        const answerText = await this.generateAnswer(dto.question, materials.map((material) => material.contentText).join("\n"), rules);
+        const answer = await this.answers.create({ subjectId: subject._id, classId: subject.classId, studentId: new Types.ObjectId(actor.id), question: dto.question.trim(), answer: answerText, officialMaterialIds: materials.map((material) => material._id.toString()), teacherVoiceRules: rules });
+        return this.toView(answer);
     }
 
-    async list(actor: AuthenticatedUser, contextId: string) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const items = await this.model
-            .find({ contextId: new Types.ObjectId(contextId), status: "ACTIVE" })
-            .sort({ createdAt: -1 })
-            .lean();
-
-        return items.map((item) => this.toView(item));
+    async list(actor: AuthenticatedUser, subjectId: string) {
+        this.assertStudent(actor);
+        const subject = await this.subjectsService.findSubjectForStudent(actor.id, subjectId);
+        const answers = await this.answers.find({ subjectId: subject._id, studentId: new Types.ObjectId(actor.id) }).sort({ createdAt: -1 }).lean();
+        return answers.map((answer) => this.toView(answer));
     }
 
-    private ensureRole(actor: AuthenticatedUser) {
-        // O papel vem da sessão validada pelo SessionGuard, não do frontend.
-        if (!actor?.id || !["STUDENT", "TEACHER", "ADMIN"].includes(actor.role)) {
-            throw new ForbiddenException("Sessão sem permissões para este fluxo.");
+    private async generateAnswer(question: string, sourceText: string, rules: string[]) {
+        try {
+            return await this.aiProvider.generateText({
+                system: "Responde como assistente da disciplina, respeitando a voz docente e citando fontes oficiais.",
+                user: [question, "Regras docentes:", rules.join("\n"), "Fontes:", sourceText].join("\n"),
+                sources: [{ id: "official-subject", title: "Materiais oficiais" }],
+            });
+        } catch (error) {
+            throw new ServiceUnavailableException("IA da disciplina indisponível neste momento.");
         }
     }
 
-    private ensureObjectId(id: string) {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new NotFoundException("Contexto não encontrado.");
+    private assertStudent(actor: AuthenticatedUser) {
+        if (actor.role !== "STUDENT") {
+            throw new ForbiddenException("Apenas alunos podem usar a IA da disciplina.");
         }
     }
-
-    private toView(item: ClassAiInteraction | ClassAiInteractionDocument) {
-        return {
-            id: item._id.toString(),
-            contextId: item.contextId.toString(),
-            createdBy: item.createdBy.toString(),
-            title: item.title,
-            description: item.description ?? "",
-            status: item.status,
-        };
+    private toView(answer: ClassAiAnswer) {
+        return { id: answer._id.toString(), question: answer.question, answer: answer.answer, officialMaterialIds: answer.officialMaterialIds, teacherVoiceRules: answer.teacherVoiceRules };
     }
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa assistente de disciplina para RF36. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este service concentra a regra de negócio do BK. Recebe o utilizador autenticado, valida o papel esperado, confirma ownership ou membership nos services herdados e só depois consulta ou grava dados. A entrada principal vem do controller; a saída é uma resposta já filtrada para o frontend. Isto evita duplicar segurança em componentes React e impede acessos cruzados entre alunos, professores, turmas, disciplinas e áreas de estudo.
 
 6. Como validar este passo.
 
-    Testa criação com sessão válida e com sessão sem permissão. A segunda deve devolver erro controlado.
+    Testa três casos: sem sessão, sessão com papel errado e sessão válida com contexto pertencente ao actor.
 
 7. Erros comuns ou cenário negativo.
 
-    Colocar a validação só no controller ou no frontend permite chamadas diretas à API sem a regra de segurança.
+    Fazer apenas `Model.findById(id)` sem validar dono ou inscrição permite leitura indevida entre turmas, disciplinas ou áreas.
 
-### Passo 3 - Criar controller e módulo
+### Passo 3 - Criar controller e module do domínio
 
 1. Explicação simples do objetivo.
 
-    Expor endpoints reais, protegidos por sessão, e exportar o service para os BKs seguintes.
+    Expor as rotas HTTP do BK e ligar controller, service e schema no módulo NestJS.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/api/src/modules/class-ai/class-ai.controller.ts`
-    - CRIAR: `apps/api/src/modules/class-ai/class-ai.module.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
+    - EDITAR: `apps/api/src/modules/class-ai/class-ai.controller.ts`
+    - EDITAR: `apps/api/src/modules/class-ai/class-ai.module.ts`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `TeacherAiVoiceService` e `MaterialIndexService` existem ou foram definidos nos BKs anteriores.
+    Declara apenas os parâmetros reais de cada rota e importa todos os símbolos usados pelo module.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/class-ai/class-ai.controller.ts
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedRequest } from "../../common/types/authenticated-request";
-import { CreateClassAiInteractionDto } from "./dto/create-class-ai.dto";
-import { ClassAiInteractionService } from "./class-ai.service";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { ClassAiService } from "./class-ai.service";
+import { CreateClassAiAnswerDto } from "./dto/class-ai-answer.dto";
 
-@Controller("api/class-ai")
 @UseGuards(SessionGuard)
-export class ClassAiInteractionController {
-    constructor(private readonly service: ClassAiInteractionService) {}
+@Controller("api/student/subjects/:subjectId/ai/answers")
+export class ClassAiController {
+    constructor(private readonly classAiService: ClassAiService) {}
 
-    @Post(":contextId")
-    create(
-        @Req() request: AuthenticatedRequest,
-        @Param("contextId") contextId: string,
-        @Body() dto: CreateClassAiInteractionDto,
-    ) {
-        return this.service.create(request.user!, contextId, dto);
+    @Post()
+    ask(@CurrentUser() actor: AuthenticatedUser, @Param("subjectId") subjectId: string, @Body() dto: CreateClassAiAnswerDto) {
+        return this.classAiService.ask(actor, subjectId, dto);
     }
 
-    @Get(":contextId")
-    list(@Req() request: AuthenticatedRequest, @Param("contextId") contextId: string) {
-        return this.service.list(request.user!, contextId);
+    @Get()
+    list(@CurrentUser() actor: AuthenticatedUser, @Param("subjectId") subjectId: string) {
+        return this.classAiService.list(actor, subjectId);
     }
 }
 
 // apps/api/src/modules/class-ai/class-ai.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { ClassAiInteractionController } from "./class-ai.controller";
-import { ClassAiInteractionService } from "./class-ai.service";
-import { ClassAiInteraction, ClassAiInteractionSchema } from "./schemas/class-ai.schema";
+import { AiModule } from "../ai/ai.module";
+import { OfficialMaterialsModule } from "../official-materials/official-materials.module";
+import { SubjectsModule } from "../subjects/subjects.module";
+import { TeacherAiModule } from "../teacher-ai/teacher-ai.module";
+import { ClassAiController } from "./class-ai.controller";
+import { ClassAiService } from "./class-ai.service";
+import { ClassAiAnswer, ClassAiAnswerSchema } from "./schemas/class-ai-answer.schema";
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: ClassAiInteraction.name, schema: ClassAiInteractionSchema }])],
-    controllers: [ClassAiInteractionController],
-    providers: [ClassAiInteractionService],
-    exports: [ClassAiInteractionService, MongooseModule],
+    imports: [MongooseModule.forFeature([{ name: ClassAiAnswer.name, schema: ClassAiAnswerSchema }]), SubjectsModule, OfficialMaterialsModule, TeacherAiModule, AiModule],
+    controllers: [ClassAiController],
+    providers: [ClassAiService],
+    exports: [ClassAiService],
 })
-export class ClassAiInteractionModule {}
-```
+export class ClassAiModule {}
+~~~
 
 5. Explicação do código.
 
-    Este código implementa assistente de disciplina para RF36. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O controller transforma pedidos HTTP autenticados em chamadas ao service, sem colocar regras de negócio na rota. O module liga controller, service, schema Mongoose e módulos herdados, garantindo dependency injection correta. Se faltar um import no module, a app não arranca; se faltar o guard no controller, o endpoint deixa de proteger sessão e permissões.
 
 6. Como validar este passo.
 
-    Chama `POST /api/student/subjects/:subjectId/ai/answers` com cookie real e confirma que o controller chama o service.
+    Confirma que a aplicação arranca sem erros de provider desconhecido e que as rotas aparecem com o prefixo esperado.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar endpoints sem `SessionGuard` expõe dados de alunos, professores ou turmas.
+    Usar fallback genérico de parâmetros esconde bugs de rota e pode passar `undefined` para o service.
 
-### Passo 4 - Registar exports para a sequência
+### Passo 4 - Integrar no módulo acumulativo da MF2
 
 1. Explicação simples do objetivo.
 
-    Garantir que BK-MF3-01 consegue importar o service deste BK sem duplicar lógica.
+    Garantir que o endpoint fica activo sem apagar modules criados em BKs anteriores.
 
 2. Ficheiros envolvidos.
-    - EDITAR: `apps/api/src/modules/class-ai/class-ai.module.ts`
-    - REVER: módulo raiz da API.
-    - LOCALIZAÇÃO: lista de imports e exports.
+    - EDITAR: `apps/api/src/modules/mf2/mf2.module.ts`
+    - REVER: `apps/api/src/app.module.ts` já deve importar Mf2Module desde BK-MF2-01
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `TeacherAiVoiceService` e `MaterialIndexService` existem ou foram definidos nos BKs anteriores.
+    Mantém todos os imports anteriores e acrescenta apenas o module deste BK ao `Mf2Module`.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/class-ai/class-ai.module.ts
-export const mf212Exports = ["ClassAiInteractionService", "ClassAiInteractionModule"] as const;
-```
+~~~ts
+// apps/api/src/modules/mf2/mf2.module.ts
+import { Module } from "@nestjs/common";
+import { GuidedStudyRoomsModule } from "../guided-study-rooms/guided-study-rooms.module";
+import { ClassProjectsModule } from "../class-projects/class-projects.module";
+import { ProjectAiModule } from "../project-ai/project-ai.module";
+import { OfficialTestsModule } from "../official-tests/official-tests.module";
+import { AiContentReviewsModule } from "../ai-content-reviews/ai-content-reviews.module";
+import { ClassProgressModule } from "../class-progress/class-progress.module";
+import { MaterialIndexModule } from "../material-index/material-index.module";
+import { MaterialStructureModule } from "../material-structure/material-structure.module";
+import { MaterialVersionsModule } from "../material-versions/material-versions.module";
+import { MaterialContextsModule } from "../material-contexts/material-contexts.module";
+import { PrivateAreaAiModule } from "../private-area-ai/private-area-ai.module";
+import { ClassAiModule } from "../class-ai/class-ai.module";
+
+@Module({
+    imports: [
+        GuidedStudyRoomsModule,
+        ClassProjectsModule,
+        ProjectAiModule,
+        OfficialTestsModule,
+        AiContentReviewsModule,
+        ClassProgressModule,
+        MaterialIndexModule,
+        MaterialStructureModule,
+        MaterialVersionsModule,
+        MaterialContextsModule,
+        PrivateAreaAiModule,
+        ClassAiModule,
+    ],
+})
+export class Mf2Module {}
+
+~~~
 
 5. Explicação do código.
 
-    Este código implementa assistente de disciplina para RF36. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O `Mf2Module` organiza a macrofase inteira. O `AppModule` só precisa de o importar uma vez, evitando edições repetidas e arriscadas.
 
 6. Como validar este passo.
 
-    Confirma que o módulo exporta o service público e que não existe segundo service para a mesma responsabilidade.
+    Arranca a API e confirma que o Nest resolve providers do module acabado de criar.
 
 7. Erros comuns ou cenário negativo.
 
-    Se o service não for exportado, o próximo BK tende a recriar a mesma regra com outro nome.
+    Não troques o array de imports por uma lista só com o module novo; isso desligaria funcionalidades anteriores.
 
-### Passo 5 - Criar cliente frontend
+### Passo 5 - Criar cliente frontend tipado
 
 1. Explicação simples do objetivo.
 
-    Criar chamadas tipadas para a API de assistente de disciplina, sempre com cookie de sessão.
+    Dar ao frontend funções pequenas para chamar a API com cookies HttpOnly.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/web/src/lib/api/class-ai.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `TeacherAiVoiceService` e `MaterialIndexService` existem ou foram definidos nos BKs anteriores.
+    Cria funções por caso de uso e valida erros HTTP antes de devolver JSON.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/web/src/lib/api/class-ai.ts
-export type ClassAiInteractionView = {
-    id: string;
-    contextId: string;
-    title: string;
-    description: string;
-    status: string;
-};
+export type ClassAiAnswerView = { id: string; question: string; answer: string; officialMaterialIds: string[]; teacherVoiceRules: string[] };
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(path, {
+        ...init,
+        // Envia o cookie HttpOnly da sessão; o frontend nunca guarda tokens manualmente.
+        credentials: "include",
+    });
 
-async function parseResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Pedido falhou." }));
-        throw new Error(String(error.message ?? "Pedido falhou."));
+        throw new Error(await response.text());
     }
+
     return response.json() as Promise<T>;
 }
-
-export async function listClassAiInteraction(contextId: string): Promise<ClassAiInteractionView[]> {
-    const response = await fetch(`/api/class-ai/${contextId}`, {
-        credentials: "include",
-    });
-    return parseResponse<ClassAiInteractionView[]>(response);
+export function listClassAiAnswers(subjectId: string) {
+    return requestJson<ClassAiAnswerView[]>("/api/student/subjects/" + subjectId + "/ai/answers");
 }
-
-export async function createClassAiInteraction(
-    contextId: string,
-    input: { title: string; description?: string },
-): Promise<ClassAiInteractionView> {
-    const response = await fetch(`/api/class-ai/${contextId}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-    });
-    return parseResponse<ClassAiInteractionView>(response);
+export function askClassAi(subjectId: string, question: string) {
+    return requestJson<ClassAiAnswerView>("/api/student/subjects/" + subjectId + "/ai/answers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) });
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa assistente de disciplina para RF36. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O cliente API é tipado e envia cookies com `credentials: "include"`, para reutilizar a sessão segura criada na MF0. Ele não guarda tokens no browser, não envia `actorId` e devolve erros claros quando o backend responde com `400`, `401`, `403` ou `404`. Assim, os tipos do frontend ficam alinhados com o payload e com a resposta real do controller.
 
 6. Como validar este passo.
 
-    Confirma no Network que o pedido usa cookies e que erros HTTP são convertidos em mensagem.
+    Usa DevTools ou testes de integração para confirmar que as chamadas incluem cookies e tratam 401/403/404.
 
 7. Erros comuns ou cenário negativo.
 
-    Usar token no browser ou enviar owner no body quebra o contrato de segurança.
+    Fazer fetch sem `credentials: "include"` transforma uma sessão válida em 401 no backend.
 
-### Passo 6 - Criar página do fluxo
+### Passo 6 - Criar página React do BK
 
 1. Explicação simples do objetivo.
 
-    Criar uma página usável com formulário, estado de carregamento, erro, sucesso e vazio.
+    Expor a funcionalidade ao utilizador com estados de loading, erro, vazio e sucesso.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/web/src/pages/mf2/ClassAiInteractionPage.tsx`
-    - LOCALIZAÇÃO: ficheiro completo.
+    - CRIAR: `apps/web/src/pages/mf2/ClassAiPage.tsx`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `TeacherAiVoiceService` e `MaterialIndexService` existem ou foram definidos nos BKs anteriores.
+    Cria uma página simples, ligada ao cliente API do passo anterior e sem guardar dados sensíveis no browser.
 
 4. Código completo, correto e integrado.
 
-```tsx
-// apps/web/src/pages/mf2/ClassAiInteractionPage.tsx
+~~~tsx
+// apps/web/src/pages/mf2/ClassAiPage.tsx
 import { FormEvent, useEffect, useState } from "react";
-import { createClassAiInteraction, listClassAiInteraction, ClassAiInteractionView } from "../../lib/api/class-ai";
+import { askClassAi, listClassAiAnswers, ClassAiAnswerView } from "../../lib/api/class-ai";
 
-export function ClassAiInteractionPage({ contextId }: { contextId: string }) {
-    const [items, setItems] = useState<ClassAiInteractionView[]>([]);
-    const [loading, setLoading] = useState(true);
+export function ClassAiPage() {
+    const [subjectId, setSubjectId] = useState("");
+    const [question, setQuestion] = useState("");
+    const [answers, setAnswers] = useState<ClassAiAnswerView[]>([]);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
+    async function load() {
+        if (!subjectId.trim()) return;
 
-    useEffect(() => {
-        listClassAiInteraction(contextId)
-            .then(setItems)
-            .catch((err: Error) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [contextId]);
-
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setError("");
-        setSuccess("");
-        const form = new FormData(event.currentTarget);
-        const title = String(form.get("title") ?? "").trim();
-        const description = String(form.get("description") ?? "").trim();
-        if (title.length < 3) {
-            setError("Indica um título com pelo menos 3 caracteres.");
-            return;
+        try {
+            setAnswers(await listClassAiAnswers(subjectId.trim()));
+            setError("");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Erro ao carregar IA da disciplina.");
         }
-        const created = await createClassAiInteraction(contextId, { title, description });
-        setItems((current) => [created, ...current]);
-        setSuccess("Guardado com sucesso.");
-        event.currentTarget.reset();
     }
-
-    if (loading) return <p>A carregar...</p>;
-
-    return <section>
-        <form onSubmit={handleSubmit}>
-            <label>Título<input name="title" /></label>
-            <label>Descrição<textarea name="description" /></label>
-            <button type="submit">Guardar</button>
-        </form>
-        {error && <p role="alert">{error}</p>}
-        {success && <p>{success}</p>}
-        {items.length === 0 ? <p>Ainda não existem dados.</p> : <ul>{items.map((item) => <li key={item.id}>{item.title}</li>)}</ul>}
-    </section>;
+    useEffect(() => {
+        void load();
+    }, [subjectId]);
+    async function submit(event: FormEvent) {
+        event.preventDefault();
+        await askClassAi(subjectId.trim(), question);
+        setQuestion("");
+        await load();
+    }
+    return (
+        <main>
+            <h1>IA da disciplina</h1>
+            <form onSubmit={submit}>
+                <input value={subjectId} onChange={(event) => setSubjectId(event.target.value)} placeholder="ID da disciplina" />
+                <textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Pergunta" />
+                <button type="submit">Perguntar</button>
+            </form>
+            {error && <p role="alert">{error}</p>}
+            <ul>
+                {answers.map((answer) => (
+                    <li key={answer.id}>
+                        {answer.question}
+                        <p>{answer.answer}</p>
+                    </li>
+                ))}
+            </ul>
+        </main>
+    );
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa assistente de disciplina para RF36. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    A página separa estado de formulário, estado de lista e mensagens de erro para ser fácil de testar e manter.
 
 6. Como validar este passo.
 
-    Abre a página autenticado, cria um registo e confirma que a lista atualiza sem refresh.
+    Abre a página com sessão válida, executa o fluxo principal e confirma que a lista actualiza sem refresh manual.
 
 7. Erros comuns ou cenário negativo.
 
-    Não mostrar estado vazio faz parecer que a app falhou quando apenas não existem dados.
+    Não escondas erros HTTP genéricos; mostra mensagem controlada para o utilizador e mantém o detalhe técnico no backend.
 
-### Passo 7 - Validar estados de UI
-
-1. Explicação simples do objetivo.
-
-    Confirmar que a interface não confunde erro de permissão com ausência de dados.
-
-2. Ficheiros envolvidos.
-    - REVER: página criada neste BK.
-    - REVER: cliente frontend criado neste BK.
-    - LOCALIZAÇÃO: handlers de submit e leitura.
-
-3. O que fazer.
-
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `TeacherAiVoiceService` e `MaterialIndexService` existem ou foram definidos nos BKs anteriores.
-
-4. Código completo, correto e integrado.
-
-```tsx
-// apps/web/src/pages/mf2/ClassAiInteractionPage.tsx
-export const expectedStates12 = ["loading", "error", "empty", "success"] as const;
-```
-
-5. Explicação do código.
-
-    Este código implementa assistente de disciplina para RF36. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
-
-6. Como validar este passo.
-
-    Força um 403 e confirma que surge erro visível, não lista vazia.
-
-7. Erros comuns ou cenário negativo.
-
-    Mostrar sucesso depois de erro HTTP mascara falhas de autorização.
-
-### Passo 8 - Validar fluxo principal e negativos
+### Passo 7 - Validar contrato, negativos e handoff
 
 1. Explicação simples do objetivo.
 
-    Recolher evidence objetiva de sucesso e falhas controladas para RF36.
+    Confirmar que o BK cumpre RF36, que falha de forma controlada e que prepara o próximo BK.
 
 2. Ficheiros envolvidos.
-    - REVER: endpoints deste BK.
-    - REVER: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-    - LOCALIZAÇÃO: comandos do PR.
+    - REVER: `docs/planificacao/guias-bk/MF2/BK-MF2-12-assistente-ia-da-disciplina-turma-com-voz-docente.md`
+    - REVER: testes backend e frontend criados para este BK
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `TeacherAiVoiceService` e `MaterialIndexService` existem ou foram definidos nos BKs anteriores.
+    Executa validações automáticas e regista evidência de caminho feliz e cenários negativos.
 
 4. Código completo, correto e integrado.
 
-```bash
+~~~bash
 npm run test:unit
+npm run test:contracts
 npm run test:integration
-# Smoke manual: autenticar e chamar POST /api/student/subjects/:subjectId/ai/answers.
-# Negativos mínimos para P0: 3.
-```
+bash scripts/validate-planificacao.sh
+~~~
 
 5. Explicação do código.
 
-    Este código implementa assistente de disciplina para RF36. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Estes comandos cobrem regressões unitárias, contratos API, fluxo integrado e coerência documental.
 
 6. Como validar este passo.
 
-    Para P0, executa pelo menos 3 negativo(s): sem sessão, papel errado e contexto fora do utilizador.
+    Guarda evidência com request válido, resposta esperada, pelo menos 3 cenário(s) negativo(s) e captura da página final.
 
 7. Erros comuns ou cenário negativo.
 
-    Fechar sem negativos deixa risco de acesso indevido só descoberto na defesa.
+    Não avances para BK-MF3-01 se a validação de sessão, ownership ou membership falhar.
+
+### Passo 8 - Fechar prova final do BK P0
+
+1. Explicação simples do objetivo.
+
+    Confirmar que a IA da disciplina preserva o `ClassAiModule` herdado e responde apenas com materiais oficiais e voz docente.
+
+2. Ficheiros envolvidos.
+    - REVER: `apps/api/src/modules/class-ai/class-ai.service.ts`
+    - REVER: `apps/api/src/modules/class-ai/class-ai.module.ts`
+    - REVER: `apps/web/src/pages/mf2/ClassAiPage.tsx`
+
+3. O que fazer.
+
+    Reexecuta os testes, confirma os três cenários negativos de P0 e regista evidência de resposta com materiais oficiais e regras docentes.
+
+4. Código completo, correto e integrado.
+
+~~~bash
+npm run test:unit
+npm run test:contracts
+npm run test:integration
+bash scripts/validate-planificacao.sh
+~~~
+
+5. Explicação do código.
+
+    A sequência protege o módulo existente, as fontes oficiais, a voz docente e o handoff para guardrails da MF3.
+
+6. Como validar este passo.
+
+    A entrega só está pronta quando aluno fora da turma, disciplina sem materiais e provider indisponível falharem de forma controlada.
+
+7. Erros comuns ou cenário negativo.
+
+    Criar outro módulo de IA para a turma duplica provider e quebra o comportamento já estabelecido em `BK-MF1-11`.
 
 ## Expected results
 
-- `POST /api/student/subjects/:subjectId/ai/answers` devolve sucesso com sessão e contexto válidos.
-- Pedido sem sessão devolve `401`.
-- Papel errado devolve `403`.
-- Contexto fora do utilizador devolve `404`.
-- Entrada inválida devolve `400` ou `422` com mensagem clara.
+- Aluno inscrito pergunta à IA da disciplina e recebe resposta baseada em materiais oficiais.
+- Resposta guarda materiais oficiais e regras de voz docente aplicadas.
+- Disciplina sem materiais processados devolve erro controlado.
+- Aluno fora da turma não recebe resposta.
 
 ## Critérios de aceite
 
-- O BK tem pelo menos 8 passos no formato MF0.
-- Cada passo tem ficheiros, código completo, explicação, validação e cenário negativo.
-- O frontend chama endpoint real definido no controller.
-- O backend não aceita owner, professor, aluno ou fonte como verdade vinda do body.
-- O próximo BK consegue reutilizar o service exportado.
+- O código documentado compila quando aplicado ao projecto na ordem dos passos.
+- O module importa explicitamente controller e service.
+- O controller só declara parâmetros reais das rotas.
+- O service valida ownership ou membership antes de consultar dados.
+- A página usa cliente API tipado e cookies HttpOnly.
 
 ## Validação final
 
-- Smoke do fluxo principal.
-- 3 negativo(s) mínimo(s), conforme prioridade `P0`.
-- Confirmação de imports e exports.
-- Pesquisa textual de termos proibidos nos BKs da MF2.
+- Confirmar que `ClassAiModule` é editado como módulo existente da cadeia MF1.
+- Confirmar que a voz docente vem de `TeacherAiVoiceService.findForSubject`.
+- Executar caso positivo e três cenários negativos por ser BK `P0`.
 
 ## Evidence para PR/defesa
 
-- Link do PR ou commit.
-- Output dos testes por prioridade.
-- Screenshot ou log do caminho principal.
-- Evidência de erro controlado para sessão ausente, papel errado e contexto fora do utilizador.
+- Print ou log do caminho principal concluído.
+- Log de pelo menos um cenário negativo controlado.
+- Resultado de `bash scripts/validate-planificacao.sh`.
+- Confirmação de que `git diff --check` não reporta espaços inválidos.
 
 ## Handoff
 
-`BK-MF3-01` deve reutilizar `ClassAiInteractionService` ou o endpoint deste BK, sem criar segundo contrato para a mesma ação.
+BK-MF3-01
 
 ## Changelog
 
-- `2026-06-07`: guia reescrito com estrutura MF0, contratos completos e validação por passo.
+- `2026-06-08`: guia corrigido para contrato executável da MF2, com integração acumulativa, autorização explícita e validação do handoff.

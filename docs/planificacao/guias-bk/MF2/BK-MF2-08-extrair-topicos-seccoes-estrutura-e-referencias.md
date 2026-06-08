@@ -16,613 +16,690 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF2-09`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-08-extrair-topicos-seccoes-estrutura-e-referencias.md`
-- `last_updated`: `2026-06-07`
+- `last_updated`: `2026-06-08`
 
-## O que vamos fazer neste BK
+## Objetivo do BK
 
-Neste BK vais implementar estrutura documental de forma incremental, usando os contratos já definidos em MF0 e MF1. O objetivo é que o aluno consiga criar os ficheiros, ligar backend e frontend, validar permissões e preparar o próximo BK sem adivinhar peças técnicas.
+Extrair tópicos, secções, estrutura e referências a partir de um job de indexação concluído, para tornar os materiais pesquisáveis e citáveis.
 
-## Porque é que isto é importante
+## Importância
 
-- Dá implementação concreta a `RF32`.
-- Mantém separados aluno, professor, turma, disciplina, material e IA.
-- Aplica ownership ou membership no backend antes de devolver dados.
-- Prepara `BK-MF2-09` com exports e endpoints estáveis.
+Este BK transforma texto bruto em estrutura pedagógica. Ele prepara citações por secção, navegação por programa e pesquisa por tópico sem depender de heurísticas soltas nos BKs posteriores.
 
-## O que entra (scope)
+## Scope-in
 
-- Backend NestJS com schema, DTO, service, controller e módulo.
-- Frontend React/TypeScript com cliente API e página mínima.
-- Endpoint principal: `POST /api/material-index/jobs/:jobId/structure`.
-- Validação de sessão, papel e contexto.
-- Evidence de sucesso e negativos.
+- Criar estrutura do material ligada a `MaterialIndexJob`.
+- Guardar tópicos, secções e referências derivadas dos chunks do BK-MF2-07.
+- Rejeitar jobs que ainda não estejam concluídos.
+- Expor dados reutilizáveis por IA e pesquisa.
 
-## O que não entra (scope-out)
+## Scope-out
 
-- Alterar IDs, owners, prioridades, sprints ou dependências canónicas.
-- Criar integrações externas não documentadas.
-- Misturar materiais privados, oficiais e de turma.
-- Usar IA sem fontes processáveis e autorizadas.
+- Classificação curricular avançada.
+- Motor semântico ou embeddings.
+- Citações bibliográficas finais, que ficam para MF3/MF7.
 
 ## Estado antes
 
-O guia anterior estava em estado `CRÍTICO`: tinha passos genéricos, não indicava ficheiros completos e não permitia implementar `RF32` com segurança.
+`BK-MF2-07` cria jobs `DONE` com chunks ordenados, texto extraído e origem mínima. Ainda não organiza esse conteúdo por tópicos ou secções.
 
 ## Estado depois
 
-O guia passa a ter estrutura MF0, código integrado, validação por passo, expected results, critérios de aceite, evidence e handoff.
+Existe `MaterialStructureModule` que lê apenas jobs concluídos e grava estrutura normalizada. Cada secção fica ligada a chunks reais, com origem, locator e excerto, permitindo que BKs futuros pesquisem tópicos e citem fontes sem inventar referências.
 
-## Metadados do BK (CANONICO/DERIVADO)
+## Pré-requisitos
 
-- Prioridade, owner, apoio, esforço, dependências, RF/RNF, sprint e próximo BK: CANONICO, definidos em `MATRIZ-CANONICA-BK.md` e `CONTRATO-CAMPOS-BK.md`.
-- Stack técnica NestJS, Mongoose, React e TypeScript: CANONICO, definida nos RNF.
-- Endpoints, nomes de ficheiros, services e componentes: DERIVADO, escolhidos para implementar o requisito sem contrariar a documentação.
-- Regras de sessão, ownership, membership e bloqueio de IA sem fontes: CANONICO/DERIVADO a partir de RF, RNF e BKs anteriores.
+- `MaterialIndexModule` exporta `MaterialIndexService.findDoneJob`.
+- Job de indexação concluído com `extractedTextChunks`.
+- Actor autenticado com acesso ao job.
 
-## Pré-requisitos concretos
+## Glossário
 
-- Dependências concluídas: `BK-MF2-07`.
-- `SessionGuard` e `AuthenticatedUser` criados em MF0.
-- Contratos relevantes disponíveis: `MaterialIndexService.findSegmentsForJob` e `SessionGuard`.
-- Stack canónica: NestJS, Mongoose, React, TypeScript e cookies HttpOnly.
+- Tópico: conceito principal extraído do material.
+- Secção: parte textual com título, ordem, resumo curto e referências.
+- Referência: ligação verificável a um chunk do BK-MF2-07, incluindo ordem, origem, locator e excerto.
 
-## Glossário rápido
+## Conceitos teóricos
 
-- **estrutura documental**: recurso ou fluxo implementado neste BK.
-- **Ownership**: garantia de que um utilizador só gere dados que controla.
-- **Membership**: garantia de que um aluno pertence à turma antes de ver dados dessa turma.
-- **DTO**: classe que valida payloads de entrada.
-- **Service**: camada onde vivem regras de negócio e segurança.
-- **Controller**: camada HTTP que recebe pedidos e delega no service.
+- **Estruturação de conhecimento.** converte chunks indexados em elementos navegáveis. Este conceito vem de `RF32` e das dependências `BK-MF2-07`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-08 - Extrair tópicos, secções, estrutura e referências.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Citação rastreável.** cada referência deve apontar para uma origem verificável do chunk usado. Este conceito vem de `RF32` e das dependências `BK-MF2-07`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-08 - Extrair tópicos, secções, estrutura e referências.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Normalização.** formatos diferentes de material passam a uma mesma forma de consulta porque o BK-MF2-07 já entrega chunks com a mesma estrutura. Este conceito vem de `RF32` e das dependências `BK-MF2-07`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-08 - Extrair tópicos, secções, estrutura e referências.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Backend, validação e segurança.** O backend recebe a identidade pela sessão autenticada, valida DTOs antes do service e confirma ownership ou membership nos services herdados. Esta regra vem da fundação MF0/MF1 e segue para os BKs seguintes como contrato de segurança. Serve para impedir leitura ou escrita entre alunos, professores, turmas e disciplinas diferentes.
+- **Frontend tipado e sessão real.** O frontend usa cliente API tipado em `apps/web/src/lib/api/...`, envia cookies com `credentials: "include"`, mostra estados de carregamento, erro, vazio e sucesso, e não guarda tokens em `localStorage`. Isto evita chamadas anónimas, dados de actor no body e payloads sem tipo claro.
+- **IA, fontes e guardrails.** Este BK só envolve provider de IA quando o próprio requisito o pede. Quando não há chamada de IA, o guia limita-se a preparar fontes, autorização ou contexto sem prometer geração automática; quando há chamada de IA, o provider vem de `AiModule`/`AI_PROVIDER`, as fontes são recolhidas antes da chamada e a resposta só é persistida depois de validação mínima.
 
-## Conceitos teóricos essenciais
+## Decisões documentais
 
-**Domínio StudyFlow.** estrutura documental existe para concretizar `RF32`. O contexto vem da rota e da sessão autenticada; nunca vem de campos livres escolhidos pelo frontend.
-
-**Backend.** O schema define persistência MongoDB, o DTO valida entrada, o service aplica regras e o controller expõe endpoints protegidos. Esta separação evita controllers grandes e facilita testes.
-
-**Frontend.** O cliente usa `fetch` com `credentials: "include"` para enviar o cookie HttpOnly. A página mostra loading, erro, vazio e sucesso para o aluno perceber o estado real do pedido.
-
-**Segurança.** O backend valida sessão, papel e contexto antes de consultar ou criar dados. Sem sessão deve haver `401`; papel errado deve gerar `403`; contexto inexistente ou fora do utilizador deve gerar `404`.
-
-**IA.** Quando este BK tocar IA, o provider só pode receber fontes autorizadas. Sem fontes processáveis, a resposta correta é bloquear com erro claro.
+- `CANONICO`: `BK-MF2-08`, `RF32`, prioridade `P0`, owner `Kaua`, apoio `Natalia`, sprint `S05`, dependências `BK-MF2-07` e próximo BK `BK-MF2-09` vêm da matriz, backlog e contrato de campos.
+- `CANONICO`: o domínio funcional é `BK-MF2-08 - Extrair tópicos, secções, estrutura e referências.`; este BK preserva a sequência da MF2 e não altera IDs, RF/RNF, prioridades, owners ou dependências.
+- `DERIVADO`: a referência mínima usa `chunkOrder`, `sourceLabel`, `locator` e `excerpt`, porque esses dados são suficientes para rastrear a origem sem prometer citação bibliográfica final.
+- `DERIVADO`: os nomes de módulos, services, DTOs, schemas, clientes API e páginas resultam dos passos deste guia e mantêm a convenção já usada no próprio código documentado.
+- `DERIVADO`: os caminhos frontend previstos usam `apps/web/src/lib/api/...` para clientes HTTP e `apps/web/src/pages/mf2/...` para páginas, porque essa é a localização usada nos passos de implementação.
 
 ## Arquitetura do BK
 
-- Ficheiros principais: `apps/api/src/modules/material-structure/...`, `apps/web/src/lib/api/material-structure.ts`, `apps/web/src/pages/mf2/MaterialStructurePage.tsx`.
-- Exports produzidos: `MaterialStructureService`, `MaterialStructureModule`.
-- Imports consumidos: `MaterialIndexService.findSegmentsForJob`, `SessionGuard`, `SessionGuard`.
-- Endpoint principal: `POST /api/material-index/jobs/:jobId/structure`.
+`MaterialStructureService` chama `MaterialIndexService.findDoneJob`, gera tópicos, secções e referências a partir de `extractedTextChunks` e persiste `MaterialStructure`. O controller expõe criação e leitura por job.
+
+## Ficheiros previstos
+
+- `apps/api/src/modules/material-structure/schemas/material-structure.schema.ts`
+- `apps/api/src/modules/material-structure/dto/material-structure.dto.ts`
+- `apps/api/src/modules/material-structure/material-structure.service.ts`
+- `apps/api/src/modules/material-structure/material-structure.controller.ts`
+- `apps/api/src/modules/material-structure/material-structure.module.ts`
+- `apps/web/src/lib/api/material-structure.ts`
+- `apps/web/src/pages/mf2/MaterialStructurePage.tsx`
 
 ## Guia linear de implementação
+
+Segue os passos por ordem. Cada passo indica objetivo, ficheiros, ação concreta, código completo, explicação, validação e erro comum. Não saltes passos: a sequência preserva os contratos herdados dos BKs anteriores e prepara o BK seguinte sem criar endpoints, schemas ou services paralelos.
 
 ### Passo 1 - Criar schema e DTO
 
 1. Explicação simples do objetivo.
 
-    Definir a estrutura persistida para estrutura documental e validar os dados de entrada antes de chegarem ao service.
+    Definir a estrutura persistida e validar a entrada de estrutura extraída dos materiais no backend.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/material-structure/schemas/material-structure.schema.ts`
-    - CRIAR: `apps/api/src/modules/material-structure/dto/create-material-structure.dto.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
+    - CRIAR: `apps/api/src/modules/material-structure/dto/material-structure.dto.ts`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `MaterialIndexService.findSegmentsForJob` e `SessionGuard` existem ou foram definidos nos BKs anteriores.
+    Cria os ficheiros indicados e mantém os nomes de classes usados nos passos seguintes.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/material-structure/schemas/material-structure.schema.ts
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
 export type MaterialStructureDocument = HydratedDocument<MaterialStructure>;
-export type MaterialStructureStatus = "ACTIVE" | "ARCHIVED";
+export type MaterialReference = {
+    chunkOrder: number;
+    sourceLabel: string;
+    locator: string;
+    excerpt: string;
+};
+export type MaterialSection = {
+    order: number;
+    title: string;
+    summary: string;
+    references: MaterialReference[];
+};
 
-@Schema({ timestamps: true, collection: "material_structure" })
+@Schema({ timestamps: true, collection: "material_structures" })
 export class MaterialStructure {
     @Prop({ type: Types.ObjectId, required: true, index: true })
-    contextId!: Types.ObjectId;
+    jobId!: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
-    createdBy!: Types.ObjectId;
+    @Prop({ type: Types.ObjectId, required: true, index: true })
+    materialId!: Types.ObjectId;
 
-    @Prop({ required: true, trim: true, minlength: 3, maxlength: 160 })
-    title!: string;
+    @Prop({ type: Types.ObjectId, required: true, index: true })
+    ownerId!: Types.ObjectId;
 
-    @Prop({ trim: true, maxlength: 4000 })
-    description?: string;
+    @Prop({ type: [String], default: [] })
+    topics!: string[];
 
-    @Prop({ required: true, enum: ["ACTIVE", "ARCHIVED"], default: "ACTIVE" })
-    status!: MaterialStructureStatus;
+    @Prop({
+        type: [
+            {
+                order: Number,
+                title: String,
+                summary: String,
+                references: [
+                    {
+                        chunkOrder: Number,
+                        sourceLabel: String,
+                        locator: String,
+                        excerpt: String,
+                    },
+                ],
+            },
+        ],
+        default: [],
+    })
+    sections!: MaterialSection[];
 }
 
 export const MaterialStructureSchema = SchemaFactory.createForClass(MaterialStructure);
-MaterialStructureSchema.index({ contextId: 1, createdAt: -1 });
+MaterialStructureSchema.index({ jobId: 1 }, { unique: true });
 
-// apps/api/src/modules/material-structure/dto/create-material-structure.dto.ts
-import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+// apps/api/src/modules/material-structure/dto/material-structure.dto.ts
+import { ArrayMaxSize, IsArray, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class CreateMaterialStructureDto {
-    @IsString()
-    @MinLength(3)
-    @MaxLength(160)
-    title!: string;
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(30)
+    @IsString({ each: true })
+    manualTopics?: string[];
 
     @IsOptional()
     @IsString()
-    @MaxLength(4000)
-    description?: string;
+    @MaxLength(1000)
+    teacherNote?: string;
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa estrutura documental para RF32. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este bloco separa persistência e entrada HTTP. O schema define os campos guardados em MongoDB, índices e estados que os BKs seguintes podem consultar. Cada referência mantém a ligação ao chunk original através de ordem, origem, locator e excerto. O DTO valida o corpo do pedido antes de chegar ao service, por isso dados vazios, demasiado longos ou com formato errado falham com `400 Bad Request`. A regra de segurança é simples: IDs de utilizador, aluno ou professor nunca vêm do body; vêm sempre da sessão autenticada.
 
 6. Como validar este passo.
 
-    Confirma que os campos obrigatórios rejeitam strings vazias e que os índices estão orientados ao contexto.
+    Arranca a API depois de integrar o module e confirma que um body vazio devolve 400.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar schema sem índice por contexto dificulta isolamento e consultas por turma, disciplina ou área.
+    Não aceites actorId, teacherId ou studentId no body; esses valores vêm da sessão autenticada.
 
-### Passo 2 - Criar service
+### Passo 2 - Criar service com autorização
 
 1. Explicação simples do objetivo.
 
-    Concentrar a regra de negócio de estrutura documental, incluindo validação de sessão e contexto.
+    Centralizar regras de negócio, validação de contexto e erros de domínio.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/material-structure/material-structure.service.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `MaterialIndexService.findSegmentsForJob` e `SessionGuard` existem ou foram definidos nos BKs anteriores.
+    Implementa o service usando os métodos herdados de MF0/MF1 e nunca confies em IDs de utilizador enviados pelo cliente.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/material-structure/material-structure.service.ts
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, Types } from "mongoose";
+import { Model } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { CreateMaterialStructureDto } from "./dto/create-material-structure.dto";
+import { MaterialIndexService } from "../material-index/material-index.service";
+import { CreateMaterialStructureDto } from "./dto/material-structure.dto";
 import { MaterialStructure, MaterialStructureDocument } from "./schemas/material-structure.schema";
+
+type IndexedChunk = {
+    order: number;
+    text: string;
+    sourceLabel: string;
+    locator: string;
+};
 
 @Injectable()
 export class MaterialStructureService {
     constructor(
         @InjectModel(MaterialStructure.name)
-        private readonly model: Model<MaterialStructureDocument>,
+        private readonly structures: Model<MaterialStructureDocument>,
+        private readonly indexService: MaterialIndexService,
     ) {}
 
-    async create(actor: AuthenticatedUser, contextId: string, dto: CreateMaterialStructureDto) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const created = await this.model.create({
-            contextId: new Types.ObjectId(contextId),
-            createdBy: new Types.ObjectId(actor.id),
-            title: dto.title.trim(),
-            description: dto.description?.trim(),
-            status: "ACTIVE",
-        });
-
-        return this.toView(created);
+    async create(actor: AuthenticatedUser, jobId: string, dto: CreateMaterialStructureDto) {
+        const job = await this.indexService.findDoneJob(actor, jobId);
+        const chunks = job.extractedTextChunks as IndexedChunk[];
+        const topics = dto.manualTopics?.length ? this.cleanManualTopics(dto.manualTopics) : this.extractTopics(chunks);
+        const sections = this.buildSections(chunks);
+        const structure = await this.structures.findOneAndUpdate(
+            { jobId: job._id },
+            {
+                jobId: job._id,
+                materialId: job.materialId,
+                ownerId: job.ownerId,
+                topics,
+                sections,
+            },
+            { new: true, upsert: true, setDefaultsOnInsert: true },
+        );
+        return this.toView(structure);
     }
 
-    async list(actor: AuthenticatedUser, contextId: string) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const items = await this.model
-            .find({ contextId: new Types.ObjectId(contextId), status: "ACTIVE" })
-            .sort({ createdAt: -1 })
-            .lean();
-
-        return items.map((item) => this.toView(item));
+    async get(actor: AuthenticatedUser, jobId: string) {
+        const job = await this.indexService.findDoneJob(actor, jobId);
+        const structure = await this.structures.findOne({ jobId: job._id });
+        return structure ? this.toView(structure) : null;
     }
 
-    private ensureRole(actor: AuthenticatedUser) {
-        // O papel vem da sessão validada pelo SessionGuard, não do frontend.
-        if (!actor?.id || !["STUDENT", "TEACHER", "ADMIN"].includes(actor.role)) {
-            throw new ForbiddenException("Sessão sem permissões para este fluxo.");
-        }
+    private cleanManualTopics(topics: string[]) {
+        return Array.from(new Set(topics.map((topic) => topic.trim()).filter((topic) => topic.length >= 4))).slice(0, 30);
     }
 
-    private ensureObjectId(id: string) {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new NotFoundException("Contexto não encontrado.");
-        }
+    private extractTopics(chunks: IndexedChunk[]) {
+        const candidates = chunks.flatMap((chunk) => chunk.text.split(/[.;:\n]/));
+        return this.cleanManualTopics(candidates).slice(0, 12);
     }
 
-    private toView(item: MaterialStructure | MaterialStructureDocument) {
+    private buildSections(chunks: IndexedChunk[]) {
+        return chunks.slice(0, 20).map((chunk, index) => ({
+            order: index + 1,
+            title: this.createTitle(chunk.text, index),
+            summary: this.summarise(chunk.text),
+            references: [
+                {
+                    chunkOrder: chunk.order,
+                    sourceLabel: chunk.sourceLabel,
+                    locator: chunk.locator,
+                    excerpt: this.excerpt(chunk.text),
+                },
+            ],
+        }));
+    }
+
+    private createTitle(text: string, index: number) {
+        const [firstSentence] = text.split(/[.!?]/);
+        const cleaned = firstSentence.trim();
+        return cleaned.length >= 8 ? cleaned.slice(0, 90) : `Secção ${index + 1}`;
+    }
+
+    private summarise(text: string) {
+        return text.replace(/\s+/g, " ").trim().slice(0, 280);
+    }
+
+    private excerpt(text: string) {
+        return text.replace(/\s+/g, " ").trim().slice(0, 180);
+    }
+
+    private toView(structure: MaterialStructure) {
         return {
-            id: item._id.toString(),
-            contextId: item.contextId.toString(),
-            createdBy: item.createdBy.toString(),
-            title: item.title,
-            description: item.description ?? "",
-            status: item.status,
+            id: structure._id.toString(),
+            jobId: structure.jobId.toString(),
+            materialId: structure.materialId.toString(),
+            topics: structure.topics,
+            sections: structure.sections,
         };
     }
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa estrutura documental para RF32. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este service concentra a regra de negócio do BK. Recebe o utilizador autenticado, valida o job através de `MaterialIndexService.findDoneJob` e só depois transforma chunks em tópicos e secções. As referências não são fabricadas: cada secção aponta para a ordem, origem, locator e excerto do chunk usado. A entrada principal vem do controller; a saída é uma resposta já filtrada para o frontend. Isto evita duplicar segurança em componentes React e impede acessos cruzados entre alunos, professores, turmas, disciplinas e áreas de estudo.
 
 6. Como validar este passo.
 
-    Testa criação com sessão válida e com sessão sem permissão. A segunda deve devolver erro controlado.
+    Testa três casos: sem sessão, sessão sem acesso ao job e sessão válida com job `DONE` que contenha chunks.
 
 7. Erros comuns ou cenário negativo.
 
-    Colocar a validação só no controller ou no frontend permite chamadas diretas à API sem a regra de segurança.
+    Fazer apenas `Model.findById(id)` sem validar dono ou inscrição permite leitura indevida entre turmas, disciplinas ou áreas.
 
-### Passo 3 - Criar controller e módulo
+### Passo 3 - Criar controller e module do domínio
 
 1. Explicação simples do objetivo.
 
-    Expor endpoints reais, protegidos por sessão, e exportar o service para os BKs seguintes.
+    Expor as rotas HTTP do BK e ligar controller, service e schema no módulo NestJS.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/material-structure/material-structure.controller.ts`
     - CRIAR: `apps/api/src/modules/material-structure/material-structure.module.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `MaterialIndexService.findSegmentsForJob` e `SessionGuard` existem ou foram definidos nos BKs anteriores.
+    Declara apenas os parâmetros reais de cada rota e importa todos os símbolos usados pelo module.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/material-structure/material-structure.controller.ts
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedRequest } from "../../common/types/authenticated-request";
-import { CreateMaterialStructureDto } from "./dto/create-material-structure.dto";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { CreateMaterialStructureDto } from "./dto/material-structure.dto";
 import { MaterialStructureService } from "./material-structure.service";
 
-@Controller("api/material-structure")
 @UseGuards(SessionGuard)
+@Controller("api/material-index/jobs/:jobId/structure")
 export class MaterialStructureController {
-    constructor(private readonly service: MaterialStructureService) {}
+    constructor(private readonly structureService: MaterialStructureService) {}
 
-    @Post(":contextId")
-    create(
-        @Req() request: AuthenticatedRequest,
-        @Param("contextId") contextId: string,
-        @Body() dto: CreateMaterialStructureDto,
-    ) {
-        return this.service.create(request.user!, contextId, dto);
+    @Post()
+    create(@CurrentUser() actor: AuthenticatedUser, @Param("jobId") jobId: string, @Body() dto: CreateMaterialStructureDto) {
+        return this.structureService.create(actor, jobId, dto);
     }
 
-    @Get(":contextId")
-    list(@Req() request: AuthenticatedRequest, @Param("contextId") contextId: string) {
-        return this.service.list(request.user!, contextId);
+    @Get()
+    get(@CurrentUser() actor: AuthenticatedUser, @Param("jobId") jobId: string) {
+        return this.structureService.get(actor, jobId);
     }
 }
 
 // apps/api/src/modules/material-structure/material-structure.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { MaterialIndexModule } from "../material-index/material-index.module";
 import { MaterialStructureController } from "./material-structure.controller";
 import { MaterialStructureService } from "./material-structure.service";
 import { MaterialStructure, MaterialStructureSchema } from "./schemas/material-structure.schema";
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: MaterialStructure.name, schema: MaterialStructureSchema }])],
+    imports: [MongooseModule.forFeature([{ name: MaterialStructure.name, schema: MaterialStructureSchema }]), MaterialIndexModule],
     controllers: [MaterialStructureController],
     providers: [MaterialStructureService],
-    exports: [MaterialStructureService, MongooseModule],
+    exports: [MaterialStructureService],
 })
 export class MaterialStructureModule {}
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa estrutura documental para RF32. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O controller transforma pedidos HTTP autenticados em chamadas ao service, sem colocar regras de negócio na rota. O module liga controller, service, schema Mongoose e módulos herdados, garantindo dependency injection correta. Se faltar um import no module, a app não arranca; se faltar o guard no controller, o endpoint deixa de proteger sessão e permissões.
 
 6. Como validar este passo.
 
-    Chama `POST /api/material-index/jobs/:jobId/structure` com cookie real e confirma que o controller chama o service.
+    Confirma que a aplicação arranca sem erros de provider desconhecido e que as rotas aparecem com o prefixo esperado.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar endpoints sem `SessionGuard` expõe dados de alunos, professores ou turmas.
+    Usar fallback genérico de parâmetros esconde bugs de rota e pode passar `undefined` para o service.
 
-### Passo 4 - Registar exports para a sequência
+### Passo 4 - Integrar no módulo acumulativo da MF2
 
 1. Explicação simples do objetivo.
 
-    Garantir que BK-MF2-09 consegue importar o service deste BK sem duplicar lógica.
+    Garantir que o endpoint fica activo sem apagar modules criados em BKs anteriores.
 
 2. Ficheiros envolvidos.
-    - EDITAR: `apps/api/src/modules/material-structure/material-structure.module.ts`
-    - REVER: módulo raiz da API.
-    - LOCALIZAÇÃO: lista de imports e exports.
+    - EDITAR: `apps/api/src/modules/mf2/mf2.module.ts`
+    - REVER: `apps/api/src/app.module.ts` já deve importar Mf2Module desde BK-MF2-01
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `MaterialIndexService.findSegmentsForJob` e `SessionGuard` existem ou foram definidos nos BKs anteriores.
+    Mantém todos os imports anteriores e acrescenta apenas o module deste BK ao `Mf2Module`.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/material-structure/material-structure.module.ts
-export const mf208Exports = ["MaterialStructureService", "MaterialStructureModule"] as const;
-```
+~~~ts
+// apps/api/src/modules/mf2/mf2.module.ts
+import { Module } from "@nestjs/common";
+import { GuidedStudyRoomsModule } from "../guided-study-rooms/guided-study-rooms.module";
+import { ClassProjectsModule } from "../class-projects/class-projects.module";
+import { ProjectAiModule } from "../project-ai/project-ai.module";
+import { OfficialTestsModule } from "../official-tests/official-tests.module";
+import { AiContentReviewsModule } from "../ai-content-reviews/ai-content-reviews.module";
+import { ClassProgressModule } from "../class-progress/class-progress.module";
+import { MaterialIndexModule } from "../material-index/material-index.module";
+import { MaterialStructureModule } from "../material-structure/material-structure.module";
+
+@Module({
+    imports: [
+        GuidedStudyRoomsModule,
+        ClassProjectsModule,
+        ProjectAiModule,
+        OfficialTestsModule,
+        AiContentReviewsModule,
+        ClassProgressModule,
+        MaterialIndexModule,
+        MaterialStructureModule,
+    ],
+})
+export class Mf2Module {}
+
+~~~
 
 5. Explicação do código.
 
-    Este código implementa estrutura documental para RF32. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O `Mf2Module` organiza a macrofase inteira. O `AppModule` só precisa de o importar uma vez, evitando edições repetidas e arriscadas.
 
 6. Como validar este passo.
 
-    Confirma que o módulo exporta o service público e que não existe segundo service para a mesma responsabilidade.
+    Arranca a API e confirma que o Nest resolve providers do module acabado de criar.
 
 7. Erros comuns ou cenário negativo.
 
-    Se o service não for exportado, o próximo BK tende a recriar a mesma regra com outro nome.
+    Não troques o array de imports por uma lista só com o module novo; isso desligaria funcionalidades anteriores.
 
-### Passo 5 - Criar cliente frontend
+### Passo 5 - Criar cliente frontend tipado
 
 1. Explicação simples do objetivo.
 
-    Criar chamadas tipadas para a API de estrutura documental, sempre com cookie de sessão.
+    Dar ao frontend funções pequenas para chamar a API com cookies HttpOnly.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/web/src/lib/api/material-structure.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `MaterialIndexService.findSegmentsForJob` e `SessionGuard` existem ou foram definidos nos BKs anteriores.
+    Cria funções por caso de uso e valida erros HTTP antes de devolver JSON.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/web/src/lib/api/material-structure.ts
+export type MaterialReferenceView = {
+    chunkOrder: number;
+    sourceLabel: string;
+    locator: string;
+    excerpt: string;
+};
 export type MaterialStructureView = {
     id: string;
-    contextId: string;
-    title: string;
-    description: string;
-    status: string;
+    jobId: string;
+    materialId: string;
+    topics: string[];
+    sections: {
+        order: number;
+        title: string;
+        summary: string;
+        references: MaterialReferenceView[];
+    }[];
 };
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(path, {
+        ...init,
+        // Envia o cookie HttpOnly da sessão; o frontend nunca guarda tokens manualmente.
+        credentials: "include",
+    });
 
-async function parseResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Pedido falhou." }));
-        throw new Error(String(error.message ?? "Pedido falhou."));
+        throw new Error(await response.text());
     }
+
     return response.json() as Promise<T>;
 }
-
-export async function listMaterialStructure(contextId: string): Promise<MaterialStructureView[]> {
-    const response = await fetch(`/api/material-structure/${contextId}`, {
-        credentials: "include",
-    });
-    return parseResponse<MaterialStructureView[]>(response);
+export function getMaterialStructure(jobId: string) {
+    return requestJson<MaterialStructureView | null>("/api/material-index/jobs/" + jobId + "/structure");
 }
-
-export async function createMaterialStructure(
-    contextId: string,
-    input: { title: string; description?: string },
-): Promise<MaterialStructureView> {
-    const response = await fetch(`/api/material-structure/${contextId}`, {
+export function createMaterialStructure(jobId: string, manualTopics?: string[]) {
+    return requestJson<MaterialStructureView>("/api/material-index/jobs/" + jobId + "/structure", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify({ manualTopics }),
     });
-    return parseResponse<MaterialStructureView>(response);
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa estrutura documental para RF32. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O cliente API é tipado e envia cookies com `credentials: "include"`, para reutilizar a sessão segura criada na MF0. Ele não guarda tokens no browser, não envia `actorId` e devolve erros claros quando o backend responde com `400`, `401`, `403` ou `404`. O tipo de resposta inclui referências estruturadas, para a página conseguir mostrar de que chunk saiu cada secção.
 
 6. Como validar este passo.
 
-    Confirma no Network que o pedido usa cookies e que erros HTTP são convertidos em mensagem.
+    Usa DevTools ou testes de integração para confirmar que as chamadas incluem cookies e tratam 401/403/404.
 
 7. Erros comuns ou cenário negativo.
 
-    Usar token no browser ou enviar owner no body quebra o contrato de segurança.
+    Fazer fetch sem `credentials: "include"` transforma uma sessão válida em 401 no backend.
 
-### Passo 6 - Criar página do fluxo
+### Passo 6 - Criar página React do BK
 
 1. Explicação simples do objetivo.
 
-    Criar uma página usável com formulário, estado de carregamento, erro, sucesso e vazio.
+    Expor a funcionalidade ao utilizador com estados de loading, erro, vazio e sucesso.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/web/src/pages/mf2/MaterialStructurePage.tsx`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `MaterialIndexService.findSegmentsForJob` e `SessionGuard` existem ou foram definidos nos BKs anteriores.
+    Cria uma página simples, ligada ao cliente API do passo anterior e sem guardar dados sensíveis no browser.
 
 4. Código completo, correto e integrado.
 
-```tsx
+~~~tsx
 // apps/web/src/pages/mf2/MaterialStructurePage.tsx
-import { FormEvent, useEffect, useState } from "react";
-import { createMaterialStructure, listMaterialStructure, MaterialStructureView } from "../../lib/api/material-structure";
+import { useState } from "react";
+import { createMaterialStructure, MaterialStructureView } from "../../lib/api/material-structure";
 
-export function MaterialStructurePage({ contextId }: { contextId: string }) {
-    const [items, setItems] = useState<MaterialStructureView[]>([]);
-    const [loading, setLoading] = useState(true);
+export function MaterialStructurePage() {
+    const [jobId, setJobId] = useState("");
+    const [structure, setStructure] = useState<MaterialStructureView | null>(null);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
-
-    useEffect(() => {
-        listMaterialStructure(contextId)
-            .then(setItems)
-            .catch((err: Error) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [contextId]);
-
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setError("");
-        setSuccess("");
-        const form = new FormData(event.currentTarget);
-        const title = String(form.get("title") ?? "").trim();
-        const description = String(form.get("description") ?? "").trim();
-        if (title.length < 3) {
-            setError("Indica um título com pelo menos 3 caracteres.");
-            return;
+    async function extract() {
+        try {
+            setStructure(await createMaterialStructure(jobId.trim()));
+            setError("");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Erro ao extrair estrutura.");
         }
-        const created = await createMaterialStructure(contextId, { title, description });
-        setItems((current) => [created, ...current]);
-        setSuccess("Guardado com sucesso.");
-        event.currentTarget.reset();
     }
-
-    if (loading) return <p>A carregar...</p>;
-
-    return <section>
-        <form onSubmit={handleSubmit}>
-            <label>Título<input name="title" /></label>
-            <label>Descrição<textarea name="description" /></label>
-            <button type="submit">Guardar</button>
-        </form>
-        {error && <p role="alert">{error}</p>}
-        {success && <p>{success}</p>}
-        {items.length === 0 ? <p>Ainda não existem dados.</p> : <ul>{items.map((item) => <li key={item.id}>{item.title}</li>)}</ul>}
-    </section>;
+    return (
+        <main>
+            <h1>Estrutura do material</h1>
+            <input value={jobId} onChange={(event) => setJobId(event.target.value)} placeholder="ID do job" />
+            <button type="button" onClick={extract}>Extrair</button>
+            {error && <p role="alert">{error}</p>}
+            {structure && (
+                <ul>
+                    {structure.sections.map((section) => (
+                        <li key={section.order}>
+                            <h2>{section.title}</h2>
+                            <p>{section.summary}</p>
+                            <ul>
+                                {section.references.map((reference) => (
+                                    <li key={`${reference.chunkOrder}-${reference.locator}`}>
+                                        {reference.sourceLabel} · {reference.locator} · {reference.excerpt}
+                                    </li>
+                                ))}
+                            </ul>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </main>
+    );
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa estrutura documental para RF32. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    A página separa estado de formulário, estado de lista, referências e mensagens de erro para ser fácil de testar e manter.
 
 6. Como validar este passo.
 
-    Abre a página autenticado, cria um registo e confirma que a lista atualiza sem refresh.
+    Abre a página com sessão válida, executa o fluxo principal e confirma que a lista actualiza sem refresh manual.
 
 7. Erros comuns ou cenário negativo.
 
-    Não mostrar estado vazio faz parecer que a app falhou quando apenas não existem dados.
+    Não escondas erros HTTP genéricos; mostra mensagem controlada para o utilizador e mantém o detalhe técnico no backend.
 
-### Passo 7 - Validar estados de UI
-
-1. Explicação simples do objetivo.
-
-    Confirmar que a interface não confunde erro de permissão com ausência de dados.
-
-2. Ficheiros envolvidos.
-    - REVER: página criada neste BK.
-    - REVER: cliente frontend criado neste BK.
-    - LOCALIZAÇÃO: handlers de submit e leitura.
-
-3. O que fazer.
-
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `MaterialIndexService.findSegmentsForJob` e `SessionGuard` existem ou foram definidos nos BKs anteriores.
-
-4. Código completo, correto e integrado.
-
-```tsx
-// apps/web/src/pages/mf2/MaterialStructurePage.tsx
-export const expectedStates08 = ["loading", "error", "empty", "success"] as const;
-```
-
-5. Explicação do código.
-
-    Este código implementa estrutura documental para RF32. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
-
-6. Como validar este passo.
-
-    Força um 403 e confirma que surge erro visível, não lista vazia.
-
-7. Erros comuns ou cenário negativo.
-
-    Mostrar sucesso depois de erro HTTP mascara falhas de autorização.
-
-### Passo 8 - Validar fluxo principal e negativos
+### Passo 7 - Validar contrato, negativos e handoff
 
 1. Explicação simples do objetivo.
 
-    Recolher evidence objetiva de sucesso e falhas controladas para RF32.
+    Confirmar que o BK cumpre RF32, que falha de forma controlada e que prepara o próximo BK.
 
 2. Ficheiros envolvidos.
-    - REVER: endpoints deste BK.
-    - REVER: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-    - LOCALIZAÇÃO: comandos do PR.
+    - REVER: `docs/planificacao/guias-bk/MF2/BK-MF2-08-extrair-topicos-seccoes-estrutura-e-referencias.md`
+    - REVER: testes backend e frontend criados para este BK
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `MaterialIndexService.findSegmentsForJob` e `SessionGuard` existem ou foram definidos nos BKs anteriores.
+    Executa validações automáticas e regista evidência de caminho feliz e cenários negativos.
 
 4. Código completo, correto e integrado.
 
-```bash
+~~~bash
 npm run test:unit
+npm run test:contracts
 npm run test:integration
-# Smoke manual: autenticar e chamar POST /api/material-index/jobs/:jobId/structure.
-# Negativos mínimos para P0: 3.
-```
+bash scripts/validate-planificacao.sh
+~~~
 
 5. Explicação do código.
 
-    Este código implementa estrutura documental para RF32. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Estes comandos cobrem regressões unitárias, contratos API, fluxo integrado e coerência documental.
 
 6. Como validar este passo.
 
-    Para P0, executa pelo menos 3 negativo(s): sem sessão, papel errado e contexto fora do utilizador.
+    Guarda evidência com request válido, resposta esperada, pelo menos 3 cenário(s) negativo(s) e captura da página final.
 
 7. Erros comuns ou cenário negativo.
 
-    Fechar sem negativos deixa risco de acesso indevido só descoberto na defesa.
+    Não avances para BK-MF2-09 se a validação de sessão, ownership ou membership falhar.
+
+### Passo 8 - Fechar prova final do BK P0
+
+1. Explicação simples do objetivo.
+
+    Confirmar que a estrutura criada é rastreável, citável e segura para BKs posteriores.
+
+2. Ficheiros envolvidos.
+    - REVER: `apps/api/src/modules/material-structure/material-structure.service.ts`
+    - REVER: `apps/api/src/modules/material-structure/material-structure.controller.ts`
+    - REVER: `apps/web/src/pages/mf2/MaterialStructurePage.tsx`
+
+3. O que fazer.
+
+    Reexecuta os testes, confirma os três cenários negativos de P0 e regista evidência de tópicos, secções e referências com chunk, origem, locator e excerto.
+
+4. Código completo, correto e integrado.
+
+~~~bash
+npm run test:unit
+npm run test:contracts
+npm run test:integration
+bash scripts/validate-planificacao.sh
+~~~
+
+5. Explicação do código.
+
+    A sequência protege o contrato usado por citações, navegação e pesquisa: sem job concluído não há estrutura.
+
+6. Como validar este passo.
+
+    A entrega só está pronta quando cada secção tiver referência verificável ao chunk usado e o service rejeitar jobs não concluídos.
+
+7. Erros comuns ou cenário negativo.
+
+    Guardar tópicos soltos sem ligação a secções e referências torna a IA futura incapaz de citar fontes.
 
 ## Expected results
 
-- `POST /api/material-index/jobs/:jobId/structure` devolve sucesso com sessão e contexto válidos.
-- Pedido sem sessão devolve `401`.
-- Papel errado devolve `403`.
-- Contexto fora do utilizador devolve `404`.
-- Entrada inválida devolve `400` ou `422` com mensagem clara.
+- Job concluído gera estrutura com tópicos, secções e referências derivadas dos chunks.
+- Estrutura fica ligada ao job e ao material.
+- Cada referência inclui ordem do chunk, origem, locator e excerto.
+- Job ainda em processamento é rejeitado.
+- Actor sem acesso ao job não lê estrutura.
 
 ## Critérios de aceite
 
-- O BK tem pelo menos 8 passos no formato MF0.
-- Cada passo tem ficheiros, código completo, explicação, validação e cenário negativo.
-- O frontend chama endpoint real definido no controller.
-- O backend não aceita owner, professor, aluno ou fonte como verdade vinda do body.
-- O próximo BK consegue reutilizar o service exportado.
+- O código documentado compila quando aplicado ao projecto na ordem dos passos.
+- O module importa explicitamente controller e service.
+- O controller só declara parâmetros reais das rotas.
+- O service usa `MaterialIndexService.findDoneJob` antes de consultar ou gravar estrutura.
+- As secções não usam referências genéricas ao job como substituto de fonte.
+- A página usa cliente API tipado e cookies HttpOnly.
 
 ## Validação final
 
-- Smoke do fluxo principal.
-- 3 negativo(s) mínimo(s), conforme prioridade `P0`.
-- Confirmação de imports e exports.
-- Pesquisa textual de termos proibidos nos BKs da MF2.
+- Confirmar que a estrutura vem de `MaterialIndexService.findDoneJob`.
+- Confirmar que cada referência aponta para um chunk real com origem, locator e excerto.
+- Executar caso positivo e três cenários negativos por ser BK `P0`.
 
 ## Evidence para PR/defesa
 
-- Link do PR ou commit.
-- Output dos testes por prioridade.
-- Screenshot ou log do caminho principal.
-- Evidência de erro controlado para sessão ausente, papel errado e contexto fora do utilizador.
+- Print ou log do caminho principal concluído.
+- Log de pelo menos um cenário negativo controlado.
+- Resultado de `bash scripts/validate-planificacao.sh`.
+- Confirmação de que `git diff --check` não reporta espaços inválidos.
+- Exemplo de resposta com pelo menos uma secção e uma referência rastreável.
 
 ## Handoff
 
-`BK-MF2-09` deve reutilizar `MaterialStructureService` ou o endpoint deste BK, sem criar segundo contrato para a mesma ação.
+BK-MF2-09
 
 ## Changelog
 
-- `2026-06-07`: guia reescrito com estrutura MF0, contratos completos e validação por passo.
+- `2026-06-08`: guia corrigido para contrato executável da MF2, com integração acumulativa, autorização explícita e validação do handoff.

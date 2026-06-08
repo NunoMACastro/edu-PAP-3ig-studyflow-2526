@@ -16,545 +16,571 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF2-04`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-03-a-ia-deve-ajudar-o-aluno-a-elaborar-projetos-de-forma-gradual.md`
-- `last_updated`: `2026-06-07`
+- `last_updated`: `2026-06-08`
 
-## O que vamos fazer neste BK
+## Objetivo do BK
 
-Neste BK vais implementar plano gradual de projeto de forma incremental, usando os contratos já definidos em MF0 e MF1. O objetivo é que o aluno consiga criar os ficheiros, ligar backend e frontend, validar permissões e preparar o próximo BK sem adivinhar peças técnicas.
+Permitir que a IA ajude o aluno a transformar um projecto publicado em passos graduais, mantendo o enunciado como fonte principal.
 
-## Porque é que isto é importante
+## Importância
 
-- Dá implementação concreta a `RF27`.
-- Mantém separados aluno, professor, turma, disciplina, material e IA.
-- Aplica ownership ou membership no backend antes de devolver dados.
-- Prepara `BK-MF2-04` com exports e endpoints estáveis.
+O aluno recebe apoio sem a IA resolver o trabalho por ele. A funcionalidade melhora acompanhamento e autonomia, mas precisa de validação forte para não expor projectos de outras turmas nem criar conteúdo fora do enunciado.
 
-## O que entra (scope)
+## Scope-in
 
-- Backend NestJS com schema, DTO, service, controller e módulo.
-- Frontend React/TypeScript com cliente API e página mínima.
-- Endpoint principal: `POST /api/student/classes/:classId/projects/:projectId/ai-plan`.
-- Validação de sessão, papel e contexto.
-- Evidence de sucesso e negativos.
+- Criar planos de trabalho por aluno e projecto.
+- Ler apenas projectos publicados através de `findPublishedForStudent`.
+- Usar `AI_PROVIDER` exportado pela cadeia MF0/MF1.
+- Guardar passos, objectivo do aluno e referência ao projecto usado.
 
-## O que não entra (scope-out)
+## Scope-out
 
-- Alterar IDs, owners, prioridades, sprints ou dependências canónicas.
-- Criar integrações externas não documentadas.
-- Misturar materiais privados, oficiais e de turma.
-- Usar IA sem fontes processáveis e autorizadas.
+- Entregar trabalhos pelo aluno.
+- Avaliar automaticamente qualidade da entrega.
+- Usar conhecimento externo sem autorização explícita.
 
 ## Estado antes
 
-O guia anterior estava em estado `CRÍTICO`: tinha passos genéricos, não indicava ficheiros completos e não permitia implementar `RF27` com segurança.
+`BK-MF2-02` cria projectos e expõe a leitura segura. Ainda não existe uma entidade para plano de IA por aluno.
 
 ## Estado depois
 
-O guia passa a ter estrutura MF0, código integrado, validação por passo, expected results, critérios de aceite, evidence e handoff.
+Existe `ProjectAiModule`, com planos persistidos, validação de aluno inscrito e prompt limitado ao projecto publicado. A resposta é dividida em passos sequenciais e guarda referência ao projecto.
 
-## Metadados do BK (CANONICO/DERIVADO)
+## Pré-requisitos
 
-- Prioridade, owner, apoio, esforço, dependências, RF/RNF, sprint e próximo BK: CANONICO, definidos em `MATRIZ-CANONICA-BK.md` e `CONTRATO-CAMPOS-BK.md`.
-- Stack técnica NestJS, Mongoose, React e TypeScript: CANONICO, definida nos RNF.
-- Endpoints, nomes de ficheiros, services e componentes: DERIVADO, escolhidos para implementar o requisito sem contrariar a documentação.
-- Regras de sessão, ownership, membership e bloqueio de IA sem fontes: CANONICO/DERIVADO a partir de RF, RNF e BKs anteriores.
+- `ClassProjectsModule` exporta `ClassProjectsService`.
+- `AiModule` exporta `AI_PROVIDER`.
+- O projecto está publicado e pertence à turma do aluno.
 
-## Pré-requisitos concretos
+## Glossário
 
-- Dependências concluídas: `BK-MF2-02`.
-- `SessionGuard` e `AuthenticatedUser` criados em MF0.
-- Contratos relevantes disponíveis: `ClassProjectsService.findPublishedForStudent` e `AI_PROVIDER`.
-- Stack canónica: NestJS, Mongoose, React, TypeScript e cookies HttpOnly.
+- Plano gradual: lista de passos pequenos para executar o projecto.
+- Fonte do plano: projecto publicado usado como base.
+- Dificuldades conhecidas: pontos opcionais indicados pelo aluno para orientar a ajuda.
 
-## Glossário rápido
+## Conceitos teóricos
 
-- **plano gradual de projeto**: recurso ou fluxo implementado neste BK.
-- **Ownership**: garantia de que um utilizador só gere dados que controla.
-- **Membership**: garantia de que um aluno pertence à turma antes de ver dados dessa turma.
-- **DTO**: classe que valida payloads de entrada.
-- **Service**: camada onde vivem regras de negócio e segurança.
-- **Controller**: camada HTTP que recebe pedidos e delega no service.
+- **IA assistiva.** apoia o processo, mas não substitui a autoria do aluno. Este conceito vem de `RF27` e das dependências `BK-MF2-02`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-03 - A IA deve ajudar o aluno a elaborar projetos de forma gradual.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Validação de fonte.** a resposta tem de partir do enunciado e guardar referência ao projecto. Este conceito vem de `RF27` e das dependências `BK-MF2-02`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-03 - A IA deve ajudar o aluno a elaborar projetos de forma gradual.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Runtime não confiável.** a saída da IA deve ser tratada como texto a validar antes de persistir. Este conceito vem de `RF27` e das dependências `BK-MF2-02`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-03 - A IA deve ajudar o aluno a elaborar projetos de forma gradual.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Backend, validação e segurança.** O backend recebe a identidade pela sessão autenticada, valida DTOs antes do service e confirma ownership ou membership nos services herdados. Esta regra vem da fundação MF0/MF1 e segue para os BKs seguintes como contrato de segurança. Serve para impedir leitura ou escrita entre alunos, professores, turmas e disciplinas diferentes.
+- **Frontend tipado e sessão real.** O frontend usa cliente API tipado em `apps/web/src/lib/api/...`, envia cookies com `credentials: "include"`, mostra estados de carregamento, erro, vazio e sucesso, e não guarda tokens em `localStorage`. Isto evita chamadas anónimas, dados de actor no body e payloads sem tipo claro.
+- **IA, fontes e guardrails.** Este BK só envolve provider de IA quando o próprio requisito o pede. Quando não há chamada de IA, o guia limita-se a preparar fontes, autorização ou contexto sem prometer geração automática; quando há chamada de IA, o provider vem de `AiModule`/`AI_PROVIDER`, as fontes são recolhidas antes da chamada e a resposta só é persistida depois de validação mínima.
 
-## Conceitos teóricos essenciais
+## Decisões documentais
 
-**Domínio StudyFlow.** plano gradual de projeto existe para concretizar `RF27`. O contexto vem da rota e da sessão autenticada; nunca vem de campos livres escolhidos pelo frontend.
-
-**Backend.** O schema define persistência MongoDB, o DTO valida entrada, o service aplica regras e o controller expõe endpoints protegidos. Esta separação evita controllers grandes e facilita testes.
-
-**Frontend.** O cliente usa `fetch` com `credentials: "include"` para enviar o cookie HttpOnly. A página mostra loading, erro, vazio e sucesso para o aluno perceber o estado real do pedido.
-
-**Segurança.** O backend valida sessão, papel e contexto antes de consultar ou criar dados. Sem sessão deve haver `401`; papel errado deve gerar `403`; contexto inexistente ou fora do utilizador deve gerar `404`.
-
-**IA.** Quando este BK tocar IA, o provider só pode receber fontes autorizadas. Sem fontes processáveis, a resposta correta é bloquear com erro claro.
+- `CANONICO`: `BK-MF2-03`, `RF27`, prioridade `P1`, owner `Natalia`, apoio `Guilherme`, sprint `S05`, dependências `BK-MF2-02` e próximo BK `BK-MF2-04` vêm da matriz, backlog e contrato de campos.
+- `CANONICO`: o domínio funcional é `BK-MF2-03 - A IA deve ajudar o aluno a elaborar projetos de forma gradual.`; este BK preserva a sequência da MF2 e não altera IDs, RF/RNF, prioridades, owners ou dependências.
+- `DERIVADO`: os nomes de módulos, services, DTOs, schemas, clientes API e páginas resultam dos passos deste guia e mantêm a convenção já usada no próprio código documentado.
+- `DERIVADO`: os caminhos frontend previstos usam `apps/web/src/lib/api/...` para clientes HTTP e `apps/web/src/pages/mf2/...` para páginas, porque essa é a localização usada nos passos de implementação.
 
 ## Arquitetura do BK
 
-- Ficheiros principais: `apps/api/src/modules/project-ai/...`, `apps/web/src/lib/api/project-ai.ts`, `apps/web/src/pages/mf2/ProjectAiPlanPage.tsx`.
-- Exports produzidos: `ProjectAiPlanService`, `ProjectAiPlanModule`.
-- Imports consumidos: `ClassProjectsService.findPublishedForStudent`, `AI_PROVIDER`, `SessionGuard`.
-- Endpoint principal: `POST /api/student/classes/:classId/projects/:projectId/ai-plan`.
+`ProjectAiService` valida inscrição via `ClassProjectsService.findPublishedForStudent`, chama `AI_PROVIDER`, normaliza a resposta em passos e grava `ProjectAiPlan`. O controller expõe criação e histórico do aluno.
+
+## Ficheiros previstos
+
+- `apps/api/src/modules/project-ai/schemas/project-ai-plan.schema.ts`
+- `apps/api/src/modules/project-ai/dto/project-ai-plan.dto.ts`
+- `apps/api/src/modules/project-ai/project-ai.service.ts`
+- `apps/api/src/modules/project-ai/project-ai.controller.ts`
+- `apps/api/src/modules/project-ai/project-ai.module.ts`
+- `apps/web/src/lib/api/project-ai.ts`
+- `apps/web/src/pages/mf2/ProjectAiPlanPage.tsx`
 
 ## Guia linear de implementação
+
+Segue os passos por ordem. Cada passo indica objetivo, ficheiros, ação concreta, código completo, explicação, validação e erro comum. Não saltes passos: a sequência preserva os contratos herdados dos BKs anteriores e prepara o BK seguinte sem criar endpoints, schemas ou services paralelos.
 
 ### Passo 1 - Criar schema e DTO
 
 1. Explicação simples do objetivo.
 
-    Definir a estrutura persistida para plano gradual de projeto e validar os dados de entrada antes de chegarem ao service.
+    Definir a estrutura persistida e validar a entrada de plano gradual de IA para projetos no backend.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/api/src/modules/project-ai/schemas/project-ai.schema.ts`
-    - CRIAR: `apps/api/src/modules/project-ai/dto/create-project-ai.dto.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
+    - CRIAR: `apps/api/src/modules/project-ai/schemas/project-ai-plan.schema.ts`
+    - CRIAR: `apps/api/src/modules/project-ai/dto/project-ai-plan.dto.ts`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassProjectsService.findPublishedForStudent` e `AI_PROVIDER` existem ou foram definidos nos BKs anteriores.
+    Cria os ficheiros indicados e mantém os nomes de classes usados nos passos seguintes.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/project-ai/schemas/project-ai.schema.ts
+~~~ts
+// apps/api/src/modules/project-ai/schemas/project-ai-plan.schema.ts
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
 export type ProjectAiPlanDocument = HydratedDocument<ProjectAiPlan>;
-export type ProjectAiPlanStatus = "ACTIVE" | "ARCHIVED";
 
-@Schema({ timestamps: true, collection: "project_ai" })
+@Schema({ timestamps: true, collection: "project_ai_plans" })
 export class ProjectAiPlan {
     @Prop({ type: Types.ObjectId, required: true, index: true })
-    contextId!: Types.ObjectId;
+    classId!: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, required: true, index: true })
+    projectId!: Types.ObjectId;
 
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
-    createdBy!: Types.ObjectId;
+    studentId!: Types.ObjectId;
 
-    @Prop({ required: true, trim: true, minlength: 3, maxlength: 160 })
-    title!: string;
+    @Prop({ required: true, trim: true, maxlength: 12000 })
+    objective!: string;
 
-    @Prop({ trim: true, maxlength: 4000 })
-    description?: string;
+    @Prop({ type: [String], default: [] })
+    steps!: string[];
 
-    @Prop({ required: true, enum: ["ACTIVE", "ARCHIVED"], default: "ACTIVE" })
-    status!: ProjectAiPlanStatus;
+    @Prop({ type: [String], default: [] })
+    sourceProjectSections!: string[];
 }
 
 export const ProjectAiPlanSchema = SchemaFactory.createForClass(ProjectAiPlan);
-ProjectAiPlanSchema.index({ contextId: 1, createdAt: -1 });
+ProjectAiPlanSchema.index({ projectId: 1, studentId: 1, createdAt: -1 });
 
-// apps/api/src/modules/project-ai/dto/create-project-ai.dto.ts
-import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+// apps/api/src/modules/project-ai/dto/project-ai-plan.dto.ts
+import { ArrayMaxSize, IsArray, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class CreateProjectAiPlanDto {
     @IsString()
-    @MinLength(3)
-    @MaxLength(160)
-    title!: string;
+    @MinLength(10)
+    @MaxLength(12000)
+    objective!: string;
 
     @IsOptional()
-    @IsString()
-    @MaxLength(4000)
-    description?: string;
+    @IsArray()
+    @ArrayMaxSize(8)
+    @IsString({ each: true })
+    knownDifficulties?: string[];
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa plano gradual de projeto para RF27. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este bloco separa persistência e entrada HTTP. O schema define os campos guardados em MongoDB, índices e estados que os BKs seguintes podem consultar. O DTO valida o corpo do pedido antes de chegar ao service, por isso dados vazios, demasiado longos ou com formato errado falham com `400 Bad Request`. A regra de segurança é simples: IDs de utilizador, aluno ou professor nunca vêm do body; vêm sempre da sessão autenticada.
 
 6. Como validar este passo.
 
-    Confirma que os campos obrigatórios rejeitam strings vazias e que os índices estão orientados ao contexto.
+    Arranca a API depois de integrar o module e confirma que um body vazio devolve 400.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar schema sem índice por contexto dificulta isolamento e consultas por turma, disciplina ou área.
+    Não aceites actorId, teacherId ou studentId no body; esses valores vêm da sessão autenticada.
 
-### Passo 2 - Criar service
+### Passo 2 - Criar service com autorização
 
 1. Explicação simples do objetivo.
 
-    Concentrar a regra de negócio de plano gradual de projeto, incluindo validação de sessão e contexto.
+    Centralizar regras de negócio, validação de contexto e erros de domínio.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/project-ai/project-ai.service.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassProjectsService.findPublishedForStudent` e `AI_PROVIDER` existem ou foram definidos nos BKs anteriores.
+    Implementa o service usando os métodos herdados de MF0/MF1 e nunca confies em IDs de utilizador enviados pelo cliente.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/project-ai/project-ai.service.ts
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { CreateProjectAiPlanDto } from "./dto/create-project-ai.dto";
-import { ProjectAiPlan, ProjectAiPlanDocument } from "./schemas/project-ai.schema";
+import { AI_PROVIDER, AiProvider } from "../ai/providers/ai-provider";
+import { ClassProjectsService } from "../class-projects/class-projects.service";
+import { CreateProjectAiPlanDto } from "./dto/project-ai-plan.dto";
+import { ProjectAiPlan, ProjectAiPlanDocument } from "./schemas/project-ai-plan.schema";
 
 @Injectable()
-export class ProjectAiPlanService {
+export class ProjectAiService {
     constructor(
         @InjectModel(ProjectAiPlan.name)
-        private readonly model: Model<ProjectAiPlanDocument>,
+        private readonly plans: Model<ProjectAiPlanDocument>,
+        private readonly classProjectsService: ClassProjectsService,
+        @Inject(AI_PROVIDER) private readonly aiProvider: AiProvider,
     ) {}
 
-    async create(actor: AuthenticatedUser, contextId: string, dto: CreateProjectAiPlanDto) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const created = await this.model.create({
-            contextId: new Types.ObjectId(contextId),
-            createdBy: new Types.ObjectId(actor.id),
-            title: dto.title.trim(),
-            description: dto.description?.trim(),
-            status: "ACTIVE",
+    async createPlan(actor: AuthenticatedUser, classId: string, projectId: string, dto: CreateProjectAiPlanDto) {
+        this.assertStudent(actor);
+        const project = await this.classProjectsService.findPublishedForStudent(actor, classId, projectId);
+        const text = await this.generatePlan(project.brief, dto);
+        const steps = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+        const plan = await this.plans.create({
+            classId: project.classId,
+            projectId: project._id,
+            studentId: new Types.ObjectId(actor.id),
+            objective: dto.objective.trim(),
+            steps,
+            sourceProjectSections: [project._id.toString()],
         });
-
-        return this.toView(created);
+        return this.toView(plan);
     }
 
-    async list(actor: AuthenticatedUser, contextId: string) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const items = await this.model
-            .find({ contextId: new Types.ObjectId(contextId), status: "ACTIVE" })
-            .sort({ createdAt: -1 })
-            .lean();
-
-        return items.map((item) => this.toView(item));
+    async listPlans(actor: AuthenticatedUser, classId: string, projectId: string) {
+        this.assertStudent(actor);
+        const project = await this.classProjectsService.findPublishedForStudent(actor, classId, projectId);
+        const plans = await this.plans.find({ projectId: project._id, studentId: new Types.ObjectId(actor.id) }).sort({ createdAt: -1 }).lean();
+        return plans.map((plan) => this.toView(plan));
     }
 
-    private ensureRole(actor: AuthenticatedUser) {
-        // O papel vem da sessão validada pelo SessionGuard, não do frontend.
-        if (!actor?.id || !["STUDENT", "TEACHER", "ADMIN"].includes(actor.role)) {
-            throw new ForbiddenException("Sessão sem permissões para este fluxo.");
+    private async generatePlan(projectBrief: string, dto: CreateProjectAiPlanDto) {
+        try {
+            return await this.aiProvider.generateText({
+                system: "Ajuda o aluno a decompor o projeto em passos graduais, sem fazer o trabalho por ele.",
+                user: [
+                    "Enunciado: " + projectBrief,
+                    "Objetivo do aluno: " + dto.objective,
+                    "Dificuldades: " + (dto.knownDifficulties ?? []).join(", "),
+                ].join("\n"),
+                sources: [{ id: "class-project", title: "Projeto publicado" }],
+            });
+        } catch (error) {
+            throw new ServiceUnavailableException("Não foi possível gerar o plano do projeto neste momento.");
         }
     }
 
-    private ensureObjectId(id: string) {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new NotFoundException("Contexto não encontrado.");
+    private assertStudent(actor: AuthenticatedUser) {
+        if (actor.role !== "STUDENT") {
+            throw new ForbiddenException("Apenas alunos podem pedir plano de projeto.");
         }
     }
 
-    private toView(item: ProjectAiPlan | ProjectAiPlanDocument) {
-        return {
-            id: item._id.toString(),
-            contextId: item.contextId.toString(),
-            createdBy: item.createdBy.toString(),
-            title: item.title,
-            description: item.description ?? "",
-            status: item.status,
-        };
+    private toView(plan: ProjectAiPlan) {
+        return { id: plan._id.toString(), objective: plan.objective, steps: plan.steps, sourceProjectSections: plan.sourceProjectSections };
     }
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa plano gradual de projeto para RF27. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este service concentra a regra de negócio do BK. Recebe o utilizador autenticado, valida o papel esperado, confirma ownership ou membership nos services herdados e só depois consulta ou grava dados. A entrada principal vem do controller; a saída é uma resposta já filtrada para o frontend. Isto evita duplicar segurança em componentes React e impede acessos cruzados entre alunos, professores, turmas, disciplinas e áreas de estudo.
 
 6. Como validar este passo.
 
-    Testa criação com sessão válida e com sessão sem permissão. A segunda deve devolver erro controlado.
+    Testa três casos: sem sessão, sessão com papel errado e sessão válida com contexto pertencente ao actor.
 
 7. Erros comuns ou cenário negativo.
 
-    Colocar a validação só no controller ou no frontend permite chamadas diretas à API sem a regra de segurança.
+    Fazer apenas `Model.findById(id)` sem validar dono ou inscrição permite leitura indevida entre turmas, disciplinas ou áreas.
 
-### Passo 3 - Criar controller e módulo
+### Passo 3 - Criar controller e module do domínio
 
 1. Explicação simples do objetivo.
 
-    Expor endpoints reais, protegidos por sessão, e exportar o service para os BKs seguintes.
+    Expor as rotas HTTP do BK e ligar controller, service e schema no módulo NestJS.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/project-ai/project-ai.controller.ts`
     - CRIAR: `apps/api/src/modules/project-ai/project-ai.module.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassProjectsService.findPublishedForStudent` e `AI_PROVIDER` existem ou foram definidos nos BKs anteriores.
+    Declara apenas os parâmetros reais de cada rota e importa todos os símbolos usados pelo module.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/project-ai/project-ai.controller.ts
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedRequest } from "../../common/types/authenticated-request";
-import { CreateProjectAiPlanDto } from "./dto/create-project-ai.dto";
-import { ProjectAiPlanService } from "./project-ai.service";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { CreateProjectAiPlanDto } from "./dto/project-ai-plan.dto";
+import { ProjectAiService } from "./project-ai.service";
 
-@Controller("api/project-ai")
 @UseGuards(SessionGuard)
-export class ProjectAiPlanController {
-    constructor(private readonly service: ProjectAiPlanService) {}
+@Controller("api/student/classes/:classId/projects/:projectId/ai-plan")
+export class ProjectAiController {
+    constructor(private readonly projectAiService: ProjectAiService) {}
 
-    @Post(":contextId")
-    create(
-        @Req() request: AuthenticatedRequest,
-        @Param("contextId") contextId: string,
-        @Body() dto: CreateProjectAiPlanDto,
-    ) {
-        return this.service.create(request.user!, contextId, dto);
+    @Post()
+    create(@CurrentUser() actor: AuthenticatedUser, @Param("classId") classId: string, @Param("projectId") projectId: string, @Body() dto: CreateProjectAiPlanDto) {
+        return this.projectAiService.createPlan(actor, classId, projectId, dto);
     }
 
-    @Get(":contextId")
-    list(@Req() request: AuthenticatedRequest, @Param("contextId") contextId: string) {
-        return this.service.list(request.user!, contextId);
+    @Get()
+    list(@CurrentUser() actor: AuthenticatedUser, @Param("classId") classId: string, @Param("projectId") projectId: string) {
+        return this.projectAiService.listPlans(actor, classId, projectId);
     }
 }
 
 // apps/api/src/modules/project-ai/project-ai.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { ProjectAiPlanController } from "./project-ai.controller";
-import { ProjectAiPlanService } from "./project-ai.service";
-import { ProjectAiPlan, ProjectAiPlanSchema } from "./schemas/project-ai.schema";
+import { AiModule } from "../ai/ai.module";
+import { ClassProjectsModule } from "../class-projects/class-projects.module";
+import { ProjectAiController } from "./project-ai.controller";
+import { ProjectAiService } from "./project-ai.service";
+import { ProjectAiPlan, ProjectAiPlanSchema } from "./schemas/project-ai-plan.schema";
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: ProjectAiPlan.name, schema: ProjectAiPlanSchema }])],
-    controllers: [ProjectAiPlanController],
-    providers: [ProjectAiPlanService],
-    exports: [ProjectAiPlanService, MongooseModule],
+    imports: [MongooseModule.forFeature([{ name: ProjectAiPlan.name, schema: ProjectAiPlanSchema }]), ClassProjectsModule, AiModule],
+    controllers: [ProjectAiController],
+    providers: [ProjectAiService],
 })
-export class ProjectAiPlanModule {}
-```
+export class ProjectAiModule {}
+~~~
 
 5. Explicação do código.
 
-    Este código implementa plano gradual de projeto para RF27. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O controller transforma pedidos HTTP autenticados em chamadas ao service, sem colocar regras de negócio na rota. O module liga controller, service, schema Mongoose e módulos herdados, garantindo dependency injection correta. Se faltar um import no module, a app não arranca; se faltar o guard no controller, o endpoint deixa de proteger sessão e permissões.
 
 6. Como validar este passo.
 
-    Chama `POST /api/student/classes/:classId/projects/:projectId/ai-plan` com cookie real e confirma que o controller chama o service.
+    Confirma que a aplicação arranca sem erros de provider desconhecido e que as rotas aparecem com o prefixo esperado.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar endpoints sem `SessionGuard` expõe dados de alunos, professores ou turmas.
+    Usar fallback genérico de parâmetros esconde bugs de rota e pode passar `undefined` para o service.
 
-### Passo 4 - Criar cliente frontend
+### Passo 4 - Integrar no módulo acumulativo da MF2
 
 1. Explicação simples do objetivo.
 
-    Criar chamadas tipadas para a API de plano gradual de projeto, sempre com cookie de sessão.
+    Garantir que o endpoint fica activo sem apagar modules criados em BKs anteriores.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/web/src/lib/api/project-ai.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
+    - EDITAR: `apps/api/src/modules/mf2/mf2.module.ts`
+    - REVER: `apps/api/src/app.module.ts` já deve importar Mf2Module desde BK-MF2-01
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassProjectsService.findPublishedForStudent` e `AI_PROVIDER` existem ou foram definidos nos BKs anteriores.
+    Mantém todos os imports anteriores e acrescenta apenas o module deste BK ao `Mf2Module`.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/web/src/lib/api/project-ai.ts
-export type ProjectAiPlanView = {
-    id: string;
-    contextId: string;
-    title: string;
-    description: string;
-    status: string;
-};
+~~~ts
+// apps/api/src/modules/mf2/mf2.module.ts
+import { Module } from "@nestjs/common";
+import { GuidedStudyRoomsModule } from "../guided-study-rooms/guided-study-rooms.module";
+import { ClassProjectsModule } from "../class-projects/class-projects.module";
+import { ProjectAiModule } from "../project-ai/project-ai.module";
 
-async function parseResponse<T>(response: Response): Promise<T> {
+@Module({
+    imports: [
+        GuidedStudyRoomsModule,
+        ClassProjectsModule,
+        ProjectAiModule,
+    ],
+})
+export class Mf2Module {}
+
+~~~
+
+5. Explicação do código.
+
+    O `Mf2Module` organiza a macrofase inteira. O `AppModule` só precisa de o importar uma vez, evitando edições repetidas e arriscadas.
+
+6. Como validar este passo.
+
+    Arranca a API e confirma que o Nest resolve providers do module acabado de criar.
+
+7. Erros comuns ou cenário negativo.
+
+    Não troques o array de imports por uma lista só com o module novo; isso desligaria funcionalidades anteriores.
+
+### Passo 5 - Criar cliente frontend tipado
+
+1. Explicação simples do objetivo.
+
+    Dar ao frontend funções pequenas para chamar a API com cookies HttpOnly.
+
+2. Ficheiros envolvidos.
+    - CRIAR: `apps/web/src/lib/api/project-ai.ts`
+
+3. O que fazer.
+
+    Cria funções por caso de uso e valida erros HTTP antes de devolver JSON.
+
+4. Código completo, correto e integrado.
+
+~~~ts
+// apps/web/src/lib/api/project-ai.ts
+export type ProjectAiPlanView = { id: string; objective: string; steps: string[]; sourceProjectSections: string[] };
+export type CreateProjectAiPlanInput = { objective: string; knownDifficulties?: string[] };
+
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(path, { ...init, credentials: "include" });
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Pedido falhou." }));
-        throw new Error(String(error.message ?? "Pedido falhou."));
+        throw new Error(await response.text());
     }
     return response.json() as Promise<T>;
 }
 
-export async function listProjectAiPlan(contextId: string): Promise<ProjectAiPlanView[]> {
-    const response = await fetch(`/api/project-ai/${contextId}`, {
-        credentials: "include",
-    });
-    return parseResponse<ProjectAiPlanView[]>(response);
+export function listProjectAiPlans(classId: string, projectId: string) {
+    return requestJson<ProjectAiPlanView[]>("/api/student/classes/" + classId + "/projects/" + projectId + "/ai-plan");
 }
 
-export async function createProjectAiPlan(
-    contextId: string,
-    input: { title: string; description?: string },
-): Promise<ProjectAiPlanView> {
-    const response = await fetch(`/api/project-ai/${contextId}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-    });
-    return parseResponse<ProjectAiPlanView>(response);
+export function createProjectAiPlan(classId: string, projectId: string, input: CreateProjectAiPlanInput) {
+    return requestJson<ProjectAiPlanView>("/api/student/classes/" + classId + "/projects/" + projectId + "/ai-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa plano gradual de projeto para RF27. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O cliente API é tipado e envia cookies com `credentials: "include"`, para reutilizar a sessão segura criada na MF0. Ele não guarda tokens no browser, não envia `actorId` e devolve erros claros quando o backend responde com `400`, `401`, `403` ou `404`. Assim, os tipos do frontend ficam alinhados com o payload e com a resposta real do controller.
 
 6. Como validar este passo.
 
-    Confirma no Network que o pedido usa cookies e que erros HTTP são convertidos em mensagem.
+    Usa DevTools ou testes de integração para confirmar que as chamadas incluem cookies e tratam 401/403/404.
 
 7. Erros comuns ou cenário negativo.
 
-    Usar token no browser ou enviar owner no body quebra o contrato de segurança.
+    Fazer fetch sem `credentials: "include"` transforma uma sessão válida em 401 no backend.
 
-### Passo 5 - Criar página do fluxo
+### Passo 6 - Criar página React do BK
 
 1. Explicação simples do objetivo.
 
-    Criar uma página usável com formulário, estado de carregamento, erro, sucesso e vazio.
+    Expor a funcionalidade ao utilizador com estados de loading, erro, vazio e sucesso.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/web/src/pages/mf2/ProjectAiPlanPage.tsx`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassProjectsService.findPublishedForStudent` e `AI_PROVIDER` existem ou foram definidos nos BKs anteriores.
+    Cria uma página simples, ligada ao cliente API do passo anterior e sem guardar dados sensíveis no browser.
 
 4. Código completo, correto e integrado.
 
-```tsx
+~~~tsx
 // apps/web/src/pages/mf2/ProjectAiPlanPage.tsx
 import { FormEvent, useEffect, useState } from "react";
-import { createProjectAiPlan, listProjectAiPlan, ProjectAiPlanView } from "../../lib/api/project-ai";
+import { createProjectAiPlan, listProjectAiPlans, ProjectAiPlanView } from "../../lib/api/project-ai";
 
-export function ProjectAiPlanPage({ contextId }: { contextId: string }) {
-    const [items, setItems] = useState<ProjectAiPlanView[]>([]);
-    const [loading, setLoading] = useState(true);
+export function ProjectAiPlanPage() {
+    const [classId, setClassId] = useState("");
+    const [projectId, setProjectId] = useState("");
+    const [objective, setObjective] = useState("");
+    const [plans, setPlans] = useState<ProjectAiPlanView[]>([]);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
 
-    useEffect(() => {
-        listProjectAiPlan(contextId)
-            .then(setItems)
-            .catch((err: Error) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [contextId]);
-
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setError("");
-        setSuccess("");
-        const form = new FormData(event.currentTarget);
-        const title = String(form.get("title") ?? "").trim();
-        const description = String(form.get("description") ?? "").trim();
-        if (title.length < 3) {
-            setError("Indica um título com pelo menos 3 caracteres.");
-            return;
-        }
-        const created = await createProjectAiPlan(contextId, { title, description });
-        setItems((current) => [created, ...current]);
-        setSuccess("Guardado com sucesso.");
-        event.currentTarget.reset();
+    async function load() {
+        if (!classId.trim() || !projectId.trim()) return;
+        try { setPlans(await listProjectAiPlans(classId.trim(), projectId.trim())); setError(""); } catch (err) { setError(err instanceof Error ? err.message : "Erro ao carregar planos."); }
     }
 
-    if (loading) return <p>A carregar...</p>;
+    useEffect(() => {
+        void load();
+    }, [classId, projectId]);
 
-    return <section>
-        <form onSubmit={handleSubmit}>
-            <label>Título<input name="title" /></label>
-            <label>Descrição<textarea name="description" /></label>
-            <button type="submit">Guardar</button>
-        </form>
-        {error && <p role="alert">{error}</p>}
-        {success && <p>{success}</p>}
-        {items.length === 0 ? <p>Ainda não existem dados.</p> : <ul>{items.map((item) => <li key={item.id}>{item.title}</li>)}</ul>}
-    </section>;
+    async function submit(event: FormEvent) {
+        event.preventDefault();
+        await createProjectAiPlan(classId.trim(), projectId.trim(), { objective });
+        setObjective("");
+        await load();
+    }
+
+    return (
+        <main>
+            <h1>Plano gradual de projeto</h1>
+            <form onSubmit={submit}>
+                <input value={classId} onChange={(event) => setClassId(event.target.value)} placeholder="ID da turma" />
+                <input value={projectId} onChange={(event) => setProjectId(event.target.value)} placeholder="ID do projeto" />
+                <textarea value={objective} onChange={(event) => setObjective(event.target.value)} placeholder="Objetivo" />
+                <button type="submit">Gerar plano</button>
+            </form>
+            {error && <p role="alert">{error}</p>}
+            <ul>
+                {plans.map((plan) => (
+                    <li key={plan.id}>
+                        {plan.objective}
+                        <ol>
+                            {plan.steps.map((step) => (
+                                <li key={step}>{step}</li>
+                            ))}
+                        </ol>
+                    </li>
+                ))}
+            </ul>
+        </main>
+    );
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa plano gradual de projeto para RF27. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    A página separa estado de formulário, estado de lista e mensagens de erro para ser fácil de testar e manter.
 
 6. Como validar este passo.
 
-    Abre a página autenticado, cria um registo e confirma que a lista atualiza sem refresh.
+    Abre a página com sessão válida, executa o fluxo principal e confirma que a lista actualiza sem refresh manual.
 
 7. Erros comuns ou cenário negativo.
 
-    Não mostrar estado vazio faz parecer que a app falhou quando apenas não existem dados.
+    Não escondas erros HTTP genéricos; mostra mensagem controlada para o utilizador e mantém o detalhe técnico no backend.
 
-### Passo 6 - Validar fluxo principal e negativos
+### Passo 7 - Validar contrato, negativos e handoff
 
 1. Explicação simples do objetivo.
 
-    Recolher evidence objetiva de sucesso e falhas controladas para RF27.
+    Confirmar que o BK cumpre RF27, que falha de forma controlada e que prepara o próximo BK.
 
 2. Ficheiros envolvidos.
-    - REVER: endpoints deste BK.
-    - REVER: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-    - LOCALIZAÇÃO: comandos do PR.
+    - REVER: `docs/planificacao/guias-bk/MF2/BK-MF2-03-a-ia-deve-ajudar-o-aluno-a-elaborar-projetos-de-forma-gradual.md`
+    - REVER: testes backend e frontend criados para este BK
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassProjectsService.findPublishedForStudent` e `AI_PROVIDER` existem ou foram definidos nos BKs anteriores.
+    Executa validações automáticas e regista evidência de caminho feliz e cenários negativos.
 
 4. Código completo, correto e integrado.
 
-```bash
+~~~bash
 npm run test:unit
+npm run test:contracts
 npm run test:integration
-# Smoke manual: autenticar e chamar POST /api/student/classes/:classId/projects/:projectId/ai-plan.
-# Negativos mínimos para P1: 2.
-```
+bash scripts/validate-planificacao.sh
+~~~
 
 5. Explicação do código.
 
-    Este código implementa plano gradual de projeto para RF27. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Estes comandos cobrem regressões unitárias, contratos API, fluxo integrado e coerência documental.
 
 6. Como validar este passo.
 
-    Para P1, executa pelo menos 2 negativo(s): sem sessão, papel errado e contexto fora do utilizador.
+    Guarda evidência com request válido, resposta esperada, pelo menos 2 cenário(s) negativo(s) e captura da página final.
 
 7. Erros comuns ou cenário negativo.
 
-    Fechar sem negativos deixa risco de acesso indevido só descoberto na defesa.
+    Não avances para BK-MF2-04 se a validação de sessão, ownership ou membership falhar.
 
 ## Expected results
 
-- `POST /api/student/classes/:classId/projects/:projectId/ai-plan` devolve sucesso com sessão e contexto válidos.
-- Pedido sem sessão devolve `401`.
-- Papel errado devolve `403`.
-- Contexto fora do utilizador devolve `404`.
-- Entrada inválida devolve `400` ou `422` com mensagem clara.
+- Aluno inscrito cria plano gradual para projecto publicado.
+- Plano guarda objectivo, passos e referência ao projecto.
+- Professor ou aluno fora da turma não consegue gerar plano.
+- Falha do provider devolve erro controlado sem gravar plano vazio.
 
 ## Critérios de aceite
 
-- O BK tem pelo menos 6 passos no formato MF0.
-- Cada passo tem ficheiros, código completo, explicação, validação e cenário negativo.
-- O frontend chama endpoint real definido no controller.
-- O backend não aceita owner, professor, aluno ou fonte como verdade vinda do body.
-- O próximo BK consegue reutilizar o service exportado.
+- O código documentado compila quando aplicado ao projecto na ordem dos passos.
+- O module importa explicitamente controller e service.
+- O controller só declara parâmetros reais das rotas.
+- O service valida ownership ou membership antes de consultar dados.
+- A página usa cliente API tipado e cookies HttpOnly.
 
 ## Validação final
 
-- Smoke do fluxo principal.
-- 2 negativo(s) mínimo(s), conforme prioridade `P1`.
-- Confirmação de imports e exports.
-- Pesquisa textual de termos proibidos nos BKs da MF2.
+- Confirmar que o prompt inclui o enunciado publicado e não recebe fontes externas.
+- Confirmar que a resposta é normalizada em passos não vazios.
+- Executar caso positivo, cenário sem inscrição e cenário de provider indisponível.
 
 ## Evidence para PR/defesa
 
-- Link do PR ou commit.
-- Output dos testes por prioridade.
-- Screenshot ou log do caminho principal.
-- Evidência de erro controlado para sessão ausente, papel errado e contexto fora do utilizador.
+- Print ou log do caminho principal concluído.
+- Log de pelo menos um cenário negativo controlado.
+- Resultado de `bash scripts/validate-planificacao.sh`.
+- Confirmação de que `git diff --check` não reporta espaços inválidos.
 
 ## Handoff
 
-`BK-MF2-04` deve reutilizar `ProjectAiPlanService` ou o endpoint deste BK, sem criar segundo contrato para a mesma ação.
+BK-MF2-04
 
 ## Changelog
 
-- `2026-06-07`: guia reescrito com estrutura MF0, contratos completos e validação por passo.
+- `2026-06-08`: guia corrigido para contrato executável da MF2, com integração acumulativa, autorização explícita e validação do handoff.

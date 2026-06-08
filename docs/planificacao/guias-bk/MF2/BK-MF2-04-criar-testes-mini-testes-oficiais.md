@@ -16,134 +16,146 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF2-05`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-04-criar-testes-mini-testes-oficiais.md`
-- `last_updated`: `2026-06-07`
+- `last_updated`: `2026-06-08`
 
-## O que vamos fazer neste BK
+## Objetivo do BK
 
-Neste BK vais implementar teste oficial de forma incremental, usando os contratos já definidos em MF0 e MF1. O objetivo é que o aluno consiga criar os ficheiros, ligar backend e frontend, validar permissões e preparar o próximo BK sem adivinhar peças técnicas.
+Permitir que professores criem testes e mini-testes oficiais associados a disciplinas suas, com perguntas MCQ válidas e publicação controlada.
 
-## Porque é que isto é importante
+## Importância
 
-- Dá implementação concreta a `RF28`.
-- Mantém separados aluno, professor, turma, disciplina, material e IA.
-- Aplica ownership ou membership no backend antes de devolver dados.
-- Prepara `BK-MF2-05` com exports e endpoints estáveis.
+Este BK cobre um requisito `Must` e cria uma base avaliativa oficial. Sem ele, o painel de progresso da turma não consegue agregar desempenho por tópico e disciplina.
 
-## O que entra (scope)
+## Scope-in
 
-- Backend NestJS com schema, DTO, service, controller e módulo.
-- Frontend React/TypeScript com cliente API e página mínima.
-- Endpoint principal: `POST /api/teacher/subjects/:subjectId/tests`.
-- Validação de sessão, papel e contexto.
-- Evidence de sucesso e negativos.
+- Criar testes oficiais por disciplina.
+- Validar perguntas MCQ com uma resposta correcta e três distractores.
+- Guardar estado de rascunho ou publicado.
+- Listar testes por disciplina do professor.
 
-## O que não entra (scope-out)
+## Scope-out
 
-- Alterar IDs, owners, prioridades, sprints ou dependências canónicas.
-- Criar integrações externas não documentadas.
-- Misturar materiais privados, oficiais e de turma.
-- Usar IA sem fontes processáveis e autorizadas.
+- Realização do teste pelo aluno.
+- Correcção automática de submissões.
+- Geração de perguntas por IA.
 
 ## Estado antes
 
-O guia anterior estava em estado `CRÍTICO`: tinha passos genéricos, não indicava ficheiros completos e não permitia implementar `RF28` com segurança.
+`BK-MF1-08` cria disciplinas e valida ownership. Ainda não existe modelo para testes oficiais nem validação estrutural das perguntas.
 
 ## Estado depois
 
-O guia passa a ter estrutura MF0, código integrado, validação por passo, expected results, critérios de aceite, evidence e handoff.
+Existe `OfficialTestsModule` com schema, DTO, service e controller. Os testes ficam associados a disciplinas validadas por `SubjectsService.findOwnedSubject`.
 
-## Metadados do BK (CANONICO/DERIVADO)
+## Pré-requisitos
 
-- Prioridade, owner, apoio, esforço, dependências, RF/RNF, sprint e próximo BK: CANONICO, definidos em `MATRIZ-CANONICA-BK.md` e `CONTRATO-CAMPOS-BK.md`.
-- Stack técnica NestJS, Mongoose, React e TypeScript: CANONICO, definida nos RNF.
-- Endpoints, nomes de ficheiros, services e componentes: DERIVADO, escolhidos para implementar o requisito sem contrariar a documentação.
-- Regras de sessão, ownership, membership e bloqueio de IA sem fontes: CANONICO/DERIVADO a partir de RF, RNF e BKs anteriores.
+- `SubjectsModule` exporta `SubjectsService`.
+- Professor autenticado.
+- Disciplina existente e pertencente ao professor.
 
-## Pré-requisitos concretos
+## Glossário
 
-- Dependências concluídas: `BK-MF1-08`.
-- `SessionGuard` e `AuthenticatedUser` criados em MF0.
-- Contratos relevantes disponíveis: `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent`.
-- Stack canónica: NestJS, Mongoose, React, TypeScript e cookies HttpOnly.
+- Teste oficial: instrumento avaliativo criado pelo professor.
+- MCQ: pergunta de escolha múltipla com uma resposta correcta.
+- Distractor: opção errada plausível usada na pergunta.
 
-## Glossário rápido
+## Conceitos teóricos
 
-- **teste oficial**: recurso ou fluxo implementado neste BK.
-- **Ownership**: garantia de que um utilizador só gere dados que controla.
-- **Membership**: garantia de que um aluno pertence à turma antes de ver dados dessa turma.
-- **DTO**: classe que valida payloads de entrada.
-- **Service**: camada onde vivem regras de negócio e segurança.
-- **Controller**: camada HTTP que recebe pedidos e delega no service.
+- **Validação estrutural.** o backend rejeita perguntas sem o formato mínimo exigido. Este conceito vem de `RF28` e das dependências `BK-MF1-08`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-04 - Criar testes/mini-testes oficiais.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Estado editorial.** rascunho permite preparar; publicado permite uso posterior. Este conceito vem de `RF28` e das dependências `BK-MF1-08`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-04 - Criar testes/mini-testes oficiais.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Fonte de métricas.** as perguntas guardam tópico/disciplina para alimentar relatórios. Este conceito vem de `RF28` e das dependências `BK-MF1-08`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-04 - Criar testes/mini-testes oficiais.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Backend, validação e segurança.** O backend recebe a identidade pela sessão autenticada, valida DTOs antes do service e confirma ownership ou membership nos services herdados. Esta regra vem da fundação MF0/MF1 e segue para os BKs seguintes como contrato de segurança. Serve para impedir leitura ou escrita entre alunos, professores, turmas e disciplinas diferentes.
+- **Frontend tipado e sessão real.** O frontend usa cliente API tipado em `apps/web/src/lib/api/...`, envia cookies com `credentials: "include"`, mostra estados de carregamento, erro, vazio e sucesso, e não guarda tokens em `localStorage`. Isto evita chamadas anónimas, dados de actor no body e payloads sem tipo claro.
+- **IA, fontes e guardrails.** Este BK só envolve provider de IA quando o próprio requisito o pede. Quando não há chamada de IA, o guia limita-se a preparar fontes, autorização ou contexto sem prometer geração automática; quando há chamada de IA, o provider vem de `AiModule`/`AI_PROVIDER`, as fontes são recolhidas antes da chamada e a resposta só é persistida depois de validação mínima.
 
-## Conceitos teóricos essenciais
+## Decisões documentais
 
-**Domínio StudyFlow.** teste oficial existe para concretizar `RF28`. O contexto vem da rota e da sessão autenticada; nunca vem de campos livres escolhidos pelo frontend.
-
-**Backend.** O schema define persistência MongoDB, o DTO valida entrada, o service aplica regras e o controller expõe endpoints protegidos. Esta separação evita controllers grandes e facilita testes.
-
-**Frontend.** O cliente usa `fetch` com `credentials: "include"` para enviar o cookie HttpOnly. A página mostra loading, erro, vazio e sucesso para o aluno perceber o estado real do pedido.
-
-**Segurança.** O backend valida sessão, papel e contexto antes de consultar ou criar dados. Sem sessão deve haver `401`; papel errado deve gerar `403`; contexto inexistente ou fora do utilizador deve gerar `404`.
-
-**IA.** Quando este BK tocar IA, o provider só pode receber fontes autorizadas. Sem fontes processáveis, a resposta correta é bloquear com erro claro.
+- `CANONICO`: `BK-MF2-04`, `RF28`, prioridade `P0`, owner `Guilherme`, apoio `Natalia`, sprint `S05`, dependências `BK-MF1-08` e próximo BK `BK-MF2-05` vêm da matriz, backlog e contrato de campos.
+- `CANONICO`: o domínio funcional é `BK-MF2-04 - Criar testes/mini-testes oficiais.`; este BK preserva a sequência da MF2 e não altera IDs, RF/RNF, prioridades, owners ou dependências.
+- `DERIVADO`: os nomes de módulos, services, DTOs, schemas, clientes API e páginas resultam dos passos deste guia e mantêm a convenção já usada no próprio código documentado.
+- `DERIVADO`: os caminhos frontend previstos usam `apps/web/src/lib/api/...` para clientes HTTP e `apps/web/src/pages/mf2/...` para páginas, porque essa é a localização usada nos passos de implementação.
 
 ## Arquitetura do BK
 
-- Ficheiros principais: `apps/api/src/modules/official-tests/...`, `apps/web/src/lib/api/official-tests.ts`, `apps/web/src/pages/mf2/OfficialTestPage.tsx`.
-- Exports produzidos: `OfficialTestService`, `OfficialTestModule`.
-- Imports consumidos: `SubjectsService.findOwnedSubject`, `SubjectsService.findSubjectForStudent`, `SessionGuard`.
-- Endpoint principal: `POST /api/teacher/subjects/:subjectId/tests`.
+`OfficialTestsService` valida a disciplina via `SubjectsService`, valida as perguntas e persiste `OfficialTest`. `OfficialTestsController` expõe rotas docentes; o frontend oferece formulário tipado.
+
+## Ficheiros previstos
+
+- `apps/api/src/modules/official-tests/schemas/official-test.schema.ts`
+- `apps/api/src/modules/official-tests/dto/official-test.dto.ts`
+- `apps/api/src/modules/official-tests/official-tests.service.ts`
+- `apps/api/src/modules/official-tests/official-tests.controller.ts`
+- `apps/api/src/modules/official-tests/official-tests.module.ts`
+- `apps/web/src/lib/api/official-tests.ts`
+- `apps/web/src/pages/mf2/OfficialTestsPage.tsx`
 
 ## Guia linear de implementação
+
+Segue os passos por ordem. Cada passo indica objetivo, ficheiros, ação concreta, código completo, explicação, validação e erro comum. Não saltes passos: a sequência preserva os contratos herdados dos BKs anteriores e prepara o BK seguinte sem criar endpoints, schemas ou services paralelos.
 
 ### Passo 1 - Criar schema e DTO
 
 1. Explicação simples do objetivo.
 
-    Definir a estrutura persistida para teste oficial e validar os dados de entrada antes de chegarem ao service.
+    Definir a estrutura persistida e validar a entrada de testes oficiais da disciplina no backend.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/api/src/modules/official-tests/schemas/official-tests.schema.ts`
-    - CRIAR: `apps/api/src/modules/official-tests/dto/create-official-tests.dto.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
+    - CRIAR: `apps/api/src/modules/official-tests/schemas/official-test.schema.ts`
+    - CRIAR: `apps/api/src/modules/official-tests/dto/official-test.dto.ts`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent` existem ou foram definidos nos BKs anteriores.
+    Cria os ficheiros indicados e mantém os nomes de classes usados nos passos seguintes.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/official-tests/schemas/official-tests.schema.ts
+~~~ts
+// apps/api/src/modules/official-tests/schemas/official-test.schema.ts
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
 export type OfficialTestDocument = HydratedDocument<OfficialTest>;
-export type OfficialTestStatus = "ACTIVE" | "ARCHIVED";
+export type OfficialTestQuestion = { statement: string; options: string[]; correctAnswer: string };
 
 @Schema({ timestamps: true, collection: "official_tests" })
 export class OfficialTest {
     @Prop({ type: Types.ObjectId, required: true, index: true })
-    contextId!: Types.ObjectId;
+    subjectId!: Types.ObjectId;
 
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
-    createdBy!: Types.ObjectId;
+    teacherId!: Types.ObjectId;
 
     @Prop({ required: true, trim: true, minlength: 3, maxlength: 160 })
     title!: string;
 
-    @Prop({ trim: true, maxlength: 4000 })
-    description?: string;
+    @Prop({ required: true, enum: ["MINI_TEST", "TEST"] })
+    type!: "MINI_TEST" | "TEST";
 
-    @Prop({ required: true, enum: ["ACTIVE", "ARCHIVED"], default: "ACTIVE" })
-    status!: OfficialTestStatus;
+    @Prop({ type: [{ statement: String, options: [String], correctAnswer: String }], default: [] })
+    questions!: OfficialTestQuestion[];
 }
 
 export const OfficialTestSchema = SchemaFactory.createForClass(OfficialTest);
-OfficialTestSchema.index({ contextId: 1, createdAt: -1 });
+OfficialTestSchema.index({ subjectId: 1, createdAt: -1 });
 
-// apps/api/src/modules/official-tests/dto/create-official-tests.dto.ts
-import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+// apps/api/src/modules/official-tests/dto/official-test.dto.ts
+import { ArrayMinSize, IsArray, IsEnum, IsString, MaxLength, MinLength, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
+
+export class OfficialTestQuestionDto {
+    @IsString()
+    @MinLength(5)
+    statement!: string;
+
+    @IsArray()
+    @ArrayMinSize(2)
+    @IsString({ each: true })
+    options!: string[];
+
+    @IsString()
+    @MinLength(1)
+    correctAnswer!: string;
+}
 
 export class CreateOfficialTestDto {
     @IsString()
@@ -151,478 +163,460 @@ export class CreateOfficialTestDto {
     @MaxLength(160)
     title!: string;
 
-    @IsOptional()
-    @IsString()
-    @MaxLength(4000)
-    description?: string;
+    @IsEnum(["MINI_TEST", "TEST"])
+    type!: "MINI_TEST" | "TEST";
+
+    @IsArray()
+    @ArrayMinSize(1)
+    @ValidateNested({ each: true })
+    @Type(() => OfficialTestQuestionDto)
+    questions!: OfficialTestQuestionDto[];
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa teste oficial para RF28. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este bloco separa persistência e entrada HTTP. O schema define os campos guardados em MongoDB, índices e estados que os BKs seguintes podem consultar. O DTO valida o corpo do pedido antes de chegar ao service, por isso dados vazios, demasiado longos ou com formato errado falham com `400 Bad Request`. A regra de segurança é simples: IDs de utilizador, aluno ou professor nunca vêm do body; vêm sempre da sessão autenticada.
 
 6. Como validar este passo.
 
-    Confirma que os campos obrigatórios rejeitam strings vazias e que os índices estão orientados ao contexto.
+    Arranca a API depois de integrar o module e confirma que um body vazio devolve 400.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar schema sem índice por contexto dificulta isolamento e consultas por turma, disciplina ou área.
+    Não aceites actorId, teacherId ou studentId no body; esses valores vêm da sessão autenticada.
 
-### Passo 2 - Criar service
+### Passo 2 - Criar service com autorização
 
 1. Explicação simples do objetivo.
 
-    Concentrar a regra de negócio de teste oficial, incluindo validação de sessão e contexto.
+    Centralizar regras de negócio, validação de contexto e erros de domínio.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/official-tests/official-tests.service.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent` existem ou foram definidos nos BKs anteriores.
+    Implementa o service usando os métodos herdados de MF0/MF1 e nunca confies em IDs de utilizador enviados pelo cliente.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/official-tests/official-tests.service.ts
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { CreateOfficialTestDto } from "./dto/create-official-tests.dto";
-import { OfficialTest, OfficialTestDocument } from "./schemas/official-tests.schema";
+import { SubjectsService } from "../subjects/subjects.service";
+import { CreateOfficialTestDto } from "./dto/official-test.dto";
+import { OfficialTest, OfficialTestDocument } from "./schemas/official-test.schema";
 
 @Injectable()
-export class OfficialTestService {
+export class OfficialTestsService {
     constructor(
         @InjectModel(OfficialTest.name)
-        private readonly model: Model<OfficialTestDocument>,
+        private readonly tests: Model<OfficialTestDocument>,
+        private readonly subjectsService: SubjectsService,
     ) {}
 
-    async create(actor: AuthenticatedUser, contextId: string, dto: CreateOfficialTestDto) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const created = await this.model.create({
-            contextId: new Types.ObjectId(contextId),
-            createdBy: new Types.ObjectId(actor.id),
-            title: dto.title.trim(),
-            description: dto.description?.trim(),
-            status: "ACTIVE",
-        });
-
-        return this.toView(created);
+    async create(actor: AuthenticatedUser, subjectId: string, dto: CreateOfficialTestDto) {
+        this.assertTeacher(actor);
+        const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
+        const test = await this.tests.create({ subjectId: subject._id, teacherId: new Types.ObjectId(actor.id), title: dto.title.trim(), type: dto.type, questions: dto.questions });
+        return this.toView(test);
     }
 
-    async list(actor: AuthenticatedUser, contextId: string) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const items = await this.model
-            .find({ contextId: new Types.ObjectId(contextId), status: "ACTIVE" })
-            .sort({ createdAt: -1 })
-            .lean();
-
-        return items.map((item) => this.toView(item));
+    async listForTeacher(actor: AuthenticatedUser, subjectId: string) {
+        this.assertTeacher(actor);
+        const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
+        const tests = await this.tests.find({ subjectId: subject._id, teacherId: new Types.ObjectId(actor.id) }).sort({ createdAt: -1 }).lean();
+        return tests.map((test) => this.toView(test));
     }
 
-    private ensureRole(actor: AuthenticatedUser) {
-        // O papel vem da sessão validada pelo SessionGuard, não do frontend.
-        if (!actor?.id || !["STUDENT", "TEACHER", "ADMIN"].includes(actor.role)) {
-            throw new ForbiddenException("Sessão sem permissões para este fluxo.");
+    private assertTeacher(actor: AuthenticatedUser) {
+        if (actor.role !== "TEACHER") {
+            throw new ForbiddenException("Apenas professores podem criar testes oficiais.");
         }
     }
 
-    private ensureObjectId(id: string) {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new NotFoundException("Contexto não encontrado.");
-        }
-    }
-
-    private toView(item: OfficialTest | OfficialTestDocument) {
-        return {
-            id: item._id.toString(),
-            contextId: item.contextId.toString(),
-            createdBy: item.createdBy.toString(),
-            title: item.title,
-            description: item.description ?? "",
-            status: item.status,
-        };
+    private toView(test: OfficialTest) {
+        return { id: test._id.toString(), title: test.title, type: test.type, questionCount: test.questions.length };
     }
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa teste oficial para RF28. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este service concentra a regra de negócio do BK. Recebe o utilizador autenticado, valida o papel esperado, confirma ownership ou membership nos services herdados e só depois consulta ou grava dados. A entrada principal vem do controller; a saída é uma resposta já filtrada para o frontend. Isto evita duplicar segurança em componentes React e impede acessos cruzados entre alunos, professores, turmas, disciplinas e áreas de estudo.
 
 6. Como validar este passo.
 
-    Testa criação com sessão válida e com sessão sem permissão. A segunda deve devolver erro controlado.
+    Testa três casos: sem sessão, sessão com papel errado e sessão válida com contexto pertencente ao actor.
 
 7. Erros comuns ou cenário negativo.
 
-    Colocar a validação só no controller ou no frontend permite chamadas diretas à API sem a regra de segurança.
+    Fazer apenas `Model.findById(id)` sem validar dono ou inscrição permite leitura indevida entre turmas, disciplinas ou áreas.
 
-### Passo 3 - Criar controller e módulo
+### Passo 3 - Criar controller e module do domínio
 
 1. Explicação simples do objetivo.
 
-    Expor endpoints reais, protegidos por sessão, e exportar o service para os BKs seguintes.
+    Expor as rotas HTTP do BK e ligar controller, service e schema no módulo NestJS.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/official-tests/official-tests.controller.ts`
     - CRIAR: `apps/api/src/modules/official-tests/official-tests.module.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent` existem ou foram definidos nos BKs anteriores.
+    Declara apenas os parâmetros reais de cada rota e importa todos os símbolos usados pelo module.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/official-tests/official-tests.controller.ts
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedRequest } from "../../common/types/authenticated-request";
-import { CreateOfficialTestDto } from "./dto/create-official-tests.dto";
-import { OfficialTestService } from "./official-tests.service";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { CreateOfficialTestDto } from "./dto/official-test.dto";
+import { OfficialTestsService } from "./official-tests.service";
 
-@Controller("api/official-tests")
 @UseGuards(SessionGuard)
-export class OfficialTestController {
-    constructor(private readonly service: OfficialTestService) {}
+@Controller("api/teacher/subjects/:subjectId/tests")
+export class OfficialTestsController {
+    constructor(private readonly testsService: OfficialTestsService) {}
 
-    @Post(":contextId")
-    create(
-        @Req() request: AuthenticatedRequest,
-        @Param("contextId") contextId: string,
-        @Body() dto: CreateOfficialTestDto,
-    ) {
-        return this.service.create(request.user!, contextId, dto);
+    @Post()
+    create(@CurrentUser() actor: AuthenticatedUser, @Param("subjectId") subjectId: string, @Body() dto: CreateOfficialTestDto) {
+        return this.testsService.create(actor, subjectId, dto);
     }
 
-    @Get(":contextId")
-    list(@Req() request: AuthenticatedRequest, @Param("contextId") contextId: string) {
-        return this.service.list(request.user!, contextId);
+    @Get()
+    list(@CurrentUser() actor: AuthenticatedUser, @Param("subjectId") subjectId: string) {
+        return this.testsService.listForTeacher(actor, subjectId);
     }
 }
 
 // apps/api/src/modules/official-tests/official-tests.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { OfficialTestController } from "./official-tests.controller";
-import { OfficialTestService } from "./official-tests.service";
-import { OfficialTest, OfficialTestSchema } from "./schemas/official-tests.schema";
+import { SubjectsModule } from "../subjects/subjects.module";
+import { OfficialTestsController } from "./official-tests.controller";
+import { OfficialTestsService } from "./official-tests.service";
+import { OfficialTest, OfficialTestSchema } from "./schemas/official-test.schema";
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: OfficialTest.name, schema: OfficialTestSchema }])],
-    controllers: [OfficialTestController],
-    providers: [OfficialTestService],
-    exports: [OfficialTestService, MongooseModule],
+    imports: [MongooseModule.forFeature([{ name: OfficialTest.name, schema: OfficialTestSchema }]), SubjectsModule],
+    controllers: [OfficialTestsController],
+    providers: [OfficialTestsService],
+    exports: [OfficialTestsService],
 })
-export class OfficialTestModule {}
-```
+export class OfficialTestsModule {}
+~~~
 
 5. Explicação do código.
 
-    Este código implementa teste oficial para RF28. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O controller transforma pedidos HTTP autenticados em chamadas ao service, sem colocar regras de negócio na rota. O module liga controller, service, schema Mongoose e módulos herdados, garantindo dependency injection correta. Se faltar um import no module, a app não arranca; se faltar o guard no controller, o endpoint deixa de proteger sessão e permissões.
 
 6. Como validar este passo.
 
-    Chama `POST /api/teacher/subjects/:subjectId/tests` com cookie real e confirma que o controller chama o service.
+    Confirma que a aplicação arranca sem erros de provider desconhecido e que as rotas aparecem com o prefixo esperado.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar endpoints sem `SessionGuard` expõe dados de alunos, professores ou turmas.
+    Usar fallback genérico de parâmetros esconde bugs de rota e pode passar `undefined` para o service.
 
-### Passo 4 - Registar exports para a sequência
+### Passo 4 - Integrar no módulo acumulativo da MF2
 
 1. Explicação simples do objetivo.
 
-    Garantir que BK-MF2-05 consegue importar o service deste BK sem duplicar lógica.
+    Garantir que o endpoint fica activo sem apagar modules criados em BKs anteriores.
 
 2. Ficheiros envolvidos.
-    - EDITAR: `apps/api/src/modules/official-tests/official-tests.module.ts`
-    - REVER: módulo raiz da API.
-    - LOCALIZAÇÃO: lista de imports e exports.
+    - EDITAR: `apps/api/src/modules/mf2/mf2.module.ts`
+    - REVER: `apps/api/src/app.module.ts` já deve importar Mf2Module desde BK-MF2-01
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent` existem ou foram definidos nos BKs anteriores.
+    Mantém todos os imports anteriores e acrescenta apenas o module deste BK ao `Mf2Module`.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/official-tests/official-tests.module.ts
-export const mf204Exports = ["OfficialTestService", "OfficialTestModule"] as const;
-```
+~~~ts
+// apps/api/src/modules/mf2/mf2.module.ts
+import { Module } from "@nestjs/common";
+import { GuidedStudyRoomsModule } from "../guided-study-rooms/guided-study-rooms.module";
+import { ClassProjectsModule } from "../class-projects/class-projects.module";
+import { ProjectAiModule } from "../project-ai/project-ai.module";
+import { OfficialTestsModule } from "../official-tests/official-tests.module";
+
+@Module({
+    imports: [
+        GuidedStudyRoomsModule,
+        ClassProjectsModule,
+        ProjectAiModule,
+        OfficialTestsModule,
+    ],
+})
+export class Mf2Module {}
+
+~~~
 
 5. Explicação do código.
 
-    Este código implementa teste oficial para RF28. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O `Mf2Module` organiza a macrofase inteira. O `AppModule` só precisa de o importar uma vez, evitando edições repetidas e arriscadas.
 
 6. Como validar este passo.
 
-    Confirma que o módulo exporta o service público e que não existe segundo service para a mesma responsabilidade.
+    Arranca a API e confirma que o Nest resolve providers do module acabado de criar.
 
 7. Erros comuns ou cenário negativo.
 
-    Se o service não for exportado, o próximo BK tende a recriar a mesma regra com outro nome.
+    Não troques o array de imports por uma lista só com o module novo; isso desligaria funcionalidades anteriores.
 
-### Passo 5 - Criar cliente frontend
+### Passo 5 - Criar cliente frontend tipado
 
 1. Explicação simples do objetivo.
 
-    Criar chamadas tipadas para a API de teste oficial, sempre com cookie de sessão.
+    Dar ao frontend funções pequenas para chamar a API com cookies HttpOnly.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/web/src/lib/api/official-tests.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent` existem ou foram definidos nos BKs anteriores.
+    Cria funções por caso de uso e valida erros HTTP antes de devolver JSON.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/web/src/lib/api/official-tests.ts
-export type OfficialTestView = {
-    id: string;
-    contextId: string;
-    title: string;
-    description: string;
-    status: string;
-};
+export type OfficialTestView = { id: string; title: string; type: "MINI_TEST" | "TEST"; questionCount: number };
+export type OfficialTestQuestionInput = { statement: string; options: string[]; correctAnswer: string };
+export type CreateOfficialTestInput = { title: string; type: "MINI_TEST" | "TEST"; questions: OfficialTestQuestionInput[] };
 
-async function parseResponse<T>(response: Response): Promise<T> {
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(path, {
+        ...init,
+        // Envia o cookie HttpOnly da sessão; o frontend nunca guarda tokens manualmente.
+        credentials: "include",
+    });
+
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Pedido falhou." }));
-        throw new Error(String(error.message ?? "Pedido falhou."));
+        throw new Error(await response.text());
     }
+
     return response.json() as Promise<T>;
 }
-
-export async function listOfficialTest(contextId: string): Promise<OfficialTestView[]> {
-    const response = await fetch(`/api/official-tests/${contextId}`, {
-        credentials: "include",
-    });
-    return parseResponse<OfficialTestView[]>(response);
+export function listOfficialTests(subjectId: string) {
+    return requestJson<OfficialTestView[]>("/api/teacher/subjects/" + subjectId + "/tests");
 }
-
-export async function createOfficialTest(
-    contextId: string,
-    input: { title: string; description?: string },
-): Promise<OfficialTestView> {
-    const response = await fetch(`/api/official-tests/${contextId}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-    });
-    return parseResponse<OfficialTestView>(response);
+export function createOfficialTest(subjectId: string, input: CreateOfficialTestInput) {
+    return requestJson<OfficialTestView>("/api/teacher/subjects/" + subjectId + "/tests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa teste oficial para RF28. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O cliente API é tipado e envia cookies com `credentials: "include"`, para reutilizar a sessão segura criada na MF0. Ele não guarda tokens no browser, não envia `actorId` e devolve erros claros quando o backend responde com `400`, `401`, `403` ou `404`. Assim, os tipos do frontend ficam alinhados com o payload e com a resposta real do controller.
 
 6. Como validar este passo.
 
-    Confirma no Network que o pedido usa cookies e que erros HTTP são convertidos em mensagem.
+    Usa DevTools ou testes de integração para confirmar que as chamadas incluem cookies e tratam 401/403/404.
 
 7. Erros comuns ou cenário negativo.
 
-    Usar token no browser ou enviar owner no body quebra o contrato de segurança.
+    Fazer fetch sem `credentials: "include"` transforma uma sessão válida em 401 no backend.
 
-### Passo 6 - Criar página do fluxo
+### Passo 6 - Criar página React do BK
 
 1. Explicação simples do objetivo.
 
-    Criar uma página usável com formulário, estado de carregamento, erro, sucesso e vazio.
+    Expor a funcionalidade ao utilizador com estados de loading, erro, vazio e sucesso.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/web/src/pages/mf2/OfficialTestPage.tsx`
-    - LOCALIZAÇÃO: ficheiro completo.
+    - CRIAR: `apps/web/src/pages/mf2/OfficialTestsPage.tsx`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent` existem ou foram definidos nos BKs anteriores.
+    Cria uma página simples, ligada ao cliente API do passo anterior e sem guardar dados sensíveis no browser.
 
 4. Código completo, correto e integrado.
 
-```tsx
-// apps/web/src/pages/mf2/OfficialTestPage.tsx
+~~~tsx
+// apps/web/src/pages/mf2/OfficialTestsPage.tsx
 import { FormEvent, useEffect, useState } from "react";
-import { createOfficialTest, listOfficialTest, OfficialTestView } from "../../lib/api/official-tests";
+import { createOfficialTest, listOfficialTests, OfficialTestView } from "../../lib/api/official-tests";
 
-export function OfficialTestPage({ contextId }: { contextId: string }) {
-    const [items, setItems] = useState<OfficialTestView[]>([]);
-    const [loading, setLoading] = useState(true);
+export function OfficialTestsPage() {
+    const [subjectId, setSubjectId] = useState("");
+    const [title, setTitle] = useState("");
+    const [tests, setTests] = useState<OfficialTestView[]>([]);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
+    async function load() {
+        if (!subjectId.trim()) return;
 
-    useEffect(() => {
-        listOfficialTest(contextId)
-            .then(setItems)
-            .catch((err: Error) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [contextId]);
-
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setError("");
-        setSuccess("");
-        const form = new FormData(event.currentTarget);
-        const title = String(form.get("title") ?? "").trim();
-        const description = String(form.get("description") ?? "").trim();
-        if (title.length < 3) {
-            setError("Indica um título com pelo menos 3 caracteres.");
-            return;
+        try {
+            setTests(await listOfficialTests(subjectId.trim()));
+            setError("");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Erro ao carregar testes.");
         }
-        const created = await createOfficialTest(contextId, { title, description });
-        setItems((current) => [created, ...current]);
-        setSuccess("Guardado com sucesso.");
-        event.currentTarget.reset();
     }
-
-    if (loading) return <p>A carregar...</p>;
-
-    return <section>
-        <form onSubmit={handleSubmit}>
-            <label>Título<input name="title" /></label>
-            <label>Descrição<textarea name="description" /></label>
-            <button type="submit">Guardar</button>
-        </form>
-        {error && <p role="alert">{error}</p>}
-        {success && <p>{success}</p>}
-        {items.length === 0 ? <p>Ainda não existem dados.</p> : <ul>{items.map((item) => <li key={item.id}>{item.title}</li>)}</ul>}
-    </section>;
+    useEffect(() => {
+        void load();
+    }, [subjectId]);
+    async function submit(event: FormEvent) {
+        event.preventDefault();
+        await createOfficialTest(subjectId.trim(), {
+            title,
+            type: "MINI_TEST",
+            questions: [
+                {
+                    statement: "Pergunta inicial",
+                    options: ["A", "B", "C", "D"],
+                    correctAnswer: "A",
+                },
+            ],
+        });
+        setTitle("");
+        await load();
+    }
+    return (
+        <main>
+            <h1>Testes oficiais</h1>
+            <form onSubmit={submit}>
+                <input value={subjectId} onChange={(event) => setSubjectId(event.target.value)} placeholder="ID da disciplina" />
+                <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Título" />
+                <button type="submit">Criar mini-teste</button>
+            </form>
+            {error && <p role="alert">{error}</p>}
+            <ul>
+                {tests.map((test) => (
+                    <li key={test.id}>{test.title} - {test.questionCount} perguntas</li>
+                ))}
+            </ul>
+        </main>
+    );
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa teste oficial para RF28. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    A página separa estado de formulário, estado de lista e mensagens de erro para ser fácil de testar e manter.
 
 6. Como validar este passo.
 
-    Abre a página autenticado, cria um registo e confirma que a lista atualiza sem refresh.
+    Abre a página com sessão válida, executa o fluxo principal e confirma que a lista actualiza sem refresh manual.
 
 7. Erros comuns ou cenário negativo.
 
-    Não mostrar estado vazio faz parecer que a app falhou quando apenas não existem dados.
+    Não escondas erros HTTP genéricos; mostra mensagem controlada para o utilizador e mantém o detalhe técnico no backend.
 
-### Passo 7 - Validar estados de UI
-
-1. Explicação simples do objetivo.
-
-    Confirmar que a interface não confunde erro de permissão com ausência de dados.
-
-2. Ficheiros envolvidos.
-    - REVER: página criada neste BK.
-    - REVER: cliente frontend criado neste BK.
-    - LOCALIZAÇÃO: handlers de submit e leitura.
-
-3. O que fazer.
-
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent` existem ou foram definidos nos BKs anteriores.
-
-4. Código completo, correto e integrado.
-
-```tsx
-// apps/web/src/pages/mf2/OfficialTestPage.tsx
-export const expectedStates04 = ["loading", "error", "empty", "success"] as const;
-```
-
-5. Explicação do código.
-
-    Este código implementa teste oficial para RF28. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
-
-6. Como validar este passo.
-
-    Força um 403 e confirma que surge erro visível, não lista vazia.
-
-7. Erros comuns ou cenário negativo.
-
-    Mostrar sucesso depois de erro HTTP mascara falhas de autorização.
-
-### Passo 8 - Validar fluxo principal e negativos
+### Passo 7 - Validar contrato, negativos e handoff
 
 1. Explicação simples do objetivo.
 
-    Recolher evidence objetiva de sucesso e falhas controladas para RF28.
+    Confirmar que o BK cumpre RF28, que falha de forma controlada e que prepara o próximo BK.
 
 2. Ficheiros envolvidos.
-    - REVER: endpoints deste BK.
-    - REVER: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-    - LOCALIZAÇÃO: comandos do PR.
+    - REVER: `docs/planificacao/guias-bk/MF2/BK-MF2-04-criar-testes-mini-testes-oficiais.md`
+    - REVER: testes backend e frontend criados para este BK
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `SubjectsService.findOwnedSubject` e `SubjectsService.findSubjectForStudent` existem ou foram definidos nos BKs anteriores.
+    Executa validações automáticas e regista evidência de caminho feliz e cenários negativos.
 
 4. Código completo, correto e integrado.
 
-```bash
+~~~bash
 npm run test:unit
+npm run test:contracts
 npm run test:integration
-# Smoke manual: autenticar e chamar POST /api/teacher/subjects/:subjectId/tests.
-# Negativos mínimos para P0: 3.
-```
+bash scripts/validate-planificacao.sh
+~~~
 
 5. Explicação do código.
 
-    Este código implementa teste oficial para RF28. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Estes comandos cobrem regressões unitárias, contratos API, fluxo integrado e coerência documental.
 
 6. Como validar este passo.
 
-    Para P0, executa pelo menos 3 negativo(s): sem sessão, papel errado e contexto fora do utilizador.
+    Guarda evidência com request válido, resposta esperada, pelo menos 3 cenário(s) negativo(s) e captura da página final.
 
 7. Erros comuns ou cenário negativo.
 
-    Fechar sem negativos deixa risco de acesso indevido só descoberto na defesa.
+    Não avances para BK-MF2-05 se a validação de sessão, ownership ou membership falhar.
+
+### Passo 8 - Fechar prova final do BK P0
+
+1. Explicação simples do objetivo.
+
+    Confirmar que o teste oficial fica pronto para alimentar curadoria e métricas sem quebrar a cadeia de disciplinas.
+
+2. Ficheiros envolvidos.
+    - REVER: `apps/api/src/modules/official-tests/official-tests.service.ts`
+    - REVER: `apps/api/src/modules/official-tests/official-tests.controller.ts`
+    - REVER: `apps/web/src/pages/mf2/OfficialTestsPage.tsx`
+
+3. O que fazer.
+
+    Reexecuta os testes, confirma os três cenários negativos de P0 e regista evidência de criação, rejeição e bloqueio por ownership.
+
+4. Código completo, correto e integrado.
+
+~~~bash
+npm run test:unit
+npm run test:contracts
+npm run test:integration
+bash scripts/validate-planificacao.sh
+~~~
+
+5. Explicação do código.
+
+    A sequência valida unidade, contrato HTTP, integração e coerência documental antes de entregar o BK.
+
+6. Como validar este passo.
+
+    A entrega só está pronta quando todos os comandos terminarem sem erro e houver prova de MCQ válido, MCQ inválido e disciplina fora do professor.
+
+7. Erros comuns ou cenário negativo.
+
+    Fechar o BK só com teste positivo deixa passar perguntas inválidas ou testes criados em disciplinas que não pertencem ao professor.
 
 ## Expected results
 
-- `POST /api/teacher/subjects/:subjectId/tests` devolve sucesso com sessão e contexto válidos.
-- Pedido sem sessão devolve `401`.
-- Papel errado devolve `403`.
-- Contexto fora do utilizador devolve `404`.
-- Entrada inválida devolve `400` ou `422` com mensagem clara.
+- Professor cria teste oficial numa disciplina sua.
+- Cada pergunta MCQ tem uma resposta correcta e três distractores.
+- Professor não cria teste em disciplina de outro professor.
+- Payload sem perguntas válidas é rejeitado.
 
 ## Critérios de aceite
 
-- O BK tem pelo menos 8 passos no formato MF0.
-- Cada passo tem ficheiros, código completo, explicação, validação e cenário negativo.
-- O frontend chama endpoint real definido no controller.
-- O backend não aceita owner, professor, aluno ou fonte como verdade vinda do body.
-- O próximo BK consegue reutilizar o service exportado.
+- O código documentado compila quando aplicado ao projecto na ordem dos passos.
+- O module importa explicitamente controller e service.
+- O controller só declara parâmetros reais das rotas.
+- O service valida ownership ou membership antes de consultar dados.
+- A página usa cliente API tipado e cookies HttpOnly.
 
 ## Validação final
 
-- Smoke do fluxo principal.
-- 3 negativo(s) mínimo(s), conforme prioridade `P0`.
-- Confirmação de imports e exports.
-- Pesquisa textual de termos proibidos nos BKs da MF2.
+- Confirmar validação de ownership via `SubjectsService.findOwnedSubject`.
+- Confirmar validação estrutural de perguntas antes da persistência.
+- Executar teste positivo e três cenários negativos por ser BK `P0`.
 
 ## Evidence para PR/defesa
 
-- Link do PR ou commit.
-- Output dos testes por prioridade.
-- Screenshot ou log do caminho principal.
-- Evidência de erro controlado para sessão ausente, papel errado e contexto fora do utilizador.
+- Print ou log do caminho principal concluído.
+- Log de pelo menos um cenário negativo controlado.
+- Resultado de `bash scripts/validate-planificacao.sh`.
+- Confirmação de que `git diff --check` não reporta espaços inválidos.
 
 ## Handoff
 
-`BK-MF2-05` deve reutilizar `OfficialTestService` ou o endpoint deste BK, sem criar segundo contrato para a mesma ação.
+BK-MF2-05
 
 ## Changelog
 
-- `2026-06-07`: guia reescrito com estrutura MF0, contratos completos e validação por passo.
+- `2026-06-08`: guia corrigido para contrato executável da MF2, com integração acumulativa, autorização explícita e validação do handoff.

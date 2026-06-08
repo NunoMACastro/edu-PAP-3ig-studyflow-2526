@@ -16,545 +16,537 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF2-07`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-06-painel-com-progresso-dificuldades-e-metricas-da-turma.md`
-- `last_updated`: `2026-06-07`
+- `last_updated`: `2026-06-08`
 
-## O que vamos fazer neste BK
+## Objetivo do BK
 
-Neste BK vais implementar métrica de turma de forma incremental, usando os contratos já definidos em MF0 e MF1. O objetivo é que o aluno consiga criar os ficheiros, ligar backend e frontend, validar permissões e preparar o próximo BK sem adivinhar peças técnicas.
+Criar um painel docente com progresso, dificuldades e métricas agregadas da turma, validando sempre que o professor é dono da turma.
 
-## Porque é que isto é importante
+## Importância
 
-- Dá implementação concreta a `RF30`.
-- Mantém separados aluno, professor, turma, disciplina, material e IA.
-- Aplica ownership ou membership no backend antes de devolver dados.
-- Prepara `BK-MF2-07` com exports e endpoints estáveis.
+Este BK transforma actividades e conteúdos em sinais pedagógicos accionáveis. O professor passa a ver onde a turma está a avançar e onde precisa de apoio.
 
-## O que entra (scope)
+## Scope-in
 
-- Backend NestJS com schema, DTO, service, controller e módulo.
-- Frontend React/TypeScript com cliente API e página mínima.
-- Endpoint principal: `GET /api/teacher/classes/:classId/progress-dashboard`.
-- Validação de sessão, papel e contexto.
-- Evidence de sucesso e negativos.
+- Calcular indicadores simples por turma.
+- Mostrar progresso, dificuldades e contadores relevantes.
+- Usar a turma validada por `ClassesService.findOwnedClass`.
+- Preparar integração futura com testes, revisões e actividade real.
 
-## O que não entra (scope-out)
+## Scope-out
 
-- Alterar IDs, owners, prioridades, sprints ou dependências canónicas.
-- Criar integrações externas não documentadas.
-- Misturar materiais privados, oficiais e de turma.
-- Usar IA sem fontes processáveis e autorizadas.
+- Analytics em tempo real.
+- Predições automáticas.
+- Alertas de acompanhamento, que ficam para BKs posteriores.
 
 ## Estado antes
 
-O guia anterior estava em estado `CRÍTICO`: tinha passos genéricos, não indicava ficheiros completos e não permitia implementar `RF30` com segurança.
+`BK-MF1-12` permite avisos e publicações. A MF2 ainda não tem uma vista agregada para acompanhamento da turma.
 
 ## Estado depois
 
-O guia passa a ter estrutura MF0, código integrado, validação por passo, expected results, critérios de aceite, evidence e handoff.
+Existe `ClassProgressModule` com endpoint docente e página de painel. Os dados são agregados por turma validada e não expõem dados de outras turmas.
 
-## Metadados do BK (CANONICO/DERIVADO)
+## Pré-requisitos
 
-- Prioridade, owner, apoio, esforço, dependências, RF/RNF, sprint e próximo BK: CANONICO, definidos em `MATRIZ-CANONICA-BK.md` e `CONTRATO-CAMPOS-BK.md`.
-- Stack técnica NestJS, Mongoose, React e TypeScript: CANONICO, definida nos RNF.
-- Endpoints, nomes de ficheiros, services e componentes: DERIVADO, escolhidos para implementar o requisito sem contrariar a documentação.
-- Regras de sessão, ownership, membership e bloqueio de IA sem fontes: CANONICO/DERIVADO a partir de RF, RNF e BKs anteriores.
+- `ClassesModule` exporta `ClassesService`.
+- Professor autenticado.
+- Turma criada e pertencente ao professor.
 
-## Pré-requisitos concretos
+## Glossário
 
-- Dependências concluídas: `BK-MF1-12`.
-- `SessionGuard` e `AuthenticatedUser` criados em MF0.
-- Contratos relevantes disponíveis: `ClassesService.findOwnedClass` e `ClassPostsService`.
-- Stack canónica: NestJS, Mongoose, React, TypeScript e cookies HttpOnly.
+- Métrica da turma: valor agregado visível ao professor.
+- Dificuldade: tópico ou área em que a turma apresenta menor desempenho.
+- Progresso: percentagem ou contagem de avanço pedagógico.
 
-## Glossário rápido
+## Conceitos teóricos
 
-- **métrica de turma**: recurso ou fluxo implementado neste BK.
-- **Ownership**: garantia de que um utilizador só gere dados que controla.
-- **Membership**: garantia de que um aluno pertence à turma antes de ver dados dessa turma.
-- **DTO**: classe que valida payloads de entrada.
-- **Service**: camada onde vivem regras de negócio e segurança.
-- **Controller**: camada HTTP que recebe pedidos e delega no service.
+- **Agregação segura.** o painel mostra dados por turma do professor, não dados livres. Este conceito vem de `RF30` e das dependências `BK-MF1-12`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-06 - Painel com progresso, dificuldades e métricas da turma.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Métrica accionável.** cada número deve orientar uma decisão docente. Este conceito vem de `RF30` e das dependências `BK-MF1-12`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-06 - Painel com progresso, dificuldades e métricas da turma.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Evolução incremental.** o MVP pode começar com contadores e crescer com eventos reais. Este conceito vem de `RF30` e das dependências `BK-MF1-12`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-06 - Painel com progresso, dificuldades e métricas da turma.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Backend, validação e segurança.** O backend recebe a identidade pela sessão autenticada, valida DTOs antes do service e confirma ownership ou membership nos services herdados. Esta regra vem da fundação MF0/MF1 e segue para os BKs seguintes como contrato de segurança. Serve para impedir leitura ou escrita entre alunos, professores, turmas e disciplinas diferentes.
+- **Frontend tipado e sessão real.** O frontend usa cliente API tipado em `apps/web/src/lib/api/...`, envia cookies com `credentials: "include"`, mostra estados de carregamento, erro, vazio e sucesso, e não guarda tokens em `localStorage`. Isto evita chamadas anónimas, dados de actor no body e payloads sem tipo claro.
+- **IA, fontes e guardrails.** Este BK só envolve provider de IA quando o próprio requisito o pede. Quando não há chamada de IA, o guia limita-se a preparar fontes, autorização ou contexto sem prometer geração automática; quando há chamada de IA, o provider vem de `AiModule`/`AI_PROVIDER`, as fontes são recolhidas antes da chamada e a resposta só é persistida depois de validação mínima.
 
-## Conceitos teóricos essenciais
+## Decisões documentais
 
-**Domínio StudyFlow.** métrica de turma existe para concretizar `RF30`. O contexto vem da rota e da sessão autenticada; nunca vem de campos livres escolhidos pelo frontend.
-
-**Backend.** O schema define persistência MongoDB, o DTO valida entrada, o service aplica regras e o controller expõe endpoints protegidos. Esta separação evita controllers grandes e facilita testes.
-
-**Frontend.** O cliente usa `fetch` com `credentials: "include"` para enviar o cookie HttpOnly. A página mostra loading, erro, vazio e sucesso para o aluno perceber o estado real do pedido.
-
-**Segurança.** O backend valida sessão, papel e contexto antes de consultar ou criar dados. Sem sessão deve haver `401`; papel errado deve gerar `403`; contexto inexistente ou fora do utilizador deve gerar `404`.
-
-**IA.** Quando este BK tocar IA, o provider só pode receber fontes autorizadas. Sem fontes processáveis, a resposta correta é bloquear com erro claro.
+- `CANONICO`: `BK-MF2-06`, `RF30`, prioridade `P1`, owner `Guilherme`, apoio `Natalia`, sprint `S04`, dependências `BK-MF1-12` e próximo BK `BK-MF2-07` vêm da matriz, backlog e contrato de campos.
+- `CANONICO`: o domínio funcional é `BK-MF2-06 - Painel com progresso, dificuldades e métricas da turma.`; este BK preserva a sequência da MF2 e não altera IDs, RF/RNF, prioridades, owners ou dependências.
+- `DERIVADO`: os nomes de módulos, services, DTOs, schemas, clientes API e páginas resultam dos passos deste guia e mantêm a convenção já usada no próprio código documentado.
+- `DERIVADO`: os caminhos frontend previstos usam `apps/web/src/lib/api/...` para clientes HTTP e `apps/web/src/pages/mf2/...` para páginas, porque essa é a localização usada nos passos de implementação.
 
 ## Arquitetura do BK
 
-- Ficheiros principais: `apps/api/src/modules/class-progress/...`, `apps/web/src/lib/api/class-progress.ts`, `apps/web/src/pages/mf2/ClassProgressEventPage.tsx`.
-- Exports produzidos: `ClassProgressEventService`, `ClassProgressEventModule`.
-- Imports consumidos: `ClassesService.findOwnedClass`, `ClassPostsService`, `SessionGuard`.
-- Endpoint principal: `GET /api/teacher/classes/:classId/progress-dashboard`.
+`ClassProgressService` valida a turma via `ClassesService`, monta um resumo e devolve um DTO de leitura. `ClassProgressController` expõe a rota docente; o frontend apresenta cartões e listas de dificuldade.
+
+## Ficheiros previstos
+
+- `apps/api/src/modules/class-progress/schemas/class-progress-note.schema.ts`
+- `apps/api/src/modules/class-progress/dto/class-progress-note.dto.ts`
+- `apps/api/src/modules/class-progress/class-progress.service.ts`
+- `apps/api/src/modules/class-progress/class-progress.controller.ts`
+- `apps/api/src/modules/class-progress/class-progress.module.ts`
+- `apps/web/src/lib/api/class-progress.ts`
+- `apps/web/src/pages/mf2/ClassProgressDashboardPage.tsx`
 
 ## Guia linear de implementação
+
+Segue os passos por ordem. Cada passo indica objetivo, ficheiros, ação concreta, código completo, explicação, validação e erro comum. Não saltes passos: a sequência preserva os contratos herdados dos BKs anteriores e prepara o BK seguinte sem criar endpoints, schemas ou services paralelos.
 
 ### Passo 1 - Criar schema e DTO
 
 1. Explicação simples do objetivo.
 
-    Definir a estrutura persistida para métrica de turma e validar os dados de entrada antes de chegarem ao service.
+    Definir a estrutura persistida e validar a entrada de painel de progresso da turma no backend.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/api/src/modules/class-progress/schemas/class-progress.schema.ts`
-    - CRIAR: `apps/api/src/modules/class-progress/dto/create-class-progress.dto.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
+    - CRIAR: `apps/api/src/modules/class-progress/schemas/class-progress-note.schema.ts`
+    - CRIAR: `apps/api/src/modules/class-progress/dto/class-progress-note.dto.ts`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService.findOwnedClass` e `ClassPostsService` existem ou foram definidos nos BKs anteriores.
+    Cria os ficheiros indicados e mantém os nomes de classes usados nos passos seguintes.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/class-progress/schemas/class-progress.schema.ts
+~~~ts
+// apps/api/src/modules/class-progress/schemas/class-progress-note.schema.ts
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-export type ClassProgressEventDocument = HydratedDocument<ClassProgressEvent>;
-export type ClassProgressEventStatus = "ACTIVE" | "ARCHIVED";
+export type ClassProgressNoteDocument = HydratedDocument<ClassProgressNote>;
 
-@Schema({ timestamps: true, collection: "class_progress" })
-export class ClassProgressEvent {
+@Schema({ timestamps: true, collection: "class_progress_notes" })
+export class ClassProgressNote {
     @Prop({ type: Types.ObjectId, required: true, index: true })
-    contextId!: Types.ObjectId;
+    classId!: Types.ObjectId;
 
     @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
-    createdBy!: Types.ObjectId;
+    teacherId!: Types.ObjectId;
 
     @Prop({ required: true, trim: true, minlength: 3, maxlength: 160 })
     title!: string;
 
-    @Prop({ trim: true, maxlength: 4000 })
-    description?: string;
+    @Prop({ required: true, trim: true, minlength: 5, maxlength: 4000 })
+    note!: string;
 
-    @Prop({ required: true, enum: ["ACTIVE", "ARCHIVED"], default: "ACTIVE" })
-    status!: ClassProgressEventStatus;
+    @Prop({ type: [String], default: [] })
+    difficultyTags!: string[];
 }
 
-export const ClassProgressEventSchema = SchemaFactory.createForClass(ClassProgressEvent);
-ClassProgressEventSchema.index({ contextId: 1, createdAt: -1 });
+export const ClassProgressNoteSchema = SchemaFactory.createForClass(ClassProgressNote);
+ClassProgressNoteSchema.index({ classId: 1, createdAt: -1 });
 
-// apps/api/src/modules/class-progress/dto/create-class-progress.dto.ts
-import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+// apps/api/src/modules/class-progress/dto/class-progress-note.dto.ts
+import { ArrayMaxSize, IsArray, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
-export class CreateClassProgressEventDto {
+export class CreateClassProgressNoteDto {
     @IsString()
     @MinLength(3)
     @MaxLength(160)
     title!: string;
 
-    @IsOptional()
     @IsString()
+    @MinLength(5)
     @MaxLength(4000)
-    description?: string;
+    note!: string;
+
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(12)
+    @IsString({ each: true })
+    difficultyTags?: string[];
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa métrica de turma para RF30. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este bloco separa persistência e entrada HTTP. O schema define os campos guardados em MongoDB, índices e estados que os BKs seguintes podem consultar. O DTO valida o corpo do pedido antes de chegar ao service, por isso dados vazios, demasiado longos ou com formato errado falham com `400 Bad Request`. A regra de segurança é simples: IDs de utilizador, aluno ou professor nunca vêm do body; vêm sempre da sessão autenticada.
 
 6. Como validar este passo.
 
-    Confirma que os campos obrigatórios rejeitam strings vazias e que os índices estão orientados ao contexto.
+    Arranca a API depois de integrar o module e confirma que um body vazio devolve 400.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar schema sem índice por contexto dificulta isolamento e consultas por turma, disciplina ou área.
+    Não aceites actorId, teacherId ou studentId no body; esses valores vêm da sessão autenticada.
 
-### Passo 2 - Criar service
+### Passo 2 - Criar service com autorização
 
 1. Explicação simples do objetivo.
 
-    Concentrar a regra de negócio de métrica de turma, incluindo validação de sessão e contexto.
+    Centralizar regras de negócio, validação de contexto e erros de domínio.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/class-progress/class-progress.service.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService.findOwnedClass` e `ClassPostsService` existem ou foram definidos nos BKs anteriores.
+    Implementa o service usando os métodos herdados de MF0/MF1 e nunca confies em IDs de utilizador enviados pelo cliente.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/class-progress/class-progress.service.ts
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { CreateClassProgressEventDto } from "./dto/create-class-progress.dto";
-import { ClassProgressEvent, ClassProgressEventDocument } from "./schemas/class-progress.schema";
+import { ClassPostsService } from "../class-posts/class-posts.service";
+import { ClassesService } from "../classes/classes.service";
+import { CreateClassProgressNoteDto } from "./dto/class-progress-note.dto";
+import { ClassProgressNote, ClassProgressNoteDocument } from "./schemas/class-progress-note.schema";
 
 @Injectable()
-export class ClassProgressEventService {
+export class ClassProgressService {
     constructor(
-        @InjectModel(ClassProgressEvent.name)
-        private readonly model: Model<ClassProgressEventDocument>,
+        @InjectModel(ClassProgressNote.name)
+        private readonly notes: Model<ClassProgressNoteDocument>,
+        private readonly classesService: ClassesService,
+        private readonly classPostsService: ClassPostsService,
     ) {}
 
-    async create(actor: AuthenticatedUser, contextId: string, dto: CreateClassProgressEventDto) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const created = await this.model.create({
-            contextId: new Types.ObjectId(contextId),
-            createdBy: new Types.ObjectId(actor.id),
-            title: dto.title.trim(),
-            description: dto.description?.trim(),
-            status: "ACTIVE",
-        });
-
-        return this.toView(created);
+    async createNote(actor: AuthenticatedUser, classId: string, dto: CreateClassProgressNoteDto) {
+        this.assertTeacher(actor);
+        const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
+        const note = await this.notes.create({ classId: schoolClass._id, teacherId: new Types.ObjectId(actor.id), title: dto.title.trim(), note: dto.note.trim(), difficultyTags: dto.difficultyTags ?? [] });
+        return this.toNoteView(note);
     }
 
-    async list(actor: AuthenticatedUser, contextId: string) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const items = await this.model
-            .find({ contextId: new Types.ObjectId(contextId), status: "ACTIVE" })
-            .sort({ createdAt: -1 })
-            .lean();
-
-        return items.map((item) => this.toView(item));
+    async dashboard(actor: AuthenticatedUser, classId: string) {
+        this.assertTeacher(actor);
+        const schoolClass = await this.classesService.findOwnedClass(actor.id, classId);
+        const [notes, posts] = await Promise.all([
+            this.notes.find({ classId: schoolClass._id, teacherId: new Types.ObjectId(actor.id) }).sort({ createdAt: -1 }).lean(),
+            this.classPostsService.listForTeacher(actor, classId),
+        ]);
+        return { classId: schoolClass._id.toString(), noteCount: notes.length, postCount: posts.length, difficultyTags: [...new Set(notes.flatMap((note) => note.difficultyTags))], notes: notes.map((note) => this.toNoteView(note)) };
     }
 
-    private ensureRole(actor: AuthenticatedUser) {
-        // O papel vem da sessão validada pelo SessionGuard, não do frontend.
-        if (!actor?.id || !["STUDENT", "TEACHER", "ADMIN"].includes(actor.role)) {
-            throw new ForbiddenException("Sessão sem permissões para este fluxo.");
+    private assertTeacher(actor: AuthenticatedUser) {
+        if (actor.role !== "TEACHER") {
+            throw new ForbiddenException("Apenas professores podem consultar métricas da turma.");
         }
     }
-
-    private ensureObjectId(id: string) {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new NotFoundException("Contexto não encontrado.");
-        }
-    }
-
-    private toView(item: ClassProgressEvent | ClassProgressEventDocument) {
-        return {
-            id: item._id.toString(),
-            contextId: item.contextId.toString(),
-            createdBy: item.createdBy.toString(),
-            title: item.title,
-            description: item.description ?? "",
-            status: item.status,
-        };
+    private toNoteView(note: ClassProgressNote) {
+        return { id: note._id.toString(), title: note.title, note: note.note, difficultyTags: note.difficultyTags };
     }
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa métrica de turma para RF30. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este service concentra a regra de negócio do BK. Recebe o utilizador autenticado, valida o papel esperado, confirma ownership ou membership nos services herdados e só depois consulta ou grava dados. A entrada principal vem do controller; a saída é uma resposta já filtrada para o frontend. Isto evita duplicar segurança em componentes React e impede acessos cruzados entre alunos, professores, turmas, disciplinas e áreas de estudo.
 
 6. Como validar este passo.
 
-    Testa criação com sessão válida e com sessão sem permissão. A segunda deve devolver erro controlado.
+    Testa três casos: sem sessão, sessão com papel errado e sessão válida com contexto pertencente ao actor.
 
 7. Erros comuns ou cenário negativo.
 
-    Colocar a validação só no controller ou no frontend permite chamadas diretas à API sem a regra de segurança.
+    Fazer apenas `Model.findById(id)` sem validar dono ou inscrição permite leitura indevida entre turmas, disciplinas ou áreas.
 
-### Passo 3 - Criar controller e módulo
+### Passo 3 - Criar controller e module do domínio
 
 1. Explicação simples do objetivo.
 
-    Expor endpoints reais, protegidos por sessão, e exportar o service para os BKs seguintes.
+    Expor as rotas HTTP do BK e ligar controller, service e schema no módulo NestJS.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/class-progress/class-progress.controller.ts`
     - CRIAR: `apps/api/src/modules/class-progress/class-progress.module.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService.findOwnedClass` e `ClassPostsService` existem ou foram definidos nos BKs anteriores.
+    Declara apenas os parâmetros reais de cada rota e importa todos os símbolos usados pelo module.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/class-progress/class-progress.controller.ts
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedRequest } from "../../common/types/authenticated-request";
-import { CreateClassProgressEventDto } from "./dto/create-class-progress.dto";
-import { ClassProgressEventService } from "./class-progress.service";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { ClassProgressService } from "./class-progress.service";
+import { CreateClassProgressNoteDto } from "./dto/class-progress-note.dto";
 
-@Controller("api/class-progress")
 @UseGuards(SessionGuard)
-export class ClassProgressEventController {
-    constructor(private readonly service: ClassProgressEventService) {}
+@Controller("api/teacher/classes/:classId/progress-dashboard")
+export class ClassProgressController {
+    constructor(private readonly progressService: ClassProgressService) {}
 
-    @Post(":contextId")
-    create(
-        @Req() request: AuthenticatedRequest,
-        @Param("contextId") contextId: string,
-        @Body() dto: CreateClassProgressEventDto,
-    ) {
-        return this.service.create(request.user!, contextId, dto);
+    @Post("notes")
+    createNote(@CurrentUser() actor: AuthenticatedUser, @Param("classId") classId: string, @Body() dto: CreateClassProgressNoteDto) {
+        return this.progressService.createNote(actor, classId, dto);
     }
 
-    @Get(":contextId")
-    list(@Req() request: AuthenticatedRequest, @Param("contextId") contextId: string) {
-        return this.service.list(request.user!, contextId);
+    @Get()
+    dashboard(@CurrentUser() actor: AuthenticatedUser, @Param("classId") classId: string) {
+        return this.progressService.dashboard(actor, classId);
     }
 }
 
 // apps/api/src/modules/class-progress/class-progress.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { ClassProgressEventController } from "./class-progress.controller";
-import { ClassProgressEventService } from "./class-progress.service";
-import { ClassProgressEvent, ClassProgressEventSchema } from "./schemas/class-progress.schema";
+import { ClassPostsModule } from "../class-posts/class-posts.module";
+import { ClassesModule } from "../classes/classes.module";
+import { ClassProgressController } from "./class-progress.controller";
+import { ClassProgressService } from "./class-progress.service";
+import { ClassProgressNote, ClassProgressNoteSchema } from "./schemas/class-progress-note.schema";
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: ClassProgressEvent.name, schema: ClassProgressEventSchema }])],
-    controllers: [ClassProgressEventController],
-    providers: [ClassProgressEventService],
-    exports: [ClassProgressEventService, MongooseModule],
+    imports: [MongooseModule.forFeature([{ name: ClassProgressNote.name, schema: ClassProgressNoteSchema }]), ClassesModule, ClassPostsModule],
+    controllers: [ClassProgressController],
+    providers: [ClassProgressService],
 })
-export class ClassProgressEventModule {}
-```
+export class ClassProgressModule {}
+~~~
 
 5. Explicação do código.
 
-    Este código implementa métrica de turma para RF30. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O controller transforma pedidos HTTP autenticados em chamadas ao service, sem colocar regras de negócio na rota. O module liga controller, service, schema Mongoose e módulos herdados, garantindo dependency injection correta. Se faltar um import no module, a app não arranca; se faltar o guard no controller, o endpoint deixa de proteger sessão e permissões.
 
 6. Como validar este passo.
 
-    Chama `GET /api/teacher/classes/:classId/progress-dashboard` com cookie real e confirma que o controller chama o service.
+    Confirma que a aplicação arranca sem erros de provider desconhecido e que as rotas aparecem com o prefixo esperado.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar endpoints sem `SessionGuard` expõe dados de alunos, professores ou turmas.
+    Usar fallback genérico de parâmetros esconde bugs de rota e pode passar `undefined` para o service.
 
-### Passo 4 - Criar cliente frontend
+### Passo 4 - Integrar no módulo acumulativo da MF2
 
 1. Explicação simples do objetivo.
 
-    Criar chamadas tipadas para a API de métrica de turma, sempre com cookie de sessão.
+    Garantir que o endpoint fica activo sem apagar modules criados em BKs anteriores.
+
+2. Ficheiros envolvidos.
+    - EDITAR: `apps/api/src/modules/mf2/mf2.module.ts`
+    - REVER: `apps/api/src/app.module.ts` já deve importar Mf2Module desde BK-MF2-01
+
+3. O que fazer.
+
+    Mantém todos os imports anteriores e acrescenta apenas o module deste BK ao `Mf2Module`.
+
+4. Código completo, correto e integrado.
+
+~~~ts
+// apps/api/src/modules/mf2/mf2.module.ts
+import { Module } from "@nestjs/common";
+import { GuidedStudyRoomsModule } from "../guided-study-rooms/guided-study-rooms.module";
+import { ClassProjectsModule } from "../class-projects/class-projects.module";
+import { ProjectAiModule } from "../project-ai/project-ai.module";
+import { OfficialTestsModule } from "../official-tests/official-tests.module";
+import { AiContentReviewsModule } from "../ai-content-reviews/ai-content-reviews.module";
+import { ClassProgressModule } from "../class-progress/class-progress.module";
+
+@Module({
+    imports: [
+        GuidedStudyRoomsModule,
+        ClassProjectsModule,
+        ProjectAiModule,
+        OfficialTestsModule,
+        AiContentReviewsModule,
+        ClassProgressModule,
+    ],
+})
+export class Mf2Module {}
+
+~~~
+
+5. Explicação do código.
+
+    O `Mf2Module` organiza a macrofase inteira. O `AppModule` só precisa de o importar uma vez, evitando edições repetidas e arriscadas.
+
+6. Como validar este passo.
+
+    Arranca a API e confirma que o Nest resolve providers do module acabado de criar.
+
+7. Erros comuns ou cenário negativo.
+
+    Não troques o array de imports por uma lista só com o module novo; isso desligaria funcionalidades anteriores.
+
+### Passo 5 - Criar cliente frontend tipado
+
+1. Explicação simples do objetivo.
+
+    Dar ao frontend funções pequenas para chamar a API com cookies HttpOnly.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/web/src/lib/api/class-progress.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService.findOwnedClass` e `ClassPostsService` existem ou foram definidos nos BKs anteriores.
+    Cria funções por caso de uso e valida erros HTTP antes de devolver JSON.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/web/src/lib/api/class-progress.ts
-export type ClassProgressEventView = {
-    id: string;
-    contextId: string;
-    title: string;
-    description: string;
-    status: string;
-};
+export type ClassProgressDashboard = { classId: string; noteCount: number; postCount: number; difficultyTags: string[]; notes: { id: string; title: string; note: string; difficultyTags: string[] }[] };
+export type CreateClassProgressNoteInput = { title: string; note: string; difficultyTags?: string[] };
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(path, {
+        ...init,
+        // Envia o cookie HttpOnly da sessão; o frontend nunca guarda tokens manualmente.
+        credentials: "include",
+    });
 
-async function parseResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Pedido falhou." }));
-        throw new Error(String(error.message ?? "Pedido falhou."));
+        throw new Error(await response.text());
     }
+
     return response.json() as Promise<T>;
 }
-
-export async function listClassProgressEvent(contextId: string): Promise<ClassProgressEventView[]> {
-    const response = await fetch(`/api/class-progress/${contextId}`, {
-        credentials: "include",
-    });
-    return parseResponse<ClassProgressEventView[]>(response);
+export function getClassProgressDashboard(classId: string) {
+    return requestJson<ClassProgressDashboard>("/api/teacher/classes/" + classId + "/progress-dashboard");
 }
-
-export async function createClassProgressEvent(
-    contextId: string,
-    input: { title: string; description?: string },
-): Promise<ClassProgressEventView> {
-    const response = await fetch(`/api/class-progress/${contextId}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-    });
-    return parseResponse<ClassProgressEventView>(response);
+export function createClassProgressNote(classId: string, input: CreateClassProgressNoteInput) {
+    return requestJson<ClassProgressDashboard["notes"][number]>("/api/teacher/classes/" + classId + "/progress-dashboard/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa métrica de turma para RF30. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O cliente API é tipado e envia cookies com `credentials: "include"`, para reutilizar a sessão segura criada na MF0. Ele não guarda tokens no browser, não envia `actorId` e devolve erros claros quando o backend responde com `400`, `401`, `403` ou `404`. Assim, os tipos do frontend ficam alinhados com o payload e com a resposta real do controller.
 
 6. Como validar este passo.
 
-    Confirma no Network que o pedido usa cookies e que erros HTTP são convertidos em mensagem.
+    Usa DevTools ou testes de integração para confirmar que as chamadas incluem cookies e tratam 401/403/404.
 
 7. Erros comuns ou cenário negativo.
 
-    Usar token no browser ou enviar owner no body quebra o contrato de segurança.
+    Fazer fetch sem `credentials: "include"` transforma uma sessão válida em 401 no backend.
 
-### Passo 5 - Criar página do fluxo
+### Passo 6 - Criar página React do BK
 
 1. Explicação simples do objetivo.
 
-    Criar uma página usável com formulário, estado de carregamento, erro, sucesso e vazio.
+    Expor a funcionalidade ao utilizador com estados de loading, erro, vazio e sucesso.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/web/src/pages/mf2/ClassProgressEventPage.tsx`
-    - LOCALIZAÇÃO: ficheiro completo.
+    - CRIAR: `apps/web/src/pages/mf2/ClassProgressDashboardPage.tsx`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService.findOwnedClass` e `ClassPostsService` existem ou foram definidos nos BKs anteriores.
+    Cria uma página simples, ligada ao cliente API do passo anterior e sem guardar dados sensíveis no browser.
 
 4. Código completo, correto e integrado.
 
-```tsx
-// apps/web/src/pages/mf2/ClassProgressEventPage.tsx
-import { FormEvent, useEffect, useState } from "react";
-import { createClassProgressEvent, listClassProgressEvent, ClassProgressEventView } from "../../lib/api/class-progress";
+~~~tsx
+// apps/web/src/pages/mf2/ClassProgressDashboardPage.tsx
+import { useEffect, useState } from "react";
+import { getClassProgressDashboard, ClassProgressDashboard } from "../../lib/api/class-progress";
 
-export function ClassProgressEventPage({ contextId }: { contextId: string }) {
-    const [items, setItems] = useState<ClassProgressEventView[]>([]);
-    const [loading, setLoading] = useState(true);
+export function ClassProgressDashboardPage() {
+    const [classId, setClassId] = useState("");
+    const [dashboard, setDashboard] = useState<ClassProgressDashboard | null>(null);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
-
     useEffect(() => {
-        listClassProgressEvent(contextId)
-            .then(setItems)
-            .catch((err: Error) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [contextId]);
+        if (!classId.trim()) return;
 
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setError("");
-        setSuccess("");
-        const form = new FormData(event.currentTarget);
-        const title = String(form.get("title") ?? "").trim();
-        const description = String(form.get("description") ?? "").trim();
-        if (title.length < 3) {
-            setError("Indica um título com pelo menos 3 caracteres.");
-            return;
-        }
-        const created = await createClassProgressEvent(contextId, { title, description });
-        setItems((current) => [created, ...current]);
-        setSuccess("Guardado com sucesso.");
-        event.currentTarget.reset();
-    }
-
-    if (loading) return <p>A carregar...</p>;
-
-    return <section>
-        <form onSubmit={handleSubmit}>
-            <label>Título<input name="title" /></label>
-            <label>Descrição<textarea name="description" /></label>
-            <button type="submit">Guardar</button>
-        </form>
-        {error && <p role="alert">{error}</p>}
-        {success && <p>{success}</p>}
-        {items.length === 0 ? <p>Ainda não existem dados.</p> : <ul>{items.map((item) => <li key={item.id}>{item.title}</li>)}</ul>}
-    </section>;
+        getClassProgressDashboard(classId.trim())
+            .then(setDashboard)
+            .catch((err) => setError(err instanceof Error ? err.message : "Erro ao carregar painel."));
+    }, [classId]);
+    return (
+        <main>
+            <h1>Painel da turma</h1>
+            <input value={classId} onChange={(event) => setClassId(event.target.value)} placeholder="ID da turma" />
+            {error && <p role="alert">{error}</p>}
+            {dashboard && (
+                <section>
+                    <p>Publicações: {dashboard.postCount}</p>
+                    <p>Notas: {dashboard.noteCount}</p>
+                    <p>Dificuldades: {dashboard.difficultyTags.join(", ") || "Sem dados"}</p>
+                </section>
+            )}
+        </main>
+    );
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa métrica de turma para RF30. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    A página separa estado de formulário, estado de lista e mensagens de erro para ser fácil de testar e manter.
 
 6. Como validar este passo.
 
-    Abre a página autenticado, cria um registo e confirma que a lista atualiza sem refresh.
+    Abre a página com sessão válida, executa o fluxo principal e confirma que a lista actualiza sem refresh manual.
 
 7. Erros comuns ou cenário negativo.
 
-    Não mostrar estado vazio faz parecer que a app falhou quando apenas não existem dados.
+    Não escondas erros HTTP genéricos; mostra mensagem controlada para o utilizador e mantém o detalhe técnico no backend.
 
-### Passo 6 - Validar fluxo principal e negativos
+### Passo 7 - Validar contrato, negativos e handoff
 
 1. Explicação simples do objetivo.
 
-    Recolher evidence objetiva de sucesso e falhas controladas para RF30.
+    Confirmar que o BK cumpre RF30, que falha de forma controlada e que prepara o próximo BK.
 
 2. Ficheiros envolvidos.
-    - REVER: endpoints deste BK.
-    - REVER: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-    - LOCALIZAÇÃO: comandos do PR.
+    - REVER: `docs/planificacao/guias-bk/MF2/BK-MF2-06-painel-com-progresso-dificuldades-e-metricas-da-turma.md`
+    - REVER: testes backend e frontend criados para este BK
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService.findOwnedClass` e `ClassPostsService` existem ou foram definidos nos BKs anteriores.
+    Executa validações automáticas e regista evidência de caminho feliz e cenários negativos.
 
 4. Código completo, correto e integrado.
 
-```bash
+~~~bash
 npm run test:unit
+npm run test:contracts
 npm run test:integration
-# Smoke manual: autenticar e chamar GET /api/teacher/classes/:classId/progress-dashboard.
-# Negativos mínimos para P1: 2.
-```
+bash scripts/validate-planificacao.sh
+~~~
 
 5. Explicação do código.
 
-    Este código implementa métrica de turma para RF30. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Estes comandos cobrem regressões unitárias, contratos API, fluxo integrado e coerência documental.
 
 6. Como validar este passo.
 
-    Para P1, executa pelo menos 2 negativo(s): sem sessão, papel errado e contexto fora do utilizador.
+    Guarda evidência com request válido, resposta esperada, pelo menos 2 cenário(s) negativo(s) e captura da página final.
 
 7. Erros comuns ou cenário negativo.
 
-    Fechar sem negativos deixa risco de acesso indevido só descoberto na defesa.
+    Não avances para BK-MF2-07 se a validação de sessão, ownership ou membership falhar.
 
 ## Expected results
 
-- `GET /api/teacher/classes/:classId/progress-dashboard` devolve sucesso com sessão e contexto válidos.
-- Pedido sem sessão devolve `401`.
-- Papel errado devolve `403`.
-- Contexto fora do utilizador devolve `404`.
-- Entrada inválida devolve `400` ou `422` com mensagem clara.
+- Professor consulta painel de turma sua.
+- Resposta inclui progresso, dificuldades e métricas agregadas.
+- Professor não consulta turma de outro professor.
+- Aluno não acede ao painel docente.
 
 ## Critérios de aceite
 
-- O BK tem pelo menos 6 passos no formato MF0.
-- Cada passo tem ficheiros, código completo, explicação, validação e cenário negativo.
-- O frontend chama endpoint real definido no controller.
-- O backend não aceita owner, professor, aluno ou fonte como verdade vinda do body.
-- O próximo BK consegue reutilizar o service exportado.
+- O código documentado compila quando aplicado ao projecto na ordem dos passos.
+- O module importa explicitamente controller e service.
+- O controller só declara parâmetros reais das rotas.
+- O service valida ownership ou membership antes de consultar dados.
+- A página usa cliente API tipado e cookies HttpOnly.
 
 ## Validação final
 
-- Smoke do fluxo principal.
-- 2 negativo(s) mínimo(s), conforme prioridade `P1`.
-- Confirmação de imports e exports.
-- Pesquisa textual de termos proibidos nos BKs da MF2.
+- Confirmar que `ClassesService.findOwnedClass` é chamado antes de montar métricas.
+- Confirmar que não há IDs de aluno expostos desnecessariamente.
+- Executar caso positivo e dois cenários negativos.
 
 ## Evidence para PR/defesa
 
-- Link do PR ou commit.
-- Output dos testes por prioridade.
-- Screenshot ou log do caminho principal.
-- Evidência de erro controlado para sessão ausente, papel errado e contexto fora do utilizador.
+- Print ou log do caminho principal concluído.
+- Log de pelo menos um cenário negativo controlado.
+- Resultado de `bash scripts/validate-planificacao.sh`.
+- Confirmação de que `git diff --check` não reporta espaços inválidos.
 
 ## Handoff
 
-`BK-MF2-07` deve reutilizar `ClassProgressEventService` ou o endpoint deste BK, sem criar segundo contrato para a mesma ação.
+BK-MF2-07
 
 ## Changelog
 
-- `2026-06-07`: guia reescrito com estrutura MF0, contratos completos e validação por passo.
+- `2026-06-08`: guia corrigido para contrato executável da MF2, com integração acumulativa, autorização explícita e validação do handoff.

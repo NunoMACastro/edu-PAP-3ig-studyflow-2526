@@ -1,4 +1,4 @@
-# BK-MF2-10 - Separar materiais entre “aluno”, “professor” e “turma”.
+# BK-MF2-10 - Separar materiais entre aluno, professor e turma.
 
 ## Header
 - `doc_id`: `GUIA-BK-MF2-10`
@@ -16,613 +16,570 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF2-11`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-10-separar-materiais-entre-aluno-professor-e-turma.md`
-- `last_updated`: `2026-06-07`
+- `last_updated`: `2026-06-08`
 
-## O que vamos fazer neste BK
+## Objetivo do BK
 
-Neste BK vais implementar contexto de material de forma incremental, usando os contratos já definidos em MF0 e MF1. O objetivo é que o aluno consiga criar os ficheiros, ligar backend e frontend, validar permissões e preparar o próximo BK sem adivinhar peças técnicas.
+Separar materiais por contexto de utilização: privado do aluno, oficial do professor e turma/disciplina, impedindo mistura de dados entre perfis.
 
-## Porque é que isto é importante
+## Importância
 
-- Dá implementação concreta a `RF34`.
-- Mantém separados aluno, professor, turma, disciplina, material e IA.
-- Aplica ownership ou membership no backend antes de devolver dados.
-- Prepara `BK-MF2-11, BK-MF2-12` com exports e endpoints estáveis.
+Este BK reduz risco de privacidade e prepara IA segura. Assistentes privados, assistentes de disciplina e requisitos de não exposição entre turmas dependem desta fronteira.
 
-## O que entra (scope)
+## Scope-in
 
-- Backend NestJS com schema, DTO, service, controller e módulo.
-- Frontend React/TypeScript com cliente API e página mínima.
-- Endpoint principal: `GET /api/material-contexts/student`.
-- Validação de sessão, papel e contexto.
-- Evidence de sucesso e negativos.
+- Criar registos de contexto de material.
+- Associar material a `STUDENT_PRIVATE`, `TEACHER_OFFICIAL` ou `CLASS_SUBJECT`.
+- Validar acesso por owner, disciplina ou turma.
+- Listar materiais permitidos por actor e contexto.
 
-## O que não entra (scope-out)
+## Scope-out
 
-- Alterar IDs, owners, prioridades, sprints ou dependências canónicas.
-- Criar integrações externas não documentadas.
-- Misturar materiais privados, oficiais e de turma.
-- Usar IA sem fontes processáveis e autorizadas.
+- Consentimentos RGPD.
+- Políticas administrativas globais.
+- Guardrails finais de IA por perfil.
 
 ## Estado antes
 
-O guia anterior estava em estado `CRÍTICO`: tinha passos genéricos, não indicava ficheiros completos e não permitia implementar `RF34` com segurança.
+A indexação sabe se um job é privado ou oficial, mas ainda não existe uma camada explícita que filtre materiais por contexto de consumo.
 
 ## Estado depois
 
-O guia passa a ter estrutura MF0, código integrado, validação por passo, expected results, critérios de aceite, evidence e handoff.
+Existe `MaterialContextsModule` que fornece listas seguras para módulos de IA, pesquisa e disciplina. O BK seguinte pode usar apenas materiais privados do aluno.
 
-## Metadados do BK (CANONICO/DERIVADO)
+## Pré-requisitos
 
-- Prioridade, owner, apoio, esforço, dependências, RF/RNF, sprint e próximo BK: CANONICO, definidos em `MATRIZ-CANONICA-BK.md` e `CONTRATO-CAMPOS-BK.md`.
-- Stack técnica NestJS, Mongoose, React e TypeScript: CANONICO, definida nos RNF.
-- Endpoints, nomes de ficheiros, services e componentes: DERIVADO, escolhidos para implementar o requisito sem contrariar a documentação.
-- Regras de sessão, ownership, membership e bloqueio de IA sem fontes: CANONICO/DERIVADO a partir de RF, RNF e BKs anteriores.
+- `BK-MF2-07` concluído.
+- `MaterialsService`, `SubjectsService` e `OfficialMaterialsService` disponíveis.
+- Validação de turma e disciplina herdada da MF1.
 
-## Pré-requisitos concretos
+## Glossário
 
-- Dependências concluídas: `BK-MF2-07`.
-- `SessionGuard` e `AuthenticatedUser` criados em MF0.
-- Contratos relevantes disponíveis: `ClassesService` e `SubjectsService`.
-- Stack canónica: NestJS, Mongoose, React, TypeScript e cookies HttpOnly.
+- Contexto: fronteira que define quem pode consumir um material.
+- Material privado: material submetido pelo aluno para a sua área.
+- Material oficial: material do professor numa disciplina/turma.
 
-## Glossário rápido
+## Conceitos teóricos
 
-- **contexto de material**: recurso ou fluxo implementado neste BK.
-- **Ownership**: garantia de que um utilizador só gere dados que controla.
-- **Membership**: garantia de que um aluno pertence à turma antes de ver dados dessa turma.
-- **DTO**: classe que valida payloads de entrada.
-- **Service**: camada onde vivem regras de negócio e segurança.
-- **Controller**: camada HTTP que recebe pedidos e delega no service.
+- **Menor privilégio.** cada actor recebe só os materiais necessários. Este conceito vem de `RF34` e das dependências `BK-MF2-07`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-10 - Separar materiais entre aluno, professor e turma.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Isolamento por domínio.** materiais pessoais e oficiais não se misturam por conveniência. Este conceito vem de `RF34` e das dependências `BK-MF2-07`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-10 - Separar materiais entre aluno, professor e turma.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Preparação para IA segura.** o assistente só recebe fontes do contexto autorizado. Este conceito vem de `RF34` e das dependências `BK-MF2-07`; entra no service/controller como regra verificável, sai no endpoint ou na página como comportamento visível, serve para tornar o domínio `BK-MF2-10 - Separar materiais entre aluno, professor e turma.` implementável por passos e evita que o aluno escreva código desligado do contrato da StudyFlow.
+- **Backend, validação e segurança.** O backend recebe a identidade pela sessão autenticada, valida DTOs antes do service e confirma ownership ou membership nos services herdados. Esta regra vem da fundação MF0/MF1 e segue para os BKs seguintes como contrato de segurança. Serve para impedir leitura ou escrita entre alunos, professores, turmas e disciplinas diferentes.
+- **Frontend tipado e sessão real.** O frontend usa cliente API tipado em `apps/web/src/lib/api/...`, envia cookies com `credentials: "include"`, mostra estados de carregamento, erro, vazio e sucesso, e não guarda tokens em `localStorage`. Isto evita chamadas anónimas, dados de actor no body e payloads sem tipo claro.
+- **IA, fontes e guardrails.** Este BK só envolve provider de IA quando o próprio requisito o pede. Quando não há chamada de IA, o guia limita-se a preparar fontes, autorização ou contexto sem prometer geração automática; quando há chamada de IA, o provider vem de `AiModule`/`AI_PROVIDER`, as fontes são recolhidas antes da chamada e a resposta só é persistida depois de validação mínima.
 
-## Conceitos teóricos essenciais
+## Decisões documentais
 
-**Domínio StudyFlow.** contexto de material existe para concretizar `RF34`. O contexto vem da rota e da sessão autenticada; nunca vem de campos livres escolhidos pelo frontend.
-
-**Backend.** O schema define persistência MongoDB, o DTO valida entrada, o service aplica regras e o controller expõe endpoints protegidos. Esta separação evita controllers grandes e facilita testes.
-
-**Frontend.** O cliente usa `fetch` com `credentials: "include"` para enviar o cookie HttpOnly. A página mostra loading, erro, vazio e sucesso para o aluno perceber o estado real do pedido.
-
-**Segurança.** O backend valida sessão, papel e contexto antes de consultar ou criar dados. Sem sessão deve haver `401`; papel errado deve gerar `403`; contexto inexistente ou fora do utilizador deve gerar `404`.
-
-**IA.** Quando este BK tocar IA, o provider só pode receber fontes autorizadas. Sem fontes processáveis, a resposta correta é bloquear com erro claro.
+- `CANONICO`: `BK-MF2-10`, `RF34`, prioridade `P0`, owner `Daniel`, apoio `Guilherme`, sprint `S05`, dependências `BK-MF2-07` e próximo BK `BK-MF2-11` vêm da matriz, backlog e contrato de campos.
+- `CANONICO`: o domínio funcional é `BK-MF2-10 - Separar materiais entre aluno, professor e turma.`; este BK preserva a sequência da MF2 e não altera IDs, RF/RNF, prioridades, owners ou dependências.
+- `DERIVADO`: os nomes de módulos, services, DTOs, schemas, clientes API e páginas resultam dos passos deste guia e mantêm a convenção já usada no próprio código documentado.
+- `DERIVADO`: os caminhos frontend previstos usam `apps/web/src/lib/api/...` para clientes HTTP e `apps/web/src/pages/mf2/...` para páginas, porque essa é a localização usada nos passos de implementação.
 
 ## Arquitetura do BK
 
-- Ficheiros principais: `apps/api/src/modules/material-contexts/...`, `apps/web/src/lib/api/material-contexts.ts`, `apps/web/src/pages/mf2/MaterialContextPage.tsx`.
-- Exports produzidos: `MaterialContextService`, `MaterialContextModule`.
-- Imports consumidos: `ClassesService`, `SubjectsService`, `SessionGuard`.
-- Endpoint principal: `GET /api/material-contexts/student`.
+`MaterialContextsService` valida actor e origem, grava `MaterialContext` e devolve listas filtradas. O controller separa rotas de aluno, professor e turma para evitar ambiguidade.
+
+## Ficheiros previstos
+
+- `apps/api/src/modules/material-contexts/schemas/material-context.schema.ts`
+- `apps/api/src/modules/material-contexts/dto/material-context-query.dto.ts`
+- `apps/api/src/modules/material-contexts/material-contexts.service.ts`
+- `apps/api/src/modules/material-contexts/material-contexts.controller.ts`
+- `apps/api/src/modules/material-contexts/material-contexts.module.ts`
+- `apps/web/src/lib/api/material-contexts.ts`
+- `apps/web/src/pages/mf2/MaterialContextsPage.tsx`
 
 ## Guia linear de implementação
+
+Segue os passos por ordem. Cada passo indica objetivo, ficheiros, ação concreta, código completo, explicação, validação e erro comum. Não saltes passos: a sequência preserva os contratos herdados dos BKs anteriores e prepara o BK seguinte sem criar endpoints, schemas ou services paralelos.
 
 ### Passo 1 - Criar schema e DTO
 
 1. Explicação simples do objetivo.
 
-    Definir a estrutura persistida para contexto de material e validar os dados de entrada antes de chegarem ao service.
+    Definir a estrutura persistida e validar a entrada de contextos de materiais por perfil no backend.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/api/src/modules/material-contexts/schemas/material-contexts.schema.ts`
-    - CRIAR: `apps/api/src/modules/material-contexts/dto/create-material-contexts.dto.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
+    - CRIAR: `apps/api/src/modules/material-contexts/schemas/material-context.schema.ts`
+    - CRIAR: `apps/api/src/modules/material-contexts/dto/material-context-query.dto.ts`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService` e `SubjectsService` existem ou foram definidos nos BKs anteriores.
+    Cria os ficheiros indicados e mantém os nomes de classes usados nos passos seguintes.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/material-contexts/schemas/material-contexts.schema.ts
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+~~~ts
+// apps/api/src/modules/material-contexts/schemas/material-context.schema.ts
+export type MaterialContextScope = "PRIVATE_AREA" | "OFFICIAL_SUBJECT";
 
-export type MaterialContextDocument = HydratedDocument<MaterialContext>;
-export type MaterialContextStatus = "ACTIVE" | "ARCHIVED";
+export type MaterialContextView = {
+    id: string;
+    title: string;
+    scope: MaterialContextScope;
+    contextId: string;
+    source: "student" | "teacher" | "class";
+};
 
-@Schema({ timestamps: true, collection: "material_contexts" })
-export class MaterialContext {
-    @Prop({ type: Types.ObjectId, required: true, index: true })
-    contextId!: Types.ObjectId;
+// apps/api/src/modules/material-contexts/dto/material-context-query.dto.ts
+import { IsOptional, IsString, MaxLength } from "class-validator";
 
-    @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
-    createdBy!: Types.ObjectId;
-
-    @Prop({ required: true, trim: true, minlength: 3, maxlength: 160 })
-    title!: string;
-
-    @Prop({ trim: true, maxlength: 4000 })
-    description?: string;
-
-    @Prop({ required: true, enum: ["ACTIVE", "ARCHIVED"], default: "ACTIVE" })
-    status!: MaterialContextStatus;
-}
-
-export const MaterialContextSchema = SchemaFactory.createForClass(MaterialContext);
-MaterialContextSchema.index({ contextId: 1, createdAt: -1 });
-
-// apps/api/src/modules/material-contexts/dto/create-material-contexts.dto.ts
-import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
-
-export class CreateMaterialContextDto {
-    @IsString()
-    @MinLength(3)
-    @MaxLength(160)
-    title!: string;
-
+export class MaterialContextQueryDto {
     @IsOptional()
     @IsString()
-    @MaxLength(4000)
-    description?: string;
+    @MaxLength(120)
+    topic?: string;
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa contexto de material para RF34. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este bloco separa persistência e entrada HTTP. O schema define os campos guardados em MongoDB, índices e estados que os BKs seguintes podem consultar. O DTO valida o corpo do pedido antes de chegar ao service, por isso dados vazios, demasiado longos ou com formato errado falham com `400 Bad Request`. A regra de segurança é simples: IDs de utilizador, aluno ou professor nunca vêm do body; vêm sempre da sessão autenticada.
 
 6. Como validar este passo.
 
-    Confirma que os campos obrigatórios rejeitam strings vazias e que os índices estão orientados ao contexto.
+    Arranca a API depois de integrar o module e confirma que um body vazio devolve 400.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar schema sem índice por contexto dificulta isolamento e consultas por turma, disciplina ou área.
+    Não aceites actorId, teacherId ou studentId no body; esses valores vêm da sessão autenticada.
 
-### Passo 2 - Criar service
+### Passo 2 - Criar service com autorização
 
 1. Explicação simples do objetivo.
 
-    Concentrar a regra de negócio de contexto de material, incluindo validação de sessão e contexto.
+    Centralizar regras de negócio, validação de contexto e erros de domínio.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/material-contexts/material-contexts.service.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService` e `SubjectsService` existem ou foram definidos nos BKs anteriores.
+    Implementa o service usando os métodos herdados de MF0/MF1 e nunca confies em IDs de utilizador enviados pelo cliente.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/material-contexts/material-contexts.service.ts
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model, Types } from "mongoose";
+import { ForbiddenException, Injectable } from "@nestjs/common";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { CreateMaterialContextDto } from "./dto/create-material-contexts.dto";
-import { MaterialContext, MaterialContextDocument } from "./schemas/material-contexts.schema";
+import { MaterialsService } from "../materials/materials.service";
+import { OfficialMaterialsService } from "../official-materials/official-materials.service";
+import { SubjectsService } from "../subjects/subjects.service";
+import { MaterialContextView } from "./schemas/material-context.schema";
 
 @Injectable()
-export class MaterialContextService {
+export class MaterialContextsService {
     constructor(
-        @InjectModel(MaterialContext.name)
-        private readonly model: Model<MaterialContextDocument>,
+        private readonly materialsService: MaterialsService,
+        private readonly subjectsService: SubjectsService,
+        private readonly officialMaterialsService: OfficialMaterialsService,
     ) {}
 
-    async create(actor: AuthenticatedUser, contextId: string, dto: CreateMaterialContextDto) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const created = await this.model.create({
-            contextId: new Types.ObjectId(contextId),
-            createdBy: new Types.ObjectId(actor.id),
-            title: dto.title.trim(),
-            description: dto.description?.trim(),
-            status: "ACTIVE",
-        });
-
-        return this.toView(created);
+    async listPrivateForStudent(actor: AuthenticatedUser, studyAreaId: string): Promise<MaterialContextView[]> {
+        this.assertStudent(actor);
+        const materials = await this.materialsService.listByArea(actor.id, studyAreaId);
+        return materials.map((material) => ({ id: material._id.toString(), title: material.title, scope: "PRIVATE_AREA", contextId: studyAreaId, source: "student" }));
     }
 
-    async list(actor: AuthenticatedUser, contextId: string) {
-        this.ensureRole(actor);
-        this.ensureObjectId(contextId);
-
-        const items = await this.model
-            .find({ contextId: new Types.ObjectId(contextId), status: "ACTIVE" })
-            .sort({ createdAt: -1 })
-            .lean();
-
-        return items.map((item) => this.toView(item));
+    async listOfficialForStudent(actor: AuthenticatedUser, subjectId: string): Promise<MaterialContextView[]> {
+        this.assertStudent(actor);
+        const subject = await this.subjectsService.findSubjectForStudent(actor.id, subjectId);
+        const materials = await this.officialMaterialsService.findProcessedBySubject(subject);
+        return materials.map((material) => ({ id: material._id.toString(), title: material.title, scope: "OFFICIAL_SUBJECT", contextId: subject._id.toString(), source: "class" }));
     }
 
-    private ensureRole(actor: AuthenticatedUser) {
-        // O papel vem da sessão validada pelo SessionGuard, não do frontend.
-        if (!actor?.id || !["STUDENT", "TEACHER", "ADMIN"].includes(actor.role)) {
-            throw new ForbiddenException("Sessão sem permissões para este fluxo.");
+    async listOfficialForTeacher(actor: AuthenticatedUser, subjectId: string): Promise<MaterialContextView[]> {
+        this.assertTeacher(actor);
+        const subject = await this.subjectsService.findOwnedSubject(actor.id, subjectId);
+        const materials = await this.officialMaterialsService.findProcessedBySubject(subject);
+        return materials.map((material) => ({ id: material._id.toString(), title: material.title, scope: "OFFICIAL_SUBJECT", contextId: subject._id.toString(), source: "teacher" }));
+    }
+
+    private assertStudent(actor: AuthenticatedUser) {
+        if (actor.role !== "STUDENT") {
+            throw new ForbiddenException("Apenas alunos podem consultar este contexto.");
         }
     }
-
-    private ensureObjectId(id: string) {
-        if (!Types.ObjectId.isValid(id)) {
-            throw new NotFoundException("Contexto não encontrado.");
+    private assertTeacher(actor: AuthenticatedUser) {
+        if (actor.role !== "TEACHER") {
+            throw new ForbiddenException("Apenas professores podem consultar este contexto.");
         }
-    }
-
-    private toView(item: MaterialContext | MaterialContextDocument) {
-        return {
-            id: item._id.toString(),
-            contextId: item.contextId.toString(),
-            createdBy: item.createdBy.toString(),
-            title: item.title,
-            description: item.description ?? "",
-            status: item.status,
-        };
     }
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa contexto de material para RF34. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Este service concentra a regra de negócio do BK. Recebe o utilizador autenticado, valida o papel esperado, confirma ownership ou membership nos services herdados e só depois consulta ou grava dados. A entrada principal vem do controller; a saída é uma resposta já filtrada para o frontend. Isto evita duplicar segurança em componentes React e impede acessos cruzados entre alunos, professores, turmas, disciplinas e áreas de estudo.
 
 6. Como validar este passo.
 
-    Testa criação com sessão válida e com sessão sem permissão. A segunda deve devolver erro controlado.
+    Testa três casos: sem sessão, sessão com papel errado e sessão válida com contexto pertencente ao actor.
 
 7. Erros comuns ou cenário negativo.
 
-    Colocar a validação só no controller ou no frontend permite chamadas diretas à API sem a regra de segurança.
+    Fazer apenas `Model.findById(id)` sem validar dono ou inscrição permite leitura indevida entre turmas, disciplinas ou áreas.
 
-### Passo 3 - Criar controller e módulo
+### Passo 3 - Criar controller e module do domínio
 
 1. Explicação simples do objetivo.
 
-    Expor endpoints reais, protegidos por sessão, e exportar o service para os BKs seguintes.
+    Expor as rotas HTTP do BK e ligar controller, service e schema no módulo NestJS.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/api/src/modules/material-contexts/material-contexts.controller.ts`
     - CRIAR: `apps/api/src/modules/material-contexts/material-contexts.module.ts`
-    - LOCALIZAÇÃO: ficheiros completos.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService` e `SubjectsService` existem ou foram definidos nos BKs anteriores.
+    Declara apenas os parâmetros reais de cada rota e importa todos os símbolos usados pelo module.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/api/src/modules/material-contexts/material-contexts.controller.ts
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedRequest } from "../../common/types/authenticated-request";
-import { CreateMaterialContextDto } from "./dto/create-material-contexts.dto";
-import { MaterialContextService } from "./material-contexts.service";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { MaterialContextsService } from "./material-contexts.service";
 
-@Controller("api/material-contexts")
 @UseGuards(SessionGuard)
-export class MaterialContextController {
-    constructor(private readonly service: MaterialContextService) {}
+@Controller()
+export class MaterialContextsController {
+    constructor(private readonly contextsService: MaterialContextsService) {}
 
-    @Post(":contextId")
-    create(
-        @Req() request: AuthenticatedRequest,
-        @Param("contextId") contextId: string,
-        @Body() dto: CreateMaterialContextDto,
-    ) {
-        return this.service.create(request.user!, contextId, dto);
+    @Get("api/material-contexts/student/:studyAreaId")
+    listPrivateForStudent(@CurrentUser() actor: AuthenticatedUser, @Param("studyAreaId") studyAreaId: string) {
+        return this.contextsService.listPrivateForStudent(actor, studyAreaId);
     }
 
-    @Get(":contextId")
-    list(@Req() request: AuthenticatedRequest, @Param("contextId") contextId: string) {
-        return this.service.list(request.user!, contextId);
+    @Get("api/material-contexts/subjects/:subjectId")
+    listOfficialForStudent(@CurrentUser() actor: AuthenticatedUser, @Param("subjectId") subjectId: string) {
+        return this.contextsService.listOfficialForStudent(actor, subjectId);
+    }
+
+    @Get("api/teacher/material-contexts/subjects/:subjectId")
+    listOfficialForTeacher(@CurrentUser() actor: AuthenticatedUser, @Param("subjectId") subjectId: string) {
+        return this.contextsService.listOfficialForTeacher(actor, subjectId);
     }
 }
 
 // apps/api/src/modules/material-contexts/material-contexts.module.ts
 import { Module } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
-import { MaterialContextController } from "./material-contexts.controller";
-import { MaterialContextService } from "./material-contexts.service";
-import { MaterialContext, MaterialContextSchema } from "./schemas/material-contexts.schema";
+import { MaterialsModule } from "../materials/materials.module";
+import { OfficialMaterialsModule } from "../official-materials/official-materials.module";
+import { SubjectsModule } from "../subjects/subjects.module";
+import { MaterialContextsController } from "./material-contexts.controller";
+import { MaterialContextsService } from "./material-contexts.service";
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: MaterialContext.name, schema: MaterialContextSchema }])],
-    controllers: [MaterialContextController],
-    providers: [MaterialContextService],
-    exports: [MaterialContextService, MongooseModule],
+    imports: [MaterialsModule, SubjectsModule, OfficialMaterialsModule],
+    controllers: [MaterialContextsController],
+    providers: [MaterialContextsService],
+    exports: [MaterialContextsService],
 })
-export class MaterialContextModule {}
-```
+export class MaterialContextsModule {}
+~~~
 
 5. Explicação do código.
 
-    Este código implementa contexto de material para RF34. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O controller transforma pedidos HTTP autenticados em chamadas ao service, sem colocar regras de negócio na rota. O module liga controller, service, schema Mongoose e módulos herdados, garantindo dependency injection correta. Se faltar um import no module, a app não arranca; se faltar o guard no controller, o endpoint deixa de proteger sessão e permissões.
 
 6. Como validar este passo.
 
-    Chama `GET /api/material-contexts/student` com cookie real e confirma que o controller chama o service.
+    Confirma que a aplicação arranca sem erros de provider desconhecido e que as rotas aparecem com o prefixo esperado.
 
 7. Erros comuns ou cenário negativo.
 
-    Criar endpoints sem `SessionGuard` expõe dados de alunos, professores ou turmas.
+    Usar fallback genérico de parâmetros esconde bugs de rota e pode passar `undefined` para o service.
 
-### Passo 4 - Registar exports para a sequência
+### Passo 4 - Integrar no módulo acumulativo da MF2
 
 1. Explicação simples do objetivo.
 
-    Garantir que BK-MF2-11, BK-MF2-12 consegue importar o service deste BK sem duplicar lógica.
+    Garantir que o endpoint fica activo sem apagar modules criados em BKs anteriores.
 
 2. Ficheiros envolvidos.
-    - EDITAR: `apps/api/src/modules/material-contexts/material-contexts.module.ts`
-    - REVER: módulo raiz da API.
-    - LOCALIZAÇÃO: lista de imports e exports.
+    - EDITAR: `apps/api/src/modules/mf2/mf2.module.ts`
+    - REVER: `apps/api/src/app.module.ts` já deve importar Mf2Module desde BK-MF2-01
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService` e `SubjectsService` existem ou foram definidos nos BKs anteriores.
+    Mantém todos os imports anteriores e acrescenta apenas o module deste BK ao `Mf2Module`.
 
 4. Código completo, correto e integrado.
 
-```ts
-// apps/api/src/modules/material-contexts/material-contexts.module.ts
-export const mf210Exports = ["MaterialContextService", "MaterialContextModule"] as const;
-```
+~~~ts
+// apps/api/src/modules/mf2/mf2.module.ts
+import { Module } from "@nestjs/common";
+import { GuidedStudyRoomsModule } from "../guided-study-rooms/guided-study-rooms.module";
+import { ClassProjectsModule } from "../class-projects/class-projects.module";
+import { ProjectAiModule } from "../project-ai/project-ai.module";
+import { OfficialTestsModule } from "../official-tests/official-tests.module";
+import { AiContentReviewsModule } from "../ai-content-reviews/ai-content-reviews.module";
+import { ClassProgressModule } from "../class-progress/class-progress.module";
+import { MaterialIndexModule } from "../material-index/material-index.module";
+import { MaterialStructureModule } from "../material-structure/material-structure.module";
+import { MaterialVersionsModule } from "../material-versions/material-versions.module";
+import { MaterialContextsModule } from "../material-contexts/material-contexts.module";
+
+@Module({
+    imports: [
+        GuidedStudyRoomsModule,
+        ClassProjectsModule,
+        ProjectAiModule,
+        OfficialTestsModule,
+        AiContentReviewsModule,
+        ClassProgressModule,
+        MaterialIndexModule,
+        MaterialStructureModule,
+        MaterialVersionsModule,
+        MaterialContextsModule,
+    ],
+})
+export class Mf2Module {}
+
+~~~
 
 5. Explicação do código.
 
-    Este código implementa contexto de material para RF34. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O `Mf2Module` organiza a macrofase inteira. O `AppModule` só precisa de o importar uma vez, evitando edições repetidas e arriscadas.
 
 6. Como validar este passo.
 
-    Confirma que o módulo exporta o service público e que não existe segundo service para a mesma responsabilidade.
+    Arranca a API e confirma que o Nest resolve providers do module acabado de criar.
 
 7. Erros comuns ou cenário negativo.
 
-    Se o service não for exportado, o próximo BK tende a recriar a mesma regra com outro nome.
+    Não troques o array de imports por uma lista só com o module novo; isso desligaria funcionalidades anteriores.
 
-### Passo 5 - Criar cliente frontend
+### Passo 5 - Criar cliente frontend tipado
 
 1. Explicação simples do objetivo.
 
-    Criar chamadas tipadas para a API de contexto de material, sempre com cookie de sessão.
+    Dar ao frontend funções pequenas para chamar a API com cookies HttpOnly.
 
 2. Ficheiros envolvidos.
     - CRIAR: `apps/web/src/lib/api/material-contexts.ts`
-    - LOCALIZAÇÃO: ficheiro completo.
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService` e `SubjectsService` existem ou foram definidos nos BKs anteriores.
+    Cria funções por caso de uso e valida erros HTTP antes de devolver JSON.
 
 4. Código completo, correto e integrado.
 
-```ts
+~~~ts
 // apps/web/src/lib/api/material-contexts.ts
-export type MaterialContextView = {
-    id: string;
-    contextId: string;
-    title: string;
-    description: string;
-    status: string;
-};
+export type MaterialContextView = { id: string; title: string; scope: "PRIVATE_AREA" | "OFFICIAL_SUBJECT"; contextId: string; source: "student" | "teacher" | "class" };
+async function requestJson<T>(path: string): Promise<T> {
+    const response = await fetch(path, {
+        // Envia o cookie HttpOnly da sessão; o backend decide permissões pelo actor autenticado.
+        credentials: "include",
+    });
 
-async function parseResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Pedido falhou." }));
-        throw new Error(String(error.message ?? "Pedido falhou."));
+        throw new Error(await response.text());
     }
+
     return response.json() as Promise<T>;
 }
-
-export async function listMaterialContext(contextId: string): Promise<MaterialContextView[]> {
-    const response = await fetch(`/api/material-contexts/${contextId}`, {
-        credentials: "include",
-    });
-    return parseResponse<MaterialContextView[]>(response);
+export function listPrivateMaterialContexts(studyAreaId: string) {
+    return requestJson<MaterialContextView[]>("/api/material-contexts/student/" + studyAreaId);
 }
-
-export async function createMaterialContext(
-    contextId: string,
-    input: { title: string; description?: string },
-): Promise<MaterialContextView> {
-    const response = await fetch(`/api/material-contexts/${contextId}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-    });
-    return parseResponse<MaterialContextView>(response);
+export function listSubjectMaterialContexts(subjectId: string) {
+    return requestJson<MaterialContextView[]>("/api/material-contexts/subjects/" + subjectId);
 }
-```
+export function listTeacherSubjectMaterialContexts(subjectId: string) {
+    return requestJson<MaterialContextView[]>("/api/teacher/material-contexts/subjects/" + subjectId);
+}
+~~~
 
 5. Explicação do código.
 
-    Este código implementa contexto de material para RF34. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    O cliente API é tipado e envia cookies com `credentials: "include"`, para reutilizar a sessão segura criada na MF0. Ele não guarda tokens no browser, não envia `actorId` e devolve erros claros quando o backend responde com `400`, `401`, `403` ou `404`. Assim, os tipos do frontend ficam alinhados com o payload e com a resposta real do controller.
 
 6. Como validar este passo.
 
-    Confirma no Network que o pedido usa cookies e que erros HTTP são convertidos em mensagem.
+    Usa DevTools ou testes de integração para confirmar que as chamadas incluem cookies e tratam 401/403/404.
 
 7. Erros comuns ou cenário negativo.
 
-    Usar token no browser ou enviar owner no body quebra o contrato de segurança.
+    Fazer fetch sem `credentials: "include"` transforma uma sessão válida em 401 no backend.
 
-### Passo 6 - Criar página do fluxo
+### Passo 6 - Criar página React do BK
 
 1. Explicação simples do objetivo.
 
-    Criar uma página usável com formulário, estado de carregamento, erro, sucesso e vazio.
+    Expor a funcionalidade ao utilizador com estados de loading, erro, vazio e sucesso.
 
 2. Ficheiros envolvidos.
-    - CRIAR: `apps/web/src/pages/mf2/MaterialContextPage.tsx`
-    - LOCALIZAÇÃO: ficheiro completo.
+    - CRIAR: `apps/web/src/pages/mf2/MaterialContextsPage.tsx`
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService` e `SubjectsService` existem ou foram definidos nos BKs anteriores.
+    Cria uma página simples, ligada ao cliente API do passo anterior e sem guardar dados sensíveis no browser.
 
 4. Código completo, correto e integrado.
 
-```tsx
-// apps/web/src/pages/mf2/MaterialContextPage.tsx
-import { FormEvent, useEffect, useState } from "react";
-import { createMaterialContext, listMaterialContext, MaterialContextView } from "../../lib/api/material-contexts";
+~~~tsx
+// apps/web/src/pages/mf2/MaterialContextsPage.tsx
+import { useState } from "react";
+import { listPrivateMaterialContexts, listSubjectMaterialContexts, MaterialContextView } from "../../lib/api/material-contexts";
 
-export function MaterialContextPage({ contextId }: { contextId: string }) {
+export function MaterialContextsPage() {
+    const [contextId, setContextId] = useState("");
+    const [mode, setMode] = useState<"PRIVATE" | "SUBJECT">("PRIVATE");
     const [items, setItems] = useState<MaterialContextView[]>([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
-
-    useEffect(() => {
-        listMaterialContext(contextId)
-            .then(setItems)
-            .catch((err: Error) => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [contextId]);
-
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setError("");
-        setSuccess("");
-        const form = new FormData(event.currentTarget);
-        const title = String(form.get("title") ?? "").trim();
-        const description = String(form.get("description") ?? "").trim();
-        if (title.length < 3) {
-            setError("Indica um título com pelo menos 3 caracteres.");
-            return;
+    async function load() {
+        try {
+            const nextItems =
+                mode === "PRIVATE"
+                    ? await listPrivateMaterialContexts(contextId.trim())
+                    : await listSubjectMaterialContexts(contextId.trim());
+            setItems(nextItems);
+            setError("");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Erro ao carregar materiais.");
         }
-        const created = await createMaterialContext(contextId, { title, description });
-        setItems((current) => [created, ...current]);
-        setSuccess("Guardado com sucesso.");
-        event.currentTarget.reset();
     }
-
-    if (loading) return <p>A carregar...</p>;
-
-    return <section>
-        <form onSubmit={handleSubmit}>
-            <label>Título<input name="title" /></label>
-            <label>Descrição<textarea name="description" /></label>
-            <button type="submit">Guardar</button>
-        </form>
-        {error && <p role="alert">{error}</p>}
-        {success && <p>{success}</p>}
-        {items.length === 0 ? <p>Ainda não existem dados.</p> : <ul>{items.map((item) => <li key={item.id}>{item.title}</li>)}</ul>}
-    </section>;
+    return (
+        <main>
+            <h1>Contextos de materiais</h1>
+            <select value={mode} onChange={(event) => setMode(event.target.value === "SUBJECT" ? "SUBJECT" : "PRIVATE")}>
+                <option value="PRIVATE">Aluno</option>
+                <option value="SUBJECT">Turma</option>
+            </select>
+            <input value={contextId} onChange={(event) => setContextId(event.target.value)} placeholder="ID do contexto" />
+            <button type="button" onClick={load}>Carregar</button>
+            {error && <p role="alert">{error}</p>}
+            <ul>
+                {items.map((item) => (
+                    <li key={item.id}>{item.title} - {item.source}</li>
+                ))}
+            </ul>
+        </main>
+    );
 }
-```
+~~~
 
 5. Explicação do código.
 
-    Este código implementa contexto de material para RF34. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    A página separa estado de formulário, estado de lista e mensagens de erro para ser fácil de testar e manter.
 
 6. Como validar este passo.
 
-    Abre a página autenticado, cria um registo e confirma que a lista atualiza sem refresh.
+    Abre a página com sessão válida, executa o fluxo principal e confirma que a lista actualiza sem refresh manual.
 
 7. Erros comuns ou cenário negativo.
 
-    Não mostrar estado vazio faz parecer que a app falhou quando apenas não existem dados.
+    Não escondas erros HTTP genéricos; mostra mensagem controlada para o utilizador e mantém o detalhe técnico no backend.
 
-### Passo 7 - Validar estados de UI
-
-1. Explicação simples do objetivo.
-
-    Confirmar que a interface não confunde erro de permissão com ausência de dados.
-
-2. Ficheiros envolvidos.
-    - REVER: página criada neste BK.
-    - REVER: cliente frontend criado neste BK.
-    - LOCALIZAÇÃO: handlers de submit e leitura.
-
-3. O que fazer.
-
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService` e `SubjectsService` existem ou foram definidos nos BKs anteriores.
-
-4. Código completo, correto e integrado.
-
-```tsx
-// apps/web/src/pages/mf2/MaterialContextPage.tsx
-export const expectedStates10 = ["loading", "error", "empty", "success"] as const;
-```
-
-5. Explicação do código.
-
-    Este código implementa contexto de material para RF34. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
-
-6. Como validar este passo.
-
-    Força um 403 e confirma que surge erro visível, não lista vazia.
-
-7. Erros comuns ou cenário negativo.
-
-    Mostrar sucesso depois de erro HTTP mascara falhas de autorização.
-
-### Passo 8 - Validar fluxo principal e negativos
+### Passo 7 - Validar contrato, negativos e handoff
 
 1. Explicação simples do objetivo.
 
-    Recolher evidence objetiva de sucesso e falhas controladas para RF34.
+    Confirmar que o BK cumpre RF34, que falha de forma controlada e que prepara o próximo BK.
 
 2. Ficheiros envolvidos.
-    - REVER: endpoints deste BK.
-    - REVER: `docs/planificacao/sprints/PLANO-SPRINTS.md`.
-    - LOCALIZAÇÃO: comandos do PR.
+    - REVER: `docs/planificacao/guias-bk/MF2/BK-MF2-10-separar-materiais-entre-aluno-professor-e-turma.md`
+    - REVER: testes backend e frontend criados para este BK
 
 3. O que fazer.
 
-    Cria ou edita os ficheiros indicados e mantém os nomes de classes, exports e endpoints iguais aos deste guia. Confirma primeiro que `ClassesService` e `SubjectsService` existem ou foram definidos nos BKs anteriores.
+    Executa validações automáticas e regista evidência de caminho feliz e cenários negativos.
 
 4. Código completo, correto e integrado.
 
-```bash
+~~~bash
 npm run test:unit
+npm run test:contracts
 npm run test:integration
-# Smoke manual: autenticar e chamar GET /api/material-contexts/student.
-# Negativos mínimos para P0: 3.
-```
+bash scripts/validate-planificacao.sh
+~~~
 
 5. Explicação do código.
 
-    Este código implementa contexto de material para RF34. Os dados entram pela sessão e pela rota validada, são persistidos com `ObjectId` e saem como view sem campos internos. A regra de segurança fica no backend para impedir que o frontend escolha owner, professor, aluno, turma ou fontes.
+    Estes comandos cobrem regressões unitárias, contratos API, fluxo integrado e coerência documental.
 
 6. Como validar este passo.
 
-    Para P0, executa pelo menos 3 negativo(s): sem sessão, papel errado e contexto fora do utilizador.
+    Guarda evidência com request válido, resposta esperada, pelo menos 3 cenário(s) negativo(s) e captura da página final.
 
 7. Erros comuns ou cenário negativo.
 
-    Fechar sem negativos deixa risco de acesso indevido só descoberto na defesa.
+    Não avances para BK-MF2-11 se a validação de sessão, ownership ou membership falhar.
+
+### Passo 8 - Fechar prova final do BK P0
+
+1. Explicação simples do objetivo.
+
+    Confirmar que a separação de contexto impede leitura cruzada entre aluno, professor e turma.
+
+2. Ficheiros envolvidos.
+    - REVER: `apps/api/src/modules/material-contexts/material-contexts.service.ts`
+    - REVER: `apps/api/src/modules/material-contexts/material-contexts.controller.ts`
+    - REVER: `apps/web/src/pages/mf2/MaterialContextsPage.tsx`
+
+3. O que fazer.
+
+    Reexecuta os testes, confirma os três cenários negativos de P0 e regista evidência de cada contexto.
+
+4. Código completo, correto e integrado.
+
+~~~bash
+npm run test:unit
+npm run test:contracts
+npm run test:integration
+bash scripts/validate-planificacao.sh
+~~~
+
+5. Explicação do código.
+
+    A sequência valida que a fronteira de materiais fica pronta para IA privada, IA da disciplina e requisitos de privacidade.
+
+6. Como validar este passo.
+
+    A entrega só está pronta quando material privado não aparecer no contexto oficial e material oficial não aparecer na área privada.
+
+7. Erros comuns ou cenário negativo.
+
+    Usar uma lista global de materiais com filtros no frontend expõe dados indevidos e viola a separação de contexto.
 
 ## Expected results
 
-- `GET /api/material-contexts/student` devolve sucesso com sessão e contexto válidos.
-- Pedido sem sessão devolve `401`.
-- Papel errado devolve `403`.
-- Contexto fora do utilizador devolve `404`.
-- Entrada inválida devolve `400` ou `422` com mensagem clara.
+- Material privado aparece apenas ao aluno dono.
+- Material oficial aparece apenas no contexto da disciplina/turma autorizada.
+- Listagem por contexto não mistura fontes privadas e oficiais.
+- Actor sem relação com o contexto recebe erro controlado.
 
 ## Critérios de aceite
 
-- O BK tem pelo menos 8 passos no formato MF0.
-- Cada passo tem ficheiros, código completo, explicação, validação e cenário negativo.
-- O frontend chama endpoint real definido no controller.
-- O backend não aceita owner, professor, aluno ou fonte como verdade vinda do body.
-- O próximo BK consegue reutilizar o service exportado.
+- O código documentado compila quando aplicado ao projecto na ordem dos passos.
+- O module importa explicitamente controller e service.
+- O controller só declara parâmetros reais das rotas.
+- O service valida ownership ou membership antes de consultar dados.
+- A página usa cliente API tipado e cookies HttpOnly.
 
 ## Validação final
 
-- Smoke do fluxo principal.
-- 3 negativo(s) mínimo(s), conforme prioridade `P0`.
-- Confirmação de imports e exports.
-- Pesquisa textual de termos proibidos nos BKs da MF2.
+- Confirmar que cada contexto tem regra de autorização própria.
+- Confirmar que a resposta não devolve materiais de outras turmas ou alunos.
+- Executar três cenários negativos por ser BK `P0`, incluindo tentativa de acesso cruzado.
 
 ## Evidence para PR/defesa
 
-- Link do PR ou commit.
-- Output dos testes por prioridade.
-- Screenshot ou log do caminho principal.
-- Evidência de erro controlado para sessão ausente, papel errado e contexto fora do utilizador.
+- Print ou log do caminho principal concluído.
+- Log de pelo menos um cenário negativo controlado.
+- Resultado de `bash scripts/validate-planificacao.sh`.
+- Confirmação de que `git diff --check` não reporta espaços inválidos.
 
 ## Handoff
 
-`BK-MF2-11, BK-MF2-12` deve reutilizar `MaterialContextService` ou o endpoint deste BK, sem criar segundo contrato para a mesma ação.
+BK-MF2-11
 
 ## Changelog
 
-- `2026-06-07`: guia reescrito com estrutura MF0, contratos completos e validação por passo.
+- `2026-06-08`: guia corrigido para contrato executável da MF2, com integração acumulativa, autorização explícita e validação do handoff.
