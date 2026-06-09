@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF2-04`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-03-a-ia-deve-ajudar-o-aluno-a-elaborar-projetos-de-forma-gradual.md`
-- `last_updated`: `2026-06-08`
+- `last_updated`: `2026-06-09`
 
 ## Objetivo do BK
 
