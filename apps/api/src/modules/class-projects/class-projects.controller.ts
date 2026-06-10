@@ -1,10 +1,10 @@
 // apps/api/src/modules/class-projects/class-projects.controller.ts
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
-import { CurrentUser } from "../../common/decorators/current-user.decorator";
-import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { ClassProjectsService } from "./class-projects.service";
-import { CreateClassProjectDto } from "./dto/class-project.dto";
+import { CurrentUser } from "../../common/decorators/current-user.decorator.js";
+import { SessionGuard } from "../../common/guards/session.guard.js";
+import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
+import { ClassProjectsService } from "./class-projects.service.js";
+import { CreateClassProjectDto } from "./dto/class-project.dto.js";
 
 @UseGuards(SessionGuard)
 @Controller("api/teacher/classes/:classId/projects")

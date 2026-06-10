@@ -1,10 +1,10 @@
 // apps/api/src/modules/official-tests/official-tests.controller.ts
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
-import { CurrentUser } from "../../common/decorators/current-user.decorator";
-import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { CreateOfficialTestDto } from "./dto/official-test.dto";
-import { OfficialTestsService } from "./official-tests.service";
+import { CurrentUser } from "../../common/decorators/current-user.decorator.js";
+import { SessionGuard } from "../../common/guards/session.guard.js";
+import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
+import { CreateOfficialTestDto } from "./dto/official-test.dto.js";
+import { OfficialTestsService } from "./official-tests.service.js";
 
 @UseGuards(SessionGuard)
 @Controller("api/teacher/subjects/:subjectId/tests")

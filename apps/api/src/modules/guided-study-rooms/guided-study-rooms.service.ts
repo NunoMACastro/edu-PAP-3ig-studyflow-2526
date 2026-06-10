@@ -2,10 +2,10 @@
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { ClassesService } from "../classes/classes.service";
-import { CreateGuidedStudyRoomDto } from "./dto/guided-study-room.dto";
-import { GuidedStudyRoom, GuidedStudyRoomDocument } from "./schemas/guided-study-room.schema";
+import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
+import { ClassesService } from "../classes/classes.service.js";
+import { CreateGuidedStudyRoomDto } from "./dto/guided-study-room.dto.js";
+import { GuidedStudyRoom, GuidedStudyRoomDocument } from "./schemas/guided-study-room.schema.js";
 
 @Injectable()
 export class GuidedStudyRoomsService {
@@ -57,7 +57,7 @@ export class GuidedStudyRoomsService {
 
     private toView(room: GuidedStudyRoom) {
         return {
-            id: room._id.toString(),
+            id: (room as any)._id.toString(),
             title: room.title,
             description: room.description,
             materialIds: room.materialIds,
