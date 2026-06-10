@@ -7,7 +7,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF0-08, BK-MF1-09`
 - `rf_rnf`: `RF31`
@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF2-08`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-07-indexacao-automatica-de-pdfs-docx-e-urls.md`
-- `last_updated`: `2026-06-08`
+- `last_updated`: `2026-06-10`
 
 ## Objetivo do BK
 
