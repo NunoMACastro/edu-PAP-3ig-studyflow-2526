@@ -6,6 +6,7 @@ import { ProjectAiModule } from "../project-ai/project-ai.module";
 import { OfficialTestsModule } from "../official-tests/official-tests.module";
 import { AiContentReviewsModule } from "../ai-content-reviews/ai-content-reviews.module";
 import { ClassProgressModule } from "../class-progress/class-progress.module";
+import { MaterialIndexModule } from "../material-index/material-index.module";
 
 @Module({
     imports: [
@@ -15,6 +16,7 @@ import { ClassProgressModule } from "../class-progress/class-progress.module";
         OfficialTestsModule,
         AiContentReviewsModule,
         ClassProgressModule,
+        MaterialIndexModule,
     ],
 })
 export class Mf2Module {}

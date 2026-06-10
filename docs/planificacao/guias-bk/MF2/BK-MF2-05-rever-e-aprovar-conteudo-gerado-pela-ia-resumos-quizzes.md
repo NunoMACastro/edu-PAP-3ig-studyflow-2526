@@ -7,7 +7,7 @@
 - `owner`: `Kaua`
 - `apoio`: `Guilherme`
 - `prioridade`: `P1`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `S`
 - `dependencias`: `BK-MF1-09`
 - `rf_rnf`: `RF29`
@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF2-06`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-05-rever-e-aprovar-conteudo-gerado-pela-ia-resumos-quizzes.md`
-- `last_updated`: `2026-06-08`
+- `last_updated`: `2026-06-10`
 
 ## Objetivo do BK
 

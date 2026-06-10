@@ -7,7 +7,7 @@
 - `owner`: `Guilherme`
 - `apoio`: `Natalia`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF1-08`
 - `rf_rnf`: `RF28`
@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF2-05`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-04-criar-testes-mini-testes-oficiais.md`
-- `last_updated`: `2026-06-08`
+- `last_updated`: `2026-06-10`
 
 ## Objetivo do BK
 
