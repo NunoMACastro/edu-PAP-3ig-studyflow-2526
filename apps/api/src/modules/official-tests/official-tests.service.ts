@@ -2,10 +2,10 @@
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { SubjectsService } from "../subjects/subjects.service";
-import { CreateOfficialTestDto } from "./dto/official-test.dto";
-import { OfficialTest, OfficialTestDocument } from "./schemas/official-test.schema";
+import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
+import { SubjectsService } from "../subjects/subjects.service.js";
+import { CreateOfficialTestDto } from "./dto/official-test.dto.js";
+import { OfficialTest, OfficialTestDocument } from "./schemas/official-test.schema.js";
 
 @Injectable()
 export class OfficialTestsService {
@@ -36,6 +36,6 @@ export class OfficialTestsService {
     }
 
     private toView(test: OfficialTest) {
-        return { id: test._id.toString(), title: test.title, type: test.type, questionCount: test.questions.length };
+        return { id: (test as any)._id.toString(), title: test.title, type: test.type, questionCount: test.questions.length };
     }
 }

@@ -1,10 +1,10 @@
 // apps/api/src/modules/guided-study-rooms/guided-study-rooms.controller.ts
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
-import { CurrentUser } from "../../common/decorators/current-user.decorator";
-import { SessionGuard } from "../../common/guards/session.guard";
-import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { CreateGuidedStudyRoomDto } from "./dto/guided-study-room.dto";
-import { GuidedStudyRoomsService } from "./guided-study-rooms.service";
+import { CurrentUser } from "../../common/decorators/current-user.decorator.js";
+import { SessionGuard } from "../../common/guards/session.guard.js";
+import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
+import { CreateGuidedStudyRoomDto } from "./dto/guided-study-room.dto.js";
+import { GuidedStudyRoomsService } from "./guided-study-rooms.service.js";
 
 @UseGuards(SessionGuard)
 @Controller("api/teacher/classes/:classId/guided-study-rooms")

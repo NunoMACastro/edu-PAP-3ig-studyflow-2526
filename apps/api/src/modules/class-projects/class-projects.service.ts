@@ -2,10 +2,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { AuthenticatedUser } from "../../common/types/authenticated-request";
-import { ClassesService } from "../classes/classes.service";
-import { CreateClassProjectDto } from "./dto/class-project.dto";
-import { ClassProject, ClassProjectDocument } from "./schemas/class-project.schema";
+import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
+import { ClassesService } from "../classes/classes.service.js";
+import { CreateClassProjectDto } from "./dto/class-project.dto.js";
+import { ClassProject, ClassProjectDocument } from "./schemas/class-project.schema.js";
 
 @Injectable()
 export class ClassProjectsService {
@@ -81,7 +81,7 @@ export class ClassProjectsService {
 
     private toView(project: ClassProject) {
         return {
-            id: project._id.toString(),
+            id: (project as any)._id.toString(),
             title: project.title,
             brief: project.brief,
             dueDate: project.dueDate?.toISOString() ?? null,
