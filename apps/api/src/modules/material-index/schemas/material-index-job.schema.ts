@@ -49,13 +49,3 @@ export class MaterialIndexJob {
 
 export const MaterialIndexJobSchema = SchemaFactory.createForClass(MaterialIndexJob);
 MaterialIndexJobSchema.index({ materialId: 1, contextId: 1, scope: 1 });
-
-// apps/api/src/modules/material-index/dto/material-index-job.dto.ts
-import { IsOptional, IsString, MaxLength } from "class-validator";
-
-export class StartMaterialIndexDto {
-    @IsOptional()
-    @IsString()
-    @MaxLength(500)
-    reason?: string;
-}

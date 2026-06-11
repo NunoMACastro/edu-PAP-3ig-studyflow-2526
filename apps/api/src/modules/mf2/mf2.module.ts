@@ -9,6 +9,7 @@ import { ClassProgressModule } from "../class-progress/class-progress.module";
 import { MaterialIndexModule } from "../material-index/material-index.module";
 import { MaterialStructureModule } from "../material-structure/material-structure.module";
 import { MaterialVersionsModule } from "../material-versions/material-versions.module";
+import { MaterialContextsModule } from "../material-contexts/material-contexts.module";
 
 @Module({
     imports: [
@@ -21,6 +22,7 @@ import { MaterialVersionsModule } from "../material-versions/material-versions.m
         MaterialIndexModule,
         MaterialStructureModule,
         MaterialVersionsModule,
+        MaterialContextsModule,
     ],
 })
 export class Mf2Module {}
