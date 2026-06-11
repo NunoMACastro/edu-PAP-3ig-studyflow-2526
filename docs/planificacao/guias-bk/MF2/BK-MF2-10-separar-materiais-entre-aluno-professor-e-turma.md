@@ -7,7 +7,7 @@
 - `owner`: `Daniel`
 - `apoio`: `Guilherme`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF2-07`
 - `rf_rnf`: `RF34`
@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF2-11`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-10-separar-materiais-entre-aluno-professor-e-turma.md`
-- `last_updated`: `2026-06-08`
+- `last_updated`: `2026-06-11`
 
 ## Objetivo do BK
 
