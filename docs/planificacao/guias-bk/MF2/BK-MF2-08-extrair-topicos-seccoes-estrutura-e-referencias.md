@@ -7,7 +7,7 @@
 - `owner`: `Kaua`
 - `apoio`: `Natalia`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF2-07`
 - `rf_rnf`: `RF32`
@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF2-09`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-08-extrair-topicos-seccoes-estrutura-e-referencias.md`
-- `last_updated`: `2026-06-08`
+- `last_updated`: `2026-06-11`
 
 ## Objetivo do BK
 

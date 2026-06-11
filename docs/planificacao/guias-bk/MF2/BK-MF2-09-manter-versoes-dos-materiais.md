@@ -7,7 +7,7 @@
 - `owner`: `Natalia`
 - `apoio`: `Guilherme`
 - `prioridade`: `P1`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `S`
 - `dependencias`: `BK-MF2-07`
 - `rf_rnf`: `RF33`
@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Core`
 - `proximo_bk`: `BK-MF2-10`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-09-manter-versoes-dos-materiais.md`
-- `last_updated`: `2026-06-08`
+- `last_updated`: `2026-06-11`
 
 ## Objetivo do BK
 

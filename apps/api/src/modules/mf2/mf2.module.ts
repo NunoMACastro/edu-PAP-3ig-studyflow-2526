@@ -8,6 +8,7 @@ import { AiContentReviewsModule } from "../ai-content-reviews/ai-content-reviews
 import { ClassProgressModule } from "../class-progress/class-progress.module";
 import { MaterialIndexModule } from "../material-index/material-index.module";
 import { MaterialStructureModule } from "../material-structure/material-structure.module";
+import { MaterialVersionsModule } from "../material-versions/material-versions.module";
 
 @Module({
     imports: [
@@ -19,6 +20,7 @@ import { MaterialStructureModule } from "../material-structure/material-structur
         ClassProgressModule,
         MaterialIndexModule,
         MaterialStructureModule,
+        MaterialVersionsModule,
     ],
 })
 export class Mf2Module {}
