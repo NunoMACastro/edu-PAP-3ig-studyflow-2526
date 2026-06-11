@@ -1,131 +1,65 @@
-import {
-    ForbiddenException,
-    GatewayTimeoutException,
-    Inject,
-    Injectable,
-    ServiceUnavailableException,
-    UnprocessableEntityException,
-} from "@nestjs/common";
+// apps/api/src/modules/class-ai/class-ai.service.ts
+import { ForbiddenException, Inject, Injectable, ServiceUnavailableException, UnprocessableEntityException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { AuthenticatedUser } from "../../common/types/authenticated-request.js";
-import { AI_PROVIDER, AiProvider, ClassAiResult } from "../ai/providers/ai-provider.js";
-import { OfficialMaterialView, OfficialMaterialsService } from "../official-materials/official-materials.service.js";
-import { SubjectsService } from "../subjects/subjects.service.js";
-import { TeacherAiVoiceService } from "../teacher-ai/teacher-ai-voice.service.js";
-import { AskClassAiDto } from "./dto/ask-class-ai.dto.js";
-import { buildClassAiPrompt } from "./prompts/class-ai.prompt.js";
-import {
-    ClassAiInteraction,
-    ClassAiInteractionDocument,
-} from "./schemas/class-ai-interaction.schema.js";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { AI_PROVIDER, AiProvider } from "../ai/providers/ai-provider";
+import { OfficialMaterialsService } from "../official-materials/official-materials.service";
+import { SubjectsService } from "../subjects/subjects.service";
+import { TeacherAiVoiceService } from "../teacher-ai/teacher-ai-voice.service";
+import { CreateClassAiAnswerDto } from "./dto/class-ai-answer.dto";
+import { ClassAiAnswer, ClassAiAnswerDocument } from "./schemas/class-ai-answer.schema";
 
-/**
- * Serviço da IA limitada por disciplina/turma.
- */
 @Injectable()
 export class ClassAiService {
     constructor(
-        @InjectModel(ClassAiInteraction.name)
-        private readonly interactionModel: Model<ClassAiInteractionDocument>,
-        @Inject(AI_PROVIDER) private readonly aiProvider: AiProvider,
+        @InjectModel(ClassAiAnswer.name)
+        private readonly answers: Model<ClassAiAnswerDocument>,
         private readonly subjectsService: SubjectsService,
-        private readonly materialsService: OfficialMaterialsService,
-        private readonly voiceService: TeacherAiVoiceService,
+        private readonly officialMaterialsService: OfficialMaterialsService,
+        private readonly teacherAiVoiceService: TeacherAiVoiceService,
+        @Inject(AI_PROVIDER) private readonly aiProvider: AiProvider,
     ) {}
 
-    async askClassAi(
-        actor: AuthenticatedUser,
-        subjectId: string,
-        input: AskClassAiDto,
-    ) {
-        if (actor.role !== "STUDENT") {
-            throw new ForbiddenException({
-                code: "STUDENT_ROLE_REQUIRED",
-                message: "Esta funcionalidade é exclusiva de alunos.",
-            });
-        }
-
-        const { subject, schoolClass } =
-            await this.subjectsService.findSubjectForStudent(actor.id, subjectId);
-        const materials = await this.materialsService.listProcessedForSubject(
-            subject._id,
-        );
+    async ask(actor: AuthenticatedUser, subjectId: string, dto: CreateClassAiAnswerDto) {
+        this.assertStudent(actor);
+        const subject = await this.subjectsService.findSubjectForStudent(actor.id, subjectId);
+        const materials = await this.officialMaterialsService.findProcessedBySubject(subject);
         if (materials.length === 0) {
-            throw new UnprocessableEntityException({
-                code: "NO_OFFICIAL_AI_SOURCES",
-                message:
-                    "Esta disciplina ainda não tem materiais oficiais processados para IA.",
-            });
+            throw new UnprocessableEntityException("Disciplina sem materiais oficiais processados.");
         }
+        const voice = await this.teacherAiVoiceService.findForSubject(subject);
+        const rules = voice?.rules ?? [];
+        const answerText = await this.generateAnswer(dto.question, materials.map((material) => material.contentText).join("\n"), rules);
+        const answer = await this.answers.create({ subjectId: subject._id, classId: subject.classId, studentId: new Types.ObjectId(actor.id), question: dto.question.trim(), answer: answerText, officialMaterialIds: materials.map((material) => material._id.toString()), teacherVoiceRules: rules });
+        return this.toView(answer);
+    }
 
-        const voice = await this.voiceService.findVoiceForSubject(subject._id);
+    async list(actor: AuthenticatedUser, subjectId: string) {
+        this.assertStudent(actor);
+        const subject = await this.subjectsService.findSubjectForStudent(actor.id, subjectId);
+        const answers = await this.answers.find({ subjectId: subject._id, studentId: new Types.ObjectId(actor.id) }).sort({ createdAt: -1 }).lean();
+        return answers.map((answer) => this.toView(answer));
+    }
 
+    private async generateAnswer(question: string, sourceText: string, rules: string[]) {
         try {
-            const result = await this.aiProvider.generateClassAnswer({
-                prompt: buildClassAiPrompt({
-                    subjectName: subject.name,
-                    question: input.question.trim(),
-                    materials,
-                    voice,
-                }),
+            return await this.aiProvider.generateText({
+                system: "Responde como assistente da disciplina, respeitando a voz docente e citando fontes oficiais.",
+                user: [question, "Regras docentes:", rules.join("\n"), "Fontes:", sourceText].join("\n"),
+                sources: [{ id: "official-subject", title: "Materiais oficiais" }],
             });
-            this.validateResult(result, materials);
-
-            const interaction = await this.interactionModel.create({
-                subjectId: new Types.ObjectId(subject._id),
-                classId: new Types.ObjectId(schoolClass._id),
-                studentId: new Types.ObjectId(actor.id),
-                question: input.question.trim(),
-                answer: result.answer.trim(),
-                sourceMaterialIds: result.sourceMaterialIds.map(
-                    (sourceId) => new Types.ObjectId(sourceId),
-                ),
-            });
-
-            const created = interaction.toObject() as { createdAt?: Date };
-            return {
-                _id: String(interaction._id),
-                subjectId: subject._id,
-                classId: schoolClass._id,
-                question: interaction.question,
-                answer: interaction.answer,
-                sources: materials.filter((material) =>
-                    result.sourceMaterialIds.includes(material._id),
-                ),
-                createdAt: created.createdAt,
-            };
         } catch (error) {
-            if (
-                error instanceof GatewayTimeoutException ||
-                error instanceof ServiceUnavailableException ||
-                error instanceof UnprocessableEntityException
-            ) {
-                throw error;
-            }
-            throw new ServiceUnavailableException({
-                code: "AI_PROVIDER_UNAVAILABLE",
-                message: "A IA está temporariamente indisponível.",
-            });
+            throw new ServiceUnavailableException("IA da disciplina indisponível neste momento.");
         }
     }
 
-    private validateResult(
-        result: ClassAiResult,
-        materials: OfficialMaterialView[],
-    ): void {
-        const allowedIds = new Set(materials.map((material) => material._id));
-        if (
-            typeof result.answer !== "string" ||
-            result.answer.trim().length === 0 ||
-            !Array.isArray(result.sourceMaterialIds) ||
-            result.sourceMaterialIds.length === 0 ||
-            result.sourceMaterialIds.some((materialId) => !allowedIds.has(materialId))
-        ) {
-            throw new ServiceUnavailableException({
-                code: "AI_PROVIDER_INVALID_CLASS_ANSWER",
-                message: "A IA devolveu uma resposta inválida para a disciplina.",
-            });
+    private assertStudent(actor: AuthenticatedUser) {
+        if (actor.role !== "STUDENT") {
+            throw new ForbiddenException("Apenas alunos podem usar a IA da disciplina.");
         }
+    }
+    private toView(answer: ClassAiAnswer) {
+        return { id: answer._id.toString(), question: answer.question, answer: answer.answer, officialMaterialIds: answer.officialMaterialIds, teacherVoiceRules: answer.teacherVoiceRules };
     }
 }

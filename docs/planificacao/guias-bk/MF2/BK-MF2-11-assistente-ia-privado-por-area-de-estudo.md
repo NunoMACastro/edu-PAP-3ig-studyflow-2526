@@ -7,7 +7,7 @@
 - `owner`: `Guilherme`
 - `apoio`: `Natalia`
 - `prioridade`: `P0`
-- `estado`: `TODO`
+- `estado`: `DONE`
 - `esforco`: `M`
 - `dependencias`: `BK-MF0-10`
 - `rf_rnf`: `RF35`
@@ -16,7 +16,7 @@
 - `core_or_reforco`: `Reforco`
 - `proximo_bk`: `BK-MF2-12`
 - `guia_path`: `docs/planificacao/guias-bk/MF2/BK-MF2-11-assistente-ia-privado-por-area-de-estudo.md`
-- `last_updated`: `2026-06-08`
+- `last_updated`: `2026-06-11`
 
 ## Objetivo do BK
 

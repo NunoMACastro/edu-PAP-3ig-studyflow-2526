@@ -1,32 +1,18 @@
+// apps/api/src/modules/class-ai/class-ai.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { AiModule } from "../ai/ai.module.js";
-import { AuthModule } from "../auth/auth.module.js";
-import { OfficialMaterialsModule } from "../official-materials/official-materials.module.js";
-import { SubjectsModule } from "../subjects/subjects.module.js";
-import { TeacherAiModule } from "../teacher-ai/teacher-ai.module.js";
-import { ClassAiController } from "./class-ai.controller.js";
-import { ClassAiService } from "./class-ai.service.js";
-import {
-    ClassAiInteraction,
-    ClassAiInteractionSchema,
-} from "./schemas/class-ai-interaction.schema.js";
+import { AiModule } from "../ai/ai.module";
+import { OfficialMaterialsModule } from "../official-materials/official-materials.module";
+import { SubjectsModule } from "../subjects/subjects.module";
+import { TeacherAiModule } from "../teacher-ai/teacher-ai.module";
+import { ClassAiController } from "./class-ai.controller";
+import { ClassAiService } from "./class-ai.service";
+import { ClassAiAnswer, ClassAiAnswerSchema } from "./schemas/class-ai-answer.schema";
 
-/**
- * Módulo da IA limitada por disciplina/turma.
- */
 @Module({
-    imports: [
-        AuthModule,
-        AiModule,
-        SubjectsModule,
-        OfficialMaterialsModule,
-        TeacherAiModule,
-        MongooseModule.forFeature([
-            { name: ClassAiInteraction.name, schema: ClassAiInteractionSchema },
-        ]),
-    ],
+    imports: [MongooseModule.forFeature([{ name: ClassAiAnswer.name, schema: ClassAiAnswerSchema }]), SubjectsModule, OfficialMaterialsModule, TeacherAiModule, AiModule],
     controllers: [ClassAiController],
     providers: [ClassAiService],
+    exports: [ClassAiService],
 })
 export class ClassAiModule {}

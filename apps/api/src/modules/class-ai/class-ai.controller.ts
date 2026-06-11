@@ -1,23 +1,23 @@
-import { Body, Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
-import { SessionGuard } from "../../common/guards/session.guard.js";
-import { AuthenticatedRequest } from "../../common/types/authenticated-request.js";
-import { ClassAiService } from "./class-ai.service.js";
-import { AskClassAiDto } from "./dto/ask-class-ai.dto.js";
+// apps/api/src/modules/class-ai/class-ai.controller.ts
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { SessionGuard } from "../../common/guards/session.guard";
+import { AuthenticatedUser } from "../../common/types/authenticated-request";
+import { ClassAiService } from "./class-ai.service";
+import { CreateClassAiAnswerDto } from "./dto/class-ai-answer.dto";
 
-/**
- * Controller da IA limitada da disciplina.
- */
-@Controller("api/student/subjects/:subjectId/ai/answers")
 @UseGuards(SessionGuard)
+@Controller("api/student/subjects/:subjectId/ai/answers")
 export class ClassAiController {
     constructor(private readonly classAiService: ClassAiService) {}
 
     @Post()
-    ask(
-        @Req() request: AuthenticatedRequest,
-        @Param("subjectId") subjectId: string,
-        @Body() body: AskClassAiDto,
-    ) {
-        return this.classAiService.askClassAi(request.user!, subjectId, body);
+    ask(@CurrentUser() actor: AuthenticatedUser, @Param("subjectId") subjectId: string, @Body() dto: CreateClassAiAnswerDto) {
+        return this.classAiService.ask(actor, subjectId, dto);
+    }
+
+    @Get()
+    list(@CurrentUser() actor: AuthenticatedUser, @Param("subjectId") subjectId: string) {
+        return this.classAiService.list(actor, subjectId);
     }
 }
