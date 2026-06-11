@@ -10,6 +10,7 @@ import { MaterialIndexModule } from "../material-index/material-index.module";
 import { MaterialStructureModule } from "../material-structure/material-structure.module";
 import { MaterialVersionsModule } from "../material-versions/material-versions.module";
 import { MaterialContextsModule } from "../material-contexts/material-contexts.module";
+import { PrivateAreaAiModule } from "../private-area-ai/private-area-ai.module";
 
 @Module({
     imports: [
@@ -23,6 +24,7 @@ import { MaterialContextsModule } from "../material-contexts/material-contexts.m
         MaterialStructureModule,
         MaterialVersionsModule,
         MaterialContextsModule,
+        PrivateAreaAiModule,
     ],
 })
 export class Mf2Module {}
