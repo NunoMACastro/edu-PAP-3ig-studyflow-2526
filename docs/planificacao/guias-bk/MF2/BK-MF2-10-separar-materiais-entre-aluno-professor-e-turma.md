@@ -29,7 +29,7 @@ Este BK reduz risco de privacidade e prepara IA segura. Assistentes privados, as
 ## Scope-in
 
 - Criar registos de contexto de material.
-- Associar material a `STUDENT_PRIVATE`, `TEACHER_OFFICIAL` ou `CLASS_SUBJECT`.
+- Associar material a `PRIVATE_AREA` ou `OFFICIAL_SUBJECT`, distinguindo a origem por `source` (`student`, `teacher` ou `class`).
 - Validar acesso por owner, disciplina ou turma.
 - Listar materiais permitidos por actor e contexto.
 
